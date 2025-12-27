@@ -1,0 +1,91 @@
+/* ----------------------------------------------------------------------------------------------------------------------------	*/
+/* 
+	REC - Contas a Receber
+	----------------------
+*/
+	create table tbRec
+    (
+	cpRecCod    	char(06)	not null,       		-- Numero do AR (KEY)
+	cpRecCli   		char(05)	not null,	    	    -- Codigo do Cliente (FK)
+	cpRecEmp 		char(02) 	not null,   	    	-- Empresa (FK)
+	cpRecBco    	char(03)	not null default(''),	-- Banco do AR, Gravado pela Cobranca ou Pela Baixa no Caixa (FK)
+	cpRecMcx    	char(06)	not null default(''),	-- Movimento de Caixa que Baixou o AR (FK)
+	cpRecDup   		char(10)	not null default(''),	-- Numero da Duplicata
+	cpRecNf   		char(08)	not null default(''),	-- Numero da Nota Fiscal 
+	cpRecNsNum  	char(20)	not null default(''),	-- Nosso Numero
+	cpRecValor   	money    	not null,		        -- Valor do Doc(R) (Com Descontos, Exceto cpRecDescPed,cpRecDescFre,cpRecDescLog)
+	cpRecVlReal    	money    	not null,		        -- Valor Real do Doc(R) (Sem Descontos, Cheio, Original)
+	cpRecValRec   	money    	not null default(0 ),	-- Valor Recebido (Devera ser o Valor do Doc(R) = cpRecValor)
+	cpRecDtDoc     	char(08)	not null,		        -- Data do Doc(R)
+	cpRecDtVenc   	char(08)	not null,		        -- Data de Vencimento
+	cpRecDtRec    	char(08)	not null default(''),	-- Data do Recebimento (Data do Caixa)		
+	cpRecMAComp		char(06)	not null,	        	-- Mes/Ano de Competencia na Geracao do Doc(R)
+	cpRecDescr		char(40)	not null,	        	-- Descricao do Doc(R)
+	cpRecObs1   	char(80)	not null default(''),	-- Observacao de Doc(R) (Linha 01)
+	cpRecObs2   	char(80)	not null default(''),	-- Observacao de Doc(R) (Linha 02)
+	cpRecObs3     	char(80)	not null default(''), 	-- Observacao de Doc(R) (Linha 03)
+	cpRecData   	char(08)	not null default(''),	-- Data da Criacao
+	cpRecHora   	char(05)	not null default(''),	-- Hora da Criacao
+	cpRecMaCompBx	char(06)	not null default(''),	-- Mes Ano de Competencia da Baixa do D0c(R)
+	cpRecDtLimDesc	char(08)	not null default(''),	-- Data Limite p/ Conceder o Desconto Financeiro
+	cpRecValAbat	money		not null default(0 ),	-- Valor Abatimento 
+	cpRecRecBorFin	char(07)	not null default(''),	-- Numero do Bordero Financeiro
+	cpRecValAbatRec	money		not null default(0 ),	-- Valor de Abatimento no Recebimento do Titulo
+	cpRecValDescRec	money		not null default(0 ),	-- Valor de Desconto no Recebimento do Titulo
+	cpRecValJurRecb	money		not null default(0 ),	-- Valor de Juros do Recebimento do Titulo
+	cpRecBdt 		char(07)	not null default(''),	-- Bordero de Desconto (FK-tbBdt)
+	cpRecMcxOri		char(06)	not null default('')	-- Movimento de Caixa que Originou este Doc(R) (Financeiro)
+	);	
+
+alter table tbRec
+add constraint tbRec_pkey primary key (cpRecCod);
+
+/* ----------------------------------------------------------------------------------------------------------------------------	*/
+/* 
+	PAG - Movimentacao do Contas a Pagar
+	------------------------------------
+*/ 
+
+	create table tbPag
+	(
+	cpPagCod 	    char(06)	not null,		       	-- Codigo - Numero do DOC(P) (KEY)
+	cpPagFor      	char(05)	not null,		       	-- Fornecedor
+	cpPagBco       	char(03)	not null default(''),	-- Banco onde foi Pago
+	cpPagMcx        char(06)	not null default(''),	-- Movimento do Caixa que Baixou
+	cpPagUsuBx 		char(14) 	not null default(''),   -- Usuario que Baixou a Conta
+	cpPagNf      	char(08)	not null default(''),	-- Numero da Nota Fiscal
+	cpPagExtNf     	char(02)	not null default(''),	-- Extensao da Nota Fiscal
+	cpPagVlReal		money		not null,		        -- Valor Original (Sem Descontos, Cheio, Original)
+	cpPagValor      money       not null,		        -- Valor Atual (Com Descontos)
+	cpPagValpag     money		not null default(0 ),	-- Valor Atual na Baixa 
+	cpPagDtDoc    	char(08)	not null,		        -- Data do DOC(P)
+	cpPagDtVenc     char(08)	not null,		        -- Data do vencimento
+	cpPagMAComp 	char(06) 	not null,		        -- Mes/Ano de Competencia
+	cpPagDtpag      char(08)	not null default(''),	-- Data do Pagamento (Data do Caixa)
+	cpPagDescr     	char(40)	not null,		        -- Descricao
+	cpPagObs1   	char(80)	not null default(''),	-- Observacao de DOC(P) (linha 1)
+	cpPagObs2   	char(80)	not null default(''),	-- Observacao de DOC(P) (linha 2)
+	cpPagObs3  		char(80)	not null default(''),   -- Observacao de DOC(P) (linha 3)
+	cpPagObs        char(40)	not null default(''),	-- Observacao na Baixa
+	cpPagStImpRec   char(01)	not null default('0'),  -- Status da Impressao do DOC(P)
+	cpPagData 	    char(08) 	not null default(''),	-- Data da Criacao
+	cpPagHora 		char(05) 	not null default(''),	-- Hora da Criacao
+	cpPagEmp 		char(02) 	not null default(''),	-- Codigo da Empresa
+	cpPagDtBx		char(08)	not null default(''),	-- Data Real da Baixa
+	cpPagHrBx		char(05)	not null default(''),	-- Hora Real da Baixa
+	cpPagMACompBx	char(06)	not null default(''),	-- Mes/Ano de Competencia da Baixa
+	cpPagBpg 	    char(06) 	not null default(''),	-- Bordero de Baixa (FK)
+	cpPagUsuCri 	char(14) 	not null default(''),   -- Usuario que Criou o DOC(P)
+	cpPagTpCta		char(01)	not null default('1'),  -- Tipo (1-Diversos)
+	cpPagDtPrvPagto char(08)	not null default(''),	-- Data Prevista para Pagamento
+	cpPagArLib		char(01)	not null default('S'),  -- DOC(P) Liberado (S/N) - Para Pagto no Caixa 
+	cpPagCodBar     char(47) 	not null default(''),	-- Codigo de Barra do Bloqueto
+	cpPagLinDig		char(47) 	not null default(''),	-- Linha Digitavel do Bloqueto
+	cpPagPfb	    char(06)    not null default('')    -- Bordero de PagFor
+	);
+
+alter table tbPag
+add constraint tbpag_pkey primary key (cpPagCod);
+
+/* ----------------------------------------------------------------------------------------------------------------------------	*/
+
