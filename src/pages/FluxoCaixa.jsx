@@ -21,6 +21,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { startOfMonth, endOfMonth, format, eachDayOfInterval } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useEmCashValue } from '@/hooks/useEmCashValue';
+import { getValorConsiderado } from '@/lib/lancamentoValor';
 
     const FluxoCaixa = () => {
       const navigate = useNavigate();
@@ -65,6 +66,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
       const formatCurrency = (value) => {
         return (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
       };
+      const todayStr = new Date().toISOString().split('T')[0];
 
       const monthData = useMemo(() => {
         const year = currentDate.getFullYear();
@@ -93,8 +95,8 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
         const atrasadosReceber = atrasadosLancamentos.filter(i => i.tipo === 'Entrada');
         const atrasadosPagar = atrasadosLancamentos.filter(i => i.tipo === 'Saida');
 
-        const totalAtrasadoReceber = atrasadosReceber.reduce((acc, i) => acc + i.valor, 0) + emCashValue;
-        const totalAtrasadoPagar = atrasadosPagar.reduce((acc, i) => acc + i.valor, 0);
+        const totalAtrasadoReceber = atrasadosReceber.reduce((acc, i) => acc + getValorConsiderado(i, todayStr), 0) + emCashValue;
+        const totalAtrasadoPagar = atrasadosPagar.reduce((acc, i) => acc + getValorConsiderado(i, todayStr), 0);
 
         const receberDetails = [...atrasadosReceber];
         if (emCashValue !== 0) {
@@ -126,10 +128,10 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
           const dayIndex = vencimento.getUTCDate() - 1;
           if (fluxo[dayIndex]) {
             if (item.tipo === 'Entrada') {
-              fluxo[dayIndex].receber += item.valor;
+              fluxo[dayIndex].receber += getValorConsiderado(item, todayStr);
               fluxo[dayIndex].details.receber.push(item);
             } else {
-              fluxo[dayIndex].pagar += item.valor;
+              fluxo[dayIndex].pagar += getValorConsiderado(item, todayStr);
               fluxo[dayIndex].details.pagar.push(item);
             }
           }
@@ -167,7 +169,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
           >
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div className="flex items-center gap-4">
-                  <Button variant="ghost" size="icon" onClick={() => navigate('/')} className="text-white hover:bg-white/10">
+                  <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')} className="text-white hover:bg-white/10">
                     <ArrowLeft className="w-6 h-6" />
                   </Button>
                   <div>
@@ -271,7 +273,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
                                       {dia.details.receber.length > 0 ? dia.details.receber.map(item => (
                                         <div key={item.id} className="flex justify-between text-sm py-1">
                                           <span>{item.cliente_fornecedor}</span>
-                                          <span className="font-mono">{formatCurrency(item.valor)}</span>
+                                          <span className="font-mono">{formatCurrency(getValorConsiderado(item, todayStr))}</span>
                                         </div>
                                       )) : <p className="text-xs text-slate-400">Nenhuma entrada.</p>}
                                     </div>
@@ -280,7 +282,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
                                       {dia.details.pagar.length > 0 ? dia.details.pagar.map(item => (
                                         <div key={item.id} className="flex justify-between text-sm py-1">
                                           <span>{item.cliente_fornecedor}</span>
-                                          <span className="font-mono">{formatCurrency(item.valor)}</span>
+                                          <span className="font-mono">{formatCurrency(getValorConsiderado(item, todayStr))}</span>
                                         </div>
                                       )) : <p className="text-xs text-slate-400">Nenhuma saída.</p>}
                                     </div>

@@ -7,12 +7,13 @@ import { ArrowLeft, FileDown, Filter, ArrowUp, ArrowDown, CheckCircle } from 'lu
     import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
     import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
     import { Input } from '@/components/ui/input';
-    import { useToast } from '@/components/ui/use-toast';
-    import { supabase } from '@/lib/customSupabaseClient';
+import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/lib/customSupabaseClient';
 import { format } from 'date-fns';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { useEmCashValue } from '@/hooks/useEmCashValue';
+import { getValorConsiderado } from '@/lib/lancamentoValor';
 
     const RelatorioContas = () => {
         const navigate = useNavigate();
@@ -88,8 +89,8 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
                 let aValue = a[sortConfig.key];
                 let bValue = b[sortConfig.key];
                 if (sortConfig.key === 'valor') {
-                    aValue = parseFloat(aValue);
-                    bValue = parseFloat(bValue);
+                    aValue = valorConta(a);
+                    bValue = valorConta(b);
                 }
                 if (aValue < bValue) return sortConfig.direction === 'ascending' ? -1 : 1;
                 if (aValue > bValue) return sortConfig.direction === 'ascending' ? 1 : -1;
@@ -107,6 +108,8 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
         };
 
         const formatCurrency = (value) => (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const todayStr = new Date().toISOString().split('T')[0];
+        const valorConta = (conta) => conta?.__isCash ? conta.valor : getValorConsiderado(conta, todayStr);
         const formatDate = (dateString) => dateString ? format(new Date(dateString + 'T00:00:00'), 'dd/MM/yyyy') : '-';
 
         const handleDownloadPdf = () => {
@@ -119,7 +122,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
             doc.autoTable({
                 head: [['Data', 'Tipo', 'Cliente/Fornecedor', 'Descrição', 'Unidade', 'Status', 'Valor']],
                 body: filteredAndSortedContas.map(c => [
-                    formatDate(c.data), c.tipo, c.cliente_fornecedor, c.descricao, c.unidade, getStatus(c), formatCurrency(c.valor)
+                    formatDate(c.data), c.tipo, c.cliente_fornecedor, c.descricao, c.unidade, getStatus(c), formatCurrency(valorConta(c))
                 ]),
                 startY: 20,
                 theme: 'grid',
@@ -226,14 +229,14 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
                                                     <td className="px-6 py-4">{conta.descricao}</td>
                                                     <td className="px-6 py-4">{conta.unidade}</td>
                                                     <td className="px-6 py-4">{getStatus(conta)}</td>
-                                                    <td className={`px-6 py-4 text-right font-mono ${conta.tipo === 'Entrada' ? 'text-green-400' : 'text-red-400'}`}>{formatCurrency(conta.valor)}</td>
+                                                    <td className={`px-6 py-4 text-right font-mono ${conta.tipo === 'Entrada' ? 'text-green-400' : 'text-red-400'}`}>{formatCurrency(valorConta(conta))}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
                                         <tfoot>
                                             <tr className="font-semibold text-white bg-white/5">
                                                 <td colSpan={6} className="px-6 py-3 text-right">Total</td>
-                                                <td className="px-6 py-3 text-right font-mono">{formatCurrency(filteredAndSortedContas.reduce((acc, c) => acc + (c.tipo === 'Entrada' ? c.valor : -c.valor), 0))}</td>
+                                                <td className="px-6 py-3 text-right font-mono">{formatCurrency(filteredAndSortedContas.reduce((acc, c) => acc + (c.tipo === 'Entrada' ? valorConta(c) : -valorConta(c)), 0))}</td>
                                             </tr>
                                         </tfoot>
                                     </table>

@@ -12,6 +12,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import jsPDF from 'jspdf';
 import { format } from 'date-fns';
+import { getValorConsiderado } from '@/lib/lancamentoValor';
 
 const columns = ['Data', 'Unidade', 'Cliente/Fornecedor', 'Descrição', 'Valor', 'Status', 'Parcela', 'Observações', 'Data Pag.'];
 
@@ -29,6 +30,8 @@ const EmissaoDuplicata = () => {
     dataInicio: '',
     dataFim: ''
   });
+  const todayStr = new Date().toISOString().split('T')[0];
+  const valorLancamento = (item) => getValorConsiderado(item, todayStr);
 
   const handleGenerateReport = async () => {
     setLoading(true);
@@ -88,7 +91,7 @@ const EmissaoDuplicata = () => {
     const width = pageWidth - marginX * 2;
     const accent = { r: 20, g: 92, b: 163 };
 
-    const valor = formatCurrency(item.valor);
+    const valor = formatCurrency(valorLancamento(item));
     const vencimento = formatDate(item.data);
     const emissao = formatDate(item.data);
     const numeroDuplicata = item.documento || item.id || '-';
@@ -374,7 +377,7 @@ const EmissaoDuplicata = () => {
                           <td className="px-3 py-2">{item.unidade || '-'}</td>
                           <td className="px-3 py-2">{item.cliente_fornecedor || '-'}</td>
                           <td className="px-3 py-2">{item.descricao || '-'}</td>
-                          <td className="px-3 py-2 font-mono text-green-300">{formatCurrency(item.valor)}</td>
+                          <td className="px-3 py-2 font-mono text-green-300">{formatCurrency(valorLancamento(item))}</td>
                           <td className="px-3 py-2">{item.status || '-'}</td>
                           <td className="px-3 py-2">{item.parcela || '-'}</td>
                           <td className="px-3 py-2">{item.obs || '-'}</td>

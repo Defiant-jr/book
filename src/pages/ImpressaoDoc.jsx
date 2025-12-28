@@ -13,6 +13,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { format } from 'date-fns';
+import { getValorConsiderado } from '@/lib/lancamentoValor';
 
 const columns = [
   'Data',
@@ -100,6 +101,8 @@ const ImpressaoDoc = () => {
 
   const formatCurrency = (value) =>
     (value ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const todayStr = new Date().toISOString().split('T')[0];
+  const valorLancamento = (item) => getValorConsiderado(item, todayStr);
 
   const formatDate = (value) => (value ? format(new Date(value + 'T00:00:00'), 'dd/MM/yyyy') : '-');
 
@@ -130,7 +133,7 @@ const ImpressaoDoc = () => {
 
     const now = new Date();
     const docNumber = item.documento || item.id || '-';
-    const valorFormatado = formatCurrency(item.valor);
+    const valorFormatado = formatCurrency(valorLancamento(item));
     const dataEmissao = formatDate(item.data);
     const dataEntrada = formatDate(item.data);
     const vencOrig = formatDate(item.data);
@@ -486,7 +489,7 @@ const ImpressaoDoc = () => {
                           <td className="px-3 py-2">{item.unidade || '-'}</td>
                           <td className="px-3 py-2">{item.cliente_fornecedor || '-'}</td>
                           <td className="px-3 py-2">{item.descricao || '-'}</td>
-                          <td className="px-3 py-2 font-mono text-green-300">{formatCurrency(item.valor)}</td>
+                          <td className="px-3 py-2 font-mono text-green-300">{formatCurrency(valorLancamento(item))}</td>
                           <td className="px-3 py-2">{item.status || '-'}</td>
                           <td className="px-3 py-2">{item.aluno || '-'}</td>
                           <td className="px-3 py-2">{item.parcela || '-'}</td>

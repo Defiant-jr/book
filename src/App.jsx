@@ -5,6 +5,9 @@ import ContasPagar from '@/pages/ContasPagar';
 import ContasReceber from '@/pages/ContasReceber';
 import Dashboard from '@/pages/Dashboard';
 import DreGerencial from '@/pages/DreGerencial';
+import AreaSelection from '@/pages/AreaSelection';
+import Administrativo from '@/pages/Administrativo';
+import AdministrativoRelatorios from '@/pages/AdministrativoRelatorios';
 import Financeiro from '@/pages/Financeiro';
 import FluxoCaixa from '@/pages/FluxoCaixa';
 import FluxoCaixaDetalhado from '@/pages/FluxoCaixaDetalhado';
@@ -55,7 +58,31 @@ function App() {
 							path="/"
 							element={
 								<PrivateRoute>
+									<AreaSelection />
+								</PrivateRoute>
+							}
+						/>
+						<Route
+							path="/dashboard"
+							element={
+								<PrivateRoute>
 									<Dashboard />
+								</PrivateRoute>
+							}
+						/>
+						<Route
+							path="/administrativo"
+							element={
+								<PrivateRoute>
+									<Administrativo />
+								</PrivateRoute>
+							}
+						/>
+						<Route
+							path="/administrativo/relatorios"
+							element={
+								<PrivateRoute>
+									<AdministrativoRelatorios />
 								</PrivateRoute>
 							}
 						/>

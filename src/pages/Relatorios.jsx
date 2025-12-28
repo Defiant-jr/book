@@ -89,7 +89,7 @@ import { BarChart3, PieChart, TrendingUp, ArrowLeft, FileClock, Printer, Calenda
     
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => navigate('/')}>
+                        <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => navigate('/dashboard')}>
                             <ArrowLeft className="h-5 w-5" />
                             <span className="sr-only">Voltar</span>
                         </Button>

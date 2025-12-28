@@ -6,12 +6,13 @@ import React, { useState, useEffect, useRef } from 'react';
     import { Button } from '@/components/ui/button';
     import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
     import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-    import { useToast } from '@/components/ui/use-toast';
-    import { supabase } from '@/lib/customSupabaseClient';
-    import { format, startOfMonth, endOfMonth, eachMonthOfInterval } from 'date-fns';
-    import { ptBR } from 'date-fns/locale';
-    import jsPDF from 'jspdf';
-    import html2canvas from 'html2canvas';
+import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/lib/customSupabaseClient';
+import { format, startOfMonth, endOfMonth, eachMonthOfInterval } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import { getValorConsiderado } from '@/lib/lancamentoValor';
 
     const DreGerencial = () => {
         const navigate = useNavigate();
@@ -77,9 +78,10 @@ import React, { useState, useEffect, useRef } from 'react';
                 return;
             }
 
-            const receitaBruta = data.filter(d => d.tipo === 'Entrada').reduce((acc, item) => acc + item.valor, 0);
-            const custos = data.filter(d => d.tipo === 'Saida' && d.obs?.toLowerCase().includes('custo')).reduce((acc, item) => acc + item.valor, 0);
-            const despesas = data.filter(d => d.tipo === 'Saida' && !d.obs?.toLowerCase().includes('custo')).reduce((acc, item) => acc + item.valor, 0);
+            const todayStr = new Date().toISOString().split('T')[0];
+            const receitaBruta = data.filter(d => d.tipo === 'Entrada').reduce((acc, item) => acc + getValorConsiderado(item, todayStr), 0);
+            const custos = data.filter(d => d.tipo === 'Saida' && d.obs?.toLowerCase().includes('custo')).reduce((acc, item) => acc + getValorConsiderado(item, todayStr), 0);
+            const despesas = data.filter(d => d.tipo === 'Saida' && !d.obs?.toLowerCase().includes('custo')).reduce((acc, item) => acc + getValorConsiderado(item, todayStr), 0);
             
             const lucroBruto = receitaBruta - custos;
             const resultado = lucroBruto - despesas;

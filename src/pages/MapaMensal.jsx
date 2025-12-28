@@ -19,6 +19,7 @@ import { startOfMonth, endOfMonth, eachDayOfInterval, format, getDay } from 'dat
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { useEmCashValue } from '@/hooks/useEmCashValue';
+import { getValorConsiderado } from '@/lib/lancamentoValor';
 
 const weekdayLabels = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 
@@ -65,6 +66,8 @@ const MapaMensal = () => {
 
   const formatCurrency = (value) =>
     (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const todayStr = new Date().toISOString().split('T')[0];
+  const valorLancamento = (item) => getValorConsiderado(item, todayStr);
 
 const calendarCells = useMemo(() => {
   const current = new Date(`${selectedMonth}-01T00:00:00`);
@@ -77,10 +80,10 @@ const calendarCells = useMemo(() => {
       const dayItems = allData.filter((item) => item.data === dayIso);
       const entradasTotal = dayItems
         .filter((d) => d.tipo === 'Entrada')
-        .reduce((acc, d) => acc + (d.valor || 0), 0);
+        .reduce((acc, d) => acc + valorLancamento(d), 0);
       const saidasTotal = dayItems
         .filter((d) => d.tipo === 'Saida')
-        .reduce((acc, d) => acc + (d.valor || 0), 0);
+        .reduce((acc, d) => acc + valorLancamento(d), 0);
 
       return {
         date: day,
@@ -111,8 +114,8 @@ const calendarCells = useMemo(() => {
       (acc, item) => {
         const dateObj = new Date(`${item.data}T00:00:00`);
         if (dateObj >= start || isPaid(item.status)) return acc;
-        if (item.tipo === 'Entrada') acc.entradas += item.valor || 0;
-        if (item.tipo === 'Saida') acc.saidas += item.valor || 0;
+        if (item.tipo === 'Entrada') acc.entradas += valorLancamento(item);
+        if (item.tipo === 'Saida') acc.saidas += valorLancamento(item);
         return acc;
       },
       { entradas: 0, saidas: 0 },
@@ -241,7 +244,7 @@ const calendarCells = useMemo(() => {
           if (cursorY > listMaxY) return;
           const name = despesa.cliente_fornecedor || despesa.descricao || 'Despesa';
           const nameLine = doc.splitTextToSize(name, nameWidth)[0] || name;
-          const valueText = formatCurrency(despesa.valor || 0);
+          const valueText = formatCurrency(valorLancamento(despesa));
 
           doc.setTextColor(headerColor.r, headerColor.g, headerColor.b);
           doc.text(nameLine, x + padding, cursorY);
@@ -415,7 +418,7 @@ const calendarCells = useMemo(() => {
                         <div key={despesa.id} className="text-xs flex justify-between gap-1">
                           <span className="truncate max-w-[70%]">{despesa.cliente_fornecedor || despesa.descricao || 'Despesa'}</span>
                           <span className="text-red-300 font-mono">
-                            {formatCurrency(despesa.valor || 0)}
+                            {formatCurrency(valorLancamento(despesa))}
                           </span>
                         </div>
                       ))

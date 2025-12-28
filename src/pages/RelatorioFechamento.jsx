@@ -12,6 +12,7 @@ import { endOfMonth, format } from 'date-fns';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { useEmCashValue } from '@/hooks/useEmCashValue';
+import { getValorConsiderado } from '@/lib/lancamentoValor';
 
 const unitOptions = [
   { value: 'todas', label: 'Todas' },
@@ -41,6 +42,8 @@ const RelatorioFechamento = () => {
     const amount = Number(value || 0);
     return amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   };
+  const todayStr = new Date().toISOString().split('T')[0];
+  const valorLancamento = (item) => getValorConsiderado(item, todayStr);
 
   const formatDate = (value) => {
     if (!value) return '-';
@@ -51,12 +54,12 @@ const RelatorioFechamento = () => {
   const unitLabel = unitOptions.find((option) => option.value === selectedUnit)?.label ?? 'Todas';
 
   const totalEntries = useMemo(
-    () => entries.reduce((sum, item) => sum + Number(item.valor || 0), 0),
+    () => entries.reduce((sum, item) => sum + valorLancamento(item), 0),
     [entries]
   );
 
   const totalExits = useMemo(
-    () => exits.reduce((sum, item) => sum + Number(item.valor || 0), 0),
+    () => exits.reduce((sum, item) => sum + valorLancamento(item), 0),
     [exits]
   );
 
@@ -76,14 +79,14 @@ const RelatorioFechamento = () => {
 
       let entriesQuery = supabase
         .from('lancamentos')
-        .select('id, cliente_fornecedor, data, unidade, valor, tipo, status')
+        .select('id, cliente_fornecedor, contato, aluno, data, unidade, valor, valor_aberto, desc_pontual, tipo, status')
         .eq('tipo', 'Entrada')
         .lte('data', endOfCurrentMonthIso)
         .or('status.is.null,status.neq.Pago');
 
       let exitsQuery = supabase
         .from('lancamentos')
-        .select('id, cliente_fornecedor, data, unidade, valor, tipo, status')
+        .select('id, cliente_fornecedor, contato, aluno, data, unidade, valor, valor_aberto, desc_pontual, tipo, status')
         .eq('tipo', 'Saida')
         .lte('data', endOfCurrentMonthIso)
         .or('status.is.null,status.neq.Pago');
@@ -109,6 +112,10 @@ const RelatorioFechamento = () => {
           .map((item) => ({
             ...item,
             valor: Number(item.valor || 0),
+            valor_aberto: item.valor_aberto != null ? Number(item.valor_aberto) : undefined,
+            desc_pontual: item.desc_pontual != null ? Number(item.desc_pontual) : undefined,
+            contato: item.contato || '-',
+            aluno: item.aluno || '-',
           }))
           .sort((a, b) => {
             const unidadeA = (a.unidade || '').toLowerCase();
@@ -143,7 +150,7 @@ const RelatorioFechamento = () => {
   const handleGeneratePdf = () => {
     if (!reportGenerated) return;
 
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
     const marginLeft = 40;
     let cursorY = 50;
 
@@ -166,12 +173,14 @@ const RelatorioFechamento = () => {
       const tableStartY = cursorY + 8;
       doc.autoTable({
         startY: tableStartY,
-        head: [['Nome', 'Vencimento', 'Unidade', 'Valor']],
+        head: [['Nome', 'Contato', 'Aluno', 'Vencimento', 'Unidade', 'Valor']],
         body: items.map((item) => [
           item.cliente_fornecedor || '-',
+          item.contato || '-',
+          item.aluno || '-',
           formatDate(item.data),
           item.unidade || '-',
-          formatCurrency(item.valor),
+          formatCurrency(valorLancamento(item)),
         ]),
         theme: 'grid',
         styles: { fontSize, cellPadding },
@@ -327,6 +336,8 @@ const RelatorioFechamento = () => {
                       <thead>
                         <tr className="bg-white/5 text-left text-xs uppercase tracking-wide text-gray-400">
                           <th className="px-4 py-3">Nome</th>
+                          <th className="px-4 py-3">Contato</th>
+                          <th className="px-4 py-3">Aluno</th>
                           <th className="px-4 py-3">Vencimento</th>
                           <th className="px-4 py-3">Unidade</th>
                           <th className="px-4 py-3 text-right">Valor</th>
@@ -336,15 +347,17 @@ const RelatorioFechamento = () => {
                         {entries.map((item) => (
                           <tr key={item.id} className="border-b border-white/10 last:border-0">
                             <td className="px-4 py-3">{item.cliente_fornecedor || '-'}</td>
+                            <td className="px-4 py-3">{item.contato || '-'}</td>
+                            <td className="px-4 py-3">{item.aluno || '-'}</td>
                             <td className="px-4 py-3">{formatDate(item.data)}</td>
                             <td className="px-4 py-3">{item.unidade || '-'}</td>
-                            <td className="px-4 py-3 text-right font-medium text-green-300">{formatCurrency(item.valor)}</td>
+                            <td className="px-4 py-3 text-right font-medium text-green-300">{formatCurrency(valorLancamento(item))}</td>
                           </tr>
                         ))}
                       </tbody>
                       <tfoot>
                         <tr>
-                          <td colSpan={3} className="px-4 py-3 text-right font-semibold text-gray-300">Total de entradas</td>
+                          <td colSpan={5} className="px-4 py-3 text-right font-semibold text-gray-300">Total de entradas</td>
                           <td className="px-4 py-3 text-right font-semibold text-green-300">{formatCurrency(totalEntries)}</td>
                         </tr>
                       </tfoot>
@@ -368,6 +381,8 @@ const RelatorioFechamento = () => {
                       <thead>
                         <tr className="bg-white/5 text-left text-xs uppercase tracking-wide text-gray-400">
                           <th className="px-4 py-3">Nome</th>
+                          <th className="px-4 py-3">Contato</th>
+                          <th className="px-4 py-3">Aluno</th>
                           <th className="px-4 py-3">Vencimento</th>
                           <th className="px-4 py-3">Unidade</th>
                           <th className="px-4 py-3 text-right">Valor</th>
@@ -377,15 +392,17 @@ const RelatorioFechamento = () => {
                         {exits.map((item) => (
                           <tr key={item.id} className="border-b border-white/10 last:border-0">
                             <td className="px-4 py-3">{item.cliente_fornecedor || '-'}</td>
+                            <td className="px-4 py-3">{item.contato || '-'}</td>
+                            <td className="px-4 py-3">{item.aluno || '-'}</td>
                             <td className="px-4 py-3">{formatDate(item.data)}</td>
                             <td className="px-4 py-3">{item.unidade || '-'}</td>
-                            <td className="px-4 py-3 text-right font-medium text-red-300">{formatCurrency(item.valor)}</td>
+                            <td className="px-4 py-3 text-right font-medium text-red-300">{formatCurrency(valorLancamento(item))}</td>
                           </tr>
                         ))}
                       </tbody>
                       <tfoot>
                         <tr>
-                          <td colSpan={3} className="px-4 py-3 text-right font-semibold text-gray-300">Total de saidas</td>
+                          <td colSpan={5} className="px-4 py-3 text-right font-semibold text-gray-300">Total de saidas</td>
                           <td className="px-4 py-3 text-right font-semibold text-red-300">{formatCurrency(totalExits)}</td>
                         </tr>
                       </tfoot>

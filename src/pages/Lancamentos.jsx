@@ -17,7 +17,7 @@ const Lancamentos = () => {
     if (isEditing) {
       navigate(-1);
     } else {
-      navigate('/');
+      navigate('/dashboard');
     }
   };
 

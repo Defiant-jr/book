@@ -6,10 +6,11 @@ import { Calendar, Filter, Building, DollarSign, AlertTriangle, ArrowLeft, Check
     import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
     import { Button } from '@/components/ui/button';
     import { Input } from '@/components/ui/input';
-    import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-    import { supabase } from '@/lib/customSupabaseClient';
-    import { useToast } from '@/components/ui/use-toast';
-    import { format as formatDateFns } from 'date-fns';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { supabase } from '@/lib/customSupabaseClient';
+import { useToast } from '@/components/ui/use-toast';
+import { format as formatDateFns } from 'date-fns';
+import { getValorConsiderado } from '@/lib/lancamentoValor';
     
     const ContasPagar = () => {
       const navigate = useNavigate();
@@ -71,6 +72,7 @@ import { Calendar, Filter, Building, DollarSign, AlertTriangle, ArrowLeft, Check
     
       const formatCurrency = (value) => (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
       const formatDate = (dateString) => new Date(dateString + 'T00:00:00').toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+      const todayStr = new Date().toISOString().split('T')[0];
     
       const getStatusColor = (status) => ({
         'vencido': 'bg-red-500/20 text-red-400 border-red-500/30',
@@ -92,12 +94,12 @@ import { Calendar, Filter, Building, DollarSign, AlertTriangle, ArrowLeft, Check
       const calculateTotalsByUnit = (itens) => {
         return itens.reduce((acc, conta) => {
           const unit = conta.unidade || 'N/A';
-          acc[unit] = (acc[unit] || 0) + conta.valor;
+          acc[unit] = (acc[unit] || 0) + getValorConsiderado(conta, todayStr);
           return acc;
         }, {});
       };
     
-      const totalGeral = filteredContas.reduce((sum, c) => sum + c.valor, 0);
+      const totalGeral = filteredContas.reduce((sum, c) => sum + getValorConsiderado(c, todayStr), 0);
       const totalAberto = filteredContas.filter(c => getStatus(c) === 'aberto');
       const totalVencido = filteredContas.filter(c => getStatus(c) === 'vencido');
     
@@ -128,7 +130,7 @@ import { Calendar, Filter, Building, DollarSign, AlertTriangle, ArrowLeft, Check
     
           <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => navigate('/')} className="text-white hover:bg-white/10"><ArrowLeft className="w-6 h-6" /></Button>
+              <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')} className="text-white hover:bg-white/10"><ArrowLeft className="w-6 h-6" /></Button>
               <div>
                 <h1 className="text-3xl font-bold gradient-text">Contas a Pagar</h1>
                 <p className="text-gray-400 mt-2">Controle seus pagamentos</p>
@@ -138,8 +140,8 @@ import { Calendar, Filter, Building, DollarSign, AlertTriangle, ArrowLeft, Check
     
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Card className="glass-card"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-gray-300">Total Filtrado</CardTitle><DollarSign className="w-4 h-4 text-blue-400" /></CardHeader><CardContent><div className="text-2xl font-bold text-blue-400">{formatCurrency(totalGeral)}</div></CardContent></Card>
-            <Card className="glass-card"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-gray-300">Em Aberto</CardTitle><Calendar className="w-4 h-4 text-yellow-400" /></CardHeader><CardContent><div className="text-2xl font-bold text-yellow-400">{formatCurrency(totalAberto.reduce((s, c) => s + c.valor, 0))}</div><div className="mt-2 space-y-1 text-xs text-gray-400">{Object.entries(totalAbertoPorUnidade).map(([unit, val]) => <div key={unit} className="flex justify-between"><span>{unit}:</span><span className="font-semibold">{formatCurrency(val)}</span></div>)}</div></CardContent></Card>
-            <Card className="glass-card"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-gray-300">Vencido</CardTitle><AlertTriangle className="w-4 h-4 text-red-400" /></CardHeader><CardContent><div className="text-2xl font-bold text-red-400">{formatCurrency(totalVencido.reduce((s, c) => s + c.valor, 0))}</div><div className="mt-2 space-y-1 text-xs text-gray-400">{Object.entries(totalVencidoPorUnidade).map(([unit, val]) => <div key={unit} className="flex justify-between"><span>{unit}:</span><span className="font-semibold">{formatCurrency(val)}</span></div>)}</div></CardContent></Card>
+            <Card className="glass-card"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-gray-300">Em Aberto</CardTitle><Calendar className="w-4 h-4 text-yellow-400" /></CardHeader><CardContent><div className="text-2xl font-bold text-yellow-400">{formatCurrency(totalAberto.reduce((s, c) => s + getValorConsiderado(c, todayStr), 0))}</div><div className="mt-2 space-y-1 text-xs text-gray-400">{Object.entries(totalAbertoPorUnidade).map(([unit, val]) => <div key={unit} className="flex justify-between"><span>{unit}:</span><span className="font-semibold">{formatCurrency(val)}</span></div>)}</div></CardContent></Card>
+            <Card className="glass-card"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-gray-300">Vencido</CardTitle><AlertTriangle className="w-4 h-4 text-red-400" /></CardHeader><CardContent><div className="text-2xl font-bold text-red-400">{formatCurrency(totalVencido.reduce((s, c) => s + getValorConsiderado(c, todayStr), 0))}</div><div className="mt-2 space-y-1 text-xs text-gray-400">{Object.entries(totalVencidoPorUnidade).map(([unit, val]) => <div key={unit} className="flex justify-between"><span>{unit}:</span><span className="font-semibold">{formatCurrency(val)}</span></div>)}</div></CardContent></Card>
           </div>
     
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
@@ -161,7 +163,7 @@ import { Calendar, Filter, Building, DollarSign, AlertTriangle, ArrowLeft, Check
             {loading ? <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div></div>
               : Object.entries(groupedContas).map(([date, contasData], index) => (
                 <Card key={date} className="glass-card">
-                  <CardHeader><div className="flex justify-between items-center"><CardTitle className="text-white flex items-center gap-2"><Calendar className="w-5 h-5" />{formatDate(date)}</CardTitle><div className="text-lg font-bold text-red-400">{formatCurrency(contasData.reduce((s, c) => s + c.valor, 0))}</div></div></CardHeader>
+                  <CardHeader><div className="flex justify-between items-center"><CardTitle className="text-white flex items-center gap-2"><Calendar className="w-5 h-5" />{formatDate(date)}</CardTitle><div className="text-lg font-bold text-red-400">{formatCurrency(contasData.reduce((s, c) => s + getValorConsiderado(c, todayStr), 0))}</div></div></CardHeader>
                   <CardContent>
                     <div className="space-y-3">
                       {contasData.map((conta) => {
@@ -179,7 +181,7 @@ import { Calendar, Filter, Building, DollarSign, AlertTriangle, ArrowLeft, Check
                             </div>
                             <div className="flex items-center gap-4">
                               <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(status)}`}>{getStatusLabel(status)}</span>
-                              <div className="text-lg font-bold text-red-400">{formatCurrency(conta.valor)}</div>
+                              <div className="text-lg font-bold text-red-400">{formatCurrency(getValorConsiderado(conta, todayStr))}</div>
                               <button
                                 type="button"
                                 onClick={() => handleEditLancamento(conta)}

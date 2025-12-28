@@ -11,6 +11,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import { format as formatDateFns } from 'date-fns';
 import { useEmCashValue } from '@/hooks/useEmCashValue';
+import { getValorConsiderado } from '@/lib/lancamentoValor';
 
     const ContasReceber = () => {
       const navigate = useNavigate();
@@ -79,6 +80,8 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
     
       const formatCurrency = (value) => (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
       const formatDate = (dateString) => new Date(dateString + 'T00:00:00').toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+      const todayStr = new Date().toISOString().split('T')[0];
+      const valorConsiderado = (conta) => getValorConsiderado(conta, todayStr);
     
       const getStatusColor = (status) => ({
         'atrasado': 'bg-red-500/20 text-red-400 border-red-500/30',
@@ -105,17 +108,17 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
         };
         contas.forEach(conta => {
           if (totals.hasOwnProperty(conta.unidade)) {
-            totals[conta.unidade] += conta.valor;
+            totals[conta.unidade] += valorConsiderado(conta);
           }
         });
         return totals;
       };
     
-      const totalGeralBase = filteredContas.reduce((sum, conta) => sum + conta.valor, 0);
+      const totalGeralBase = filteredContas.reduce((sum, conta) => sum + valorConsiderado(conta), 0);
       const totalAberto = filteredContas.filter(c => getStatus(c) === 'aberto');
       const totalAtrasado = filteredContas.filter(c => getStatus(c) === 'atrasado');
-      const totalAbertoValor = totalAberto.reduce((s, c) => s + c.valor, 0);
-      const totalAtrasadoValorBase = totalAtrasado.reduce((s, c) => s + c.valor, 0);
+      const totalAbertoValor = totalAberto.reduce((s, c) => s + valorConsiderado(c), 0);
+      const totalAtrasadoValorBase = totalAtrasado.reduce((s, c) => s + valorConsiderado(c), 0);
       const emCashApplies = (filters.status === 'todos' || filters.status === 'atrasado') && emCashValue > 0;
       const totalGeral = totalGeralBase + (emCashApplies ? emCashValue : 0);
       const totalAtrasadoValor = totalAtrasadoValorBase + (emCashApplies ? emCashValue : 0);
@@ -151,7 +154,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
     
           <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => navigate('/')} className="text-white hover:bg-white/10"><ArrowLeft className="w-6 h-6" /></Button>
+              <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')} className="text-white hover:bg-white/10"><ArrowLeft className="w-6 h-6" /></Button>
               <div>
                 <h1 className="text-3xl font-bold gradient-text">Contas a Receber</h1>
                 <p className="text-gray-400 mt-2">Gerencie seus recebimentos</p>
@@ -246,7 +249,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
             {loading ? <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div></div>
               : Object.entries(groupedContas).map(([date, contasData], index) => (
                 <Card key={date} className="glass-card">
-                  <CardHeader><div className="flex justify-between items-center"><CardTitle className="text-white flex items-center gap-2"><Calendar className="w-5 h-5" />{formatDate(date)}</CardTitle><div className="text-lg font-bold text-green-400">{formatCurrency(contasData.reduce((s, c) => s + c.valor, 0))}</div></div></CardHeader>
+                  <CardHeader><div className="flex justify-between items-center"><CardTitle className="text-white flex items-center gap-2"><Calendar className="w-5 h-5" />{formatDate(date)}</CardTitle><div className="text-lg font-bold text-green-400">{formatCurrency(contasData.reduce((s, c) => s + valorConsiderado(c), 0))}</div></div></CardHeader>
                   <CardContent>
                     <div className="space-y-3">
                       {contasData.map((conta) => {
@@ -264,7 +267,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
                             </div>
                             <div className="flex items-center gap-4">
                               <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(status)}`}>{getStatusLabel(status)}</span>
-                              <div className="text-lg font-bold text-green-400">{formatCurrency(conta.valor)}</div>
+                              <div className="text-lg font-bold text-green-400">{formatCurrency(valorConsiderado(conta))}</div>
                               <button
                                 type="button"
                                 onClick={() => handleEditLancamento(conta)}

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
     import { motion } from 'framer-motion';
     import { useNavigate } from 'react-router-dom';
     import { Helmet } from 'react-helmet';
-    import { TrendingUp, TrendingDown, DollarSign, Download, LayoutDashboard, PlusCircle, UserPlus, FileText, LogOut, ArrowRight, ArrowLeft, Wallet } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Download, LayoutDashboard, PlusCircle, FileText, ArrowRight, ArrowLeft, Wallet } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -10,13 +10,12 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { supabase } from '@/lib/customSupabaseClient';
-import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { getValorConsiderado } from '@/lib/lancamentoValor';
 import { useEmCashValue } from '@/hooks/useEmCashValue';
     
     const Dashboard = () => {
       const navigate = useNavigate();
       const { toast } = useToast();
-      const { user, signOut } = useAuth();
       const [data, setData] = useState({ lancamentos: [] });
       const [loading, setLoading] = useState(false);
       const [chartData, setChartData] = useState([]);
@@ -44,6 +43,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
       };
     
       const generateChartData = (financialData, span = monthsSpan, cashValue = 0) => {
+        const todayStr = new Date().toISOString().split('T')[0];
         const months = [];
         const currentDate = new Date();
         
@@ -58,7 +58,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
               return vencimento.getUTCMonth() === date.getMonth() && 
                      vencimento.getUTCFullYear() === date.getFullYear();
             })
-            .reduce((sum, conta) => sum + conta.valor, 0);
+            .reduce((sum, conta) => sum + getValorConsiderado(conta, todayStr), 0);
           
           let monthReceber = financialData.lancamentos
             .filter(conta => {
@@ -67,7 +67,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
               return vencimento.getUTCMonth() === date.getMonth() && 
                      vencimento.getUTCFullYear() === date.getFullYear();
             })
-            .reduce((sum, conta) => sum + conta.valor, 0);
+            .reduce((sum, conta) => sum + getValorConsiderado(conta, todayStr), 0);
 
           if (i === 0) {
             monthReceber += cashValue;
@@ -122,21 +122,37 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
       hoje.setHours(0, 0, 0, 0);
       const hojeStr = hoje.toISOString().split('T')[0];
     
-      const receberAberto = data.lancamentos.filter(c => c.tipo === 'Entrada' && c.status !== 'Pago' && c.data >= hojeStr).reduce((sum, c) => sum + c.valor, 0);
-      const receberAtrasado = data.lancamentos.filter(c => c.tipo === 'Entrada' && c.status !== 'Pago' && c.data < hojeStr).reduce((sum, c) => sum + c.valor, 0);
-      const recebido = data.lancamentos.filter(c => c.tipo === 'Entrada' && c.status === 'Pago').reduce((sum, c) => sum + c.valor, 0);
+      const receberAberto = data.lancamentos
+        .filter(c => c.tipo === 'Entrada' && c.status !== 'Pago' && c.data >= hojeStr)
+        .reduce((sum, c) => sum + getValorConsiderado(c, hojeStr), 0);
+      const receberAtrasado = data.lancamentos
+        .filter(c => c.tipo === 'Entrada' && c.status !== 'Pago' && c.data < hojeStr)
+        .reduce((sum, c) => sum + getValorConsiderado(c, hojeStr), 0);
+      const recebido = data.lancamentos
+        .filter(c => c.tipo === 'Entrada' && c.status === 'Pago')
+        .reduce((sum, c) => sum + getValorConsiderado(c, hojeStr), 0);
       const emCashApplied = emCashValue > 0;
       const receberAtrasadoComCash = receberAtrasado + (emCashApplied ? emCashValue : 0);
       const totalReceberPendente = receberAberto + receberAtrasado;
       const totalReceberPendenteComCash = receberAberto + receberAtrasadoComCash;
     
-      const pagarAberto = data.lancamentos.filter(c => c.tipo === 'Saida' && c.status !== 'Pago' && c.data >= hojeStr).reduce((sum, c) => sum + c.valor, 0);
-      const pagarAtrasado = data.lancamentos.filter(c => c.tipo === 'Saida' && c.status !== 'Pago' && c.data < hojeStr).reduce((sum, c) => sum + c.valor, 0);
-      const pago = data.lancamentos.filter(c => c.tipo === 'Saida' && c.status === 'Pago').reduce((sum, c) => sum + c.valor, 0);
+      const pagarAberto = data.lancamentos
+        .filter(c => c.tipo === 'Saida' && c.status !== 'Pago' && c.data >= hojeStr)
+        .reduce((sum, c) => sum + getValorConsiderado(c, hojeStr), 0);
+      const pagarAtrasado = data.lancamentos
+        .filter(c => c.tipo === 'Saida' && c.status !== 'Pago' && c.data < hojeStr)
+        .reduce((sum, c) => sum + getValorConsiderado(c, hojeStr), 0);
+      const pago = data.lancamentos
+        .filter(c => c.tipo === 'Saida' && c.status === 'Pago')
+        .reduce((sum, c) => sum + getValorConsiderado(c, hojeStr), 0);
       const totalPagarPendente = pagarAberto + pagarAtrasado;
       
-      const entradasAVencer = data.lancamentos.filter(c => c.tipo === 'Entrada' && c.status === 'A Vencer').reduce((sum, c) => sum + c.valor, 0);
-      const saidasAVencer = data.lancamentos.filter(c => c.tipo === 'Saida' && c.status === 'A Vencer').reduce((sum, c) => sum + c.valor, 0);
+      const entradasAVencer = data.lancamentos
+        .filter(c => c.tipo === 'Entrada' && c.status === 'A Vencer')
+        .reduce((sum, c) => sum + getValorConsiderado(c, hojeStr), 0);
+      const saidasAVencer = data.lancamentos
+        .filter(c => c.tipo === 'Saida' && c.status === 'A Vencer')
+        .reduce((sum, c) => sum + getValorConsiderado(c, hojeStr), 0);
       const resultadoOperacional = entradasAVencer - saidasAVencer;
       const resultadoOperacionalComCash = resultadoOperacional + (emCashApplied ? emCashValue : 0);
     
@@ -181,12 +197,11 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
       ];
       
       const navButtons = [
-        { label: "Dashboard", path: "/", icon: LayoutDashboard },
+        { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
         { label: "A Receber", path: "/contas-receber", icon: ArrowRight },
         { label: "A Pagar", path: "/contas-pagar", icon: ArrowLeft },
         { label: "Fluxo de Caixa", path: "/fluxo-caixa", icon: Wallet },
         { label: "Financeiro", path: "/financeiro", icon: PlusCircle },
-        { label: "Cadastro", path: "/cadastros", icon: UserPlus },
         { label: "Relat\u00f3rios", path: "/relatorios", icon: FileText },
         { label: "Integra\u00e7\u00e3o", path: "/integracao", icon: Download },
       ];
@@ -194,8 +209,8 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
       return (
         <div className="space-y-8">
           <Helmet>
-            <title>Dashboard - SysFina</title>
-            <meta name="description" content="Dashboard principal com visÃ£o geral das finanÃ§as" />
+            <title>Área Financeira - SysFina</title>
+            <meta name="description" content="Área financeira com visão geral das finanças" />
           </Helmet>
     
           <motion.div
@@ -203,17 +218,15 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
             animate={{ opacity: 1, y: 0 }}
             className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
           >
-            <div className="text-left">
-                <div className="flex flex-col">
-                    <h1 className="text-3xl font-bold gradient-text">Sistema Financeiro</h1>
-                    <span className="text-sm italic text-gray-300">CAEDcj v1.1.0 by Defiant</span>
-                </div>
-                <p className="text-gray-400 mt-1">Bem-vindo, {user?.email}!</p>
+            <div className="flex items-center gap-4">
+              <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => navigate('/')}>
+                <ArrowLeft className="h-5 w-5" />
+                <span className="sr-only">Voltar</span>
+              </Button>
+              <div className="text-left">
+                <h1 className="text-3xl font-bold gradient-text">Área Financeira</h1>
+              </div>
             </div>
-            <Button onClick={signOut} variant="outline" size="sm">
-                <LogOut className="w-4 h-4 mr-2" />
-                Sair
-            </Button>
           </motion.div>
           
           <motion.div
@@ -387,8 +400,3 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
     };
     
     export default Dashboard;
-
-
-
-
-
