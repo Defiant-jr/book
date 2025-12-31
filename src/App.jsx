@@ -21,6 +21,7 @@ import RelatorioContas from '@/pages/RelatorioContas';
 import RelatorioFechamento from '@/pages/RelatorioFechamento';
 import Relatorios from '@/pages/Relatorios';
 import SignUp from '@/pages/SignUp';
+import FinanceiroCadastro from '@/pages/FinanceiroCadastro';
 import { Helmet } from 'react-helmet';
 import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom';
 
@@ -115,6 +116,14 @@ function App() {
 							element={
 								<PrivateRoute>
 									<Financeiro />
+								</PrivateRoute>
+							}
+						/>
+						<Route
+							path="/financeiro/cadastro"
+							element={
+								<PrivateRoute>
+									<FinanceiroCadastro />
 								</PrivateRoute>
 							}
 						/>

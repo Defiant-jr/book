@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
     import { motion } from 'framer-motion';
     import { useNavigate } from 'react-router-dom';
     import { Helmet } from 'react-helmet';
-import { TrendingUp, TrendingDown, DollarSign, Download, LayoutDashboard, PlusCircle, FileText, ArrowRight, ArrowLeft, Wallet } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Download, LayoutDashboard, PlusCircle, FileText, ArrowRight, ArrowLeft, Wallet, UserPlus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -198,6 +198,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
       
       const navButtons = [
         { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
+        { label: "Cadastro", path: "/financeiro/cadastro", icon: UserPlus },
         { label: "A Receber", path: "/contas-receber", icon: ArrowRight },
         { label: "A Pagar", path: "/contas-pagar", icon: ArrowLeft },
         { label: "Fluxo de Caixa", path: "/fluxo-caixa", icon: Wallet },

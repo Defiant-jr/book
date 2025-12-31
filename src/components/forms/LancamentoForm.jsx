@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { format } from 'date-fns';
+import { addDays, addMonths, addWeeks, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Calendar as CalendarIcon } from 'lucide-react';
 
@@ -17,7 +17,12 @@ import { supabase } from '@/lib/customSupabaseClient';
 
 const initialDate = new Date();
 
-const LancamentoForm = ({ onCancel = () => {}, onSuccess = () => {}, initialData = null }) => {
+const LancamentoForm = ({
+  onCancel = () => {},
+  onSuccess = () => {},
+  initialData = null,
+  allowRecurrence = false,
+}) => {
   const { toast } = useToast();
   const isEditing = Boolean(initialData?.id);
 
@@ -35,6 +40,8 @@ const LancamentoForm = ({ onCancel = () => {}, onSuccess = () => {}, initialData
   const [status, setStatus] = useState(initialData?.status || '');
   const [obs, setObs] = useState(initialData?.obs || '');
   const [loading, setLoading] = useState(false);
+  const [recurrence, setRecurrence] = useState('');
+  const [recurrenceCount, setRecurrenceCount] = useState(1);
 
   useEffect(() => {
     setDate(parseDate(initialData?.data));
@@ -48,6 +55,8 @@ const LancamentoForm = ({ onCancel = () => {}, onSuccess = () => {}, initialData
     setDescPontual(initialData?.desc_pontual?.toString() || '');
     setStatus(initialData?.status || '');
     setObs(initialData?.obs || '');
+    setRecurrence('');
+    setRecurrenceCount(1);
   }, [initialData]);
 
   const resetForm = () => {
@@ -62,6 +71,8 @@ const LancamentoForm = ({ onCancel = () => {}, onSuccess = () => {}, initialData
     setDescPontual('');
     setStatus('');
     setObs('');
+    setRecurrence('');
+    setRecurrenceCount(1);
   };
 
   const handleCancel = () => {
@@ -93,6 +104,16 @@ const LancamentoForm = ({ onCancel = () => {}, onSuccess = () => {}, initialData
       return;
     }
 
+    const parsedRecurrenceCount = Number.parseInt(recurrenceCount, 10);
+    if (allowRecurrence && recurrence && (!parsedRecurrenceCount || parsedRecurrenceCount < 1)) {
+      toast({
+        title: 'Repetições inválidas',
+        description: 'Informe um número válido de repetições.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setLoading(true);
 
     const newEntry = {
@@ -110,13 +131,31 @@ const LancamentoForm = ({ onCancel = () => {}, onSuccess = () => {}, initialData
     };
 
     let error;
+    const repetitions = allowRecurrence && recurrence ? Math.max(parsedRecurrenceCount || 1, 1) : 1;
+    const getDateByIndex = (index) => {
+      if (!recurrence || index === 0) return date;
+      if (recurrence === 'daily') return addDays(date, index);
+      if (recurrence === 'weekly') return addWeeks(date, index);
+      if (recurrence === 'monthly') return addMonths(date, index);
+      return date;
+    };
+
     if (isEditing) {
       ({ error } = await supabase
         .from('lancamentos')
         .update(newEntry)
         .eq('id', initialData.id));
     } else {
-      ({ error } = await supabase.from('lancamentos').insert([newEntry]));
+      const entries =
+        repetitions > 1
+          ? Array.from({ length: repetitions }, (_, index) => ({
+              ...newEntry,
+              data: format(getDateByIndex(index), 'yyyy-MM-dd'),
+              parcela: `${index + 1}/${repetitions}`,
+            }))
+          : [{ ...newEntry, parcela: recurrence ? '1/1' : newEntry.parcela }];
+
+      ({ error } = await supabase.from('lancamentos').insert(entries));
     }
 
     setLoading(false);
@@ -190,6 +229,35 @@ const LancamentoForm = ({ onCancel = () => {}, onSuccess = () => {}, initialData
             </Select>
           </div>
         </div>
+
+        {allowRecurrence && !isEditing && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="recurrence" className="text-gray-300">Repetir</Label>
+              <Select value={recurrence} onValueChange={setRecurrence}>
+                <SelectTrigger id="recurrence" className="w-full">
+                  <SelectValue placeholder="Selecionar intervalo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="daily">Diário</SelectItem>
+                  <SelectItem value="weekly">Semanal</SelectItem>
+                  <SelectItem value="monthly">Mensal</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="recurrence-count" className="text-gray-300">Quantidade de repetições</Label>
+              <Input
+                id="recurrence-count"
+                type="number"
+                min={1}
+                value={recurrenceCount}
+                onChange={(event) => setRecurrenceCount(event.target.value)}
+                placeholder="Ex.: 3"
+              />
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
