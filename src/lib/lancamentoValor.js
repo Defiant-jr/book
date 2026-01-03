@@ -2,15 +2,18 @@ export function getValorConsiderado(lancamento, todayStr = new Date().toISOStrin
   if (!lancamento) return 0;
 
   const baseValor = Number(lancamento.valor) || 0;
-  const valorAtrasado = Number(lancamento.valor_aberto) || baseValor;
-  const valorAVencer = Number(lancamento.desc_pontual) || baseValor;
+  const valorAtrasado = Number(lancamento.valor_aberto);
+  const valorAVencer = Number(lancamento.desc_pontual);
   const dataLancamento = lancamento.data;
 
-  if (lancamento.status !== 'Pago' && dataLancamento) {
+  const status = (lancamento.status || '').toLowerCase().trim();
+  const isPago = status === 'pago';
+
+  if (!isPago && dataLancamento) {
     if (dataLancamento < todayStr) {
-      return valorAtrasado;
+      return Number.isFinite(valorAtrasado) && valorAtrasado > 0 ? valorAtrasado : baseValor;
     }
-    return valorAVencer;
+    return Number.isFinite(valorAVencer) && valorAVencer > 0 ? valorAVencer : baseValor;
   }
 
   return baseValor;

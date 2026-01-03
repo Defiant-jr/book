@@ -11,6 +11,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { supabase } from '@/lib/customSupabaseClient';
 import { getValorConsiderado } from '@/lib/lancamentoValor';
+import { getLancamentoStatus, normalizeTipo, STATUS } from '@/lib/lancamentoStatus';
 import { useEmCashValue } from '@/hooks/useEmCashValue';
     
     const Dashboard = () => {
@@ -19,7 +20,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
       const [data, setData] = useState({ lancamentos: [] });
       const [loading, setLoading] = useState(false);
       const [chartData, setChartData] = useState([]);
-      const [monthsSpan, setMonthsSpan] = useState(6);
+      const [monthsSpan, setMonthsSpan] = useState(12);
       const [emCashValue, setEmCashValue] = useEmCashValue();
       const [emCashDraft, setEmCashDraft] = useState(0);
     
@@ -33,7 +34,10 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
     
       const loadDataFromSupabase = async () => {
         setLoading(true);
-        const { data: lancamentos, error } = await supabase.from('lancamentos').select('*');
+        const { data: lancamentos, error } = await supabase
+          .from('lancamentos')
+          .select('*', { count: 'exact' })
+          .range(0, 9999);
         if (error) {
           toast({ title: "Erro ao carregar dados", description: error.message, variant: "destructive" });
         } else {
@@ -44,27 +48,29 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
     
       const generateChartData = (financialData, span = monthsSpan, cashValue = 0) => {
         const todayStr = new Date().toISOString().split('T')[0];
+        const getStatus = (conta) => getLancamentoStatus(conta, todayStr);
         const months = [];
         const currentDate = new Date();
-        
+        const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+
         for (let i = 0; i < span; i++) {
-          const date = new Date(currentDate.getFullYear(), currentDate.getMonth() + i, 1);
+          const date = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
           const monthName = date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
-          
+
           const monthPagar = financialData.lancamentos
             .filter(conta => {
-              if (conta.tipo !== 'Saida' || conta.status !== 'A Vencer') return false;
+              if (normalizeTipo(conta.tipo) !== 'saida') return false;
               const vencimento = new Date(conta.data + 'T00:00:00');
-              return vencimento.getUTCMonth() === date.getMonth() && 
+              return vencimento.getUTCMonth() === date.getMonth() &&
                      vencimento.getUTCFullYear() === date.getFullYear();
             })
             .reduce((sum, conta) => sum + getValorConsiderado(conta, todayStr), 0);
           
           let monthReceber = financialData.lancamentos
             .filter(conta => {
-              if (conta.tipo !== 'Entrada' || conta.status !== 'A Vencer') return false;
+              if (normalizeTipo(conta.tipo) !== 'entrada') return false;
               const vencimento = new Date(conta.data + 'T00:00:00');
-              return vencimento.getUTCMonth() === date.getMonth() && 
+              return vencimento.getUTCMonth() === date.getMonth() &&
                      vencimento.getUTCFullYear() === date.getFullYear();
             })
             .reduce((sum, conta) => sum + getValorConsiderado(conta, todayStr), 0);
@@ -122,57 +128,57 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
       hoje.setHours(0, 0, 0, 0);
       const hojeStr = hoje.toISOString().split('T')[0];
     
-      const receberAberto = data.lancamentos
-        .filter(c => c.tipo === 'Entrada' && c.status !== 'Pago' && c.data >= hojeStr)
+      const entradas = data.lancamentos.filter(c => normalizeTipo(c.tipo) === 'entrada');
+      const saidas = data.lancamentos.filter(c => normalizeTipo(c.tipo) === 'saida');
+      const getStatus = (conta) => getLancamentoStatus(conta, hojeStr);
+
+      const totalReceber = entradas.reduce((sum, c) => sum + getValorConsiderado(c, hojeStr), 0);
+      const receberAberto = entradas
+        .filter(c => getStatus(c) === STATUS.A_VENCER)
         .reduce((sum, c) => sum + getValorConsiderado(c, hojeStr), 0);
-      const receberAtrasado = data.lancamentos
-        .filter(c => c.tipo === 'Entrada' && c.status !== 'Pago' && c.data < hojeStr)
+      const receberAtrasado = entradas
+        .filter(c => getStatus(c) === STATUS.ATRASADO)
         .reduce((sum, c) => sum + getValorConsiderado(c, hojeStr), 0);
-      const recebido = data.lancamentos
-        .filter(c => c.tipo === 'Entrada' && c.status === 'Pago')
+      const recebido = entradas
+        .filter(c => getStatus(c) === STATUS.PAGO)
         .reduce((sum, c) => sum + getValorConsiderado(c, hojeStr), 0);
       const emCashApplied = emCashValue > 0;
-      const receberAtrasadoComCash = receberAtrasado + (emCashApplied ? emCashValue : 0);
+      const totalReceberComCash = totalReceber + (emCashApplied ? emCashValue : 0);
       const totalReceberPendente = receberAberto + receberAtrasado;
-      const totalReceberPendenteComCash = receberAberto + receberAtrasadoComCash;
-    
-      const pagarAberto = data.lancamentos
-        .filter(c => c.tipo === 'Saida' && c.status !== 'Pago' && c.data >= hojeStr)
+
+      const totalPagar = saidas.reduce((sum, c) => sum + getValorConsiderado(c, hojeStr), 0);
+      const pagarAberto = saidas
+        .filter(c => getStatus(c) === STATUS.A_VENCER)
         .reduce((sum, c) => sum + getValorConsiderado(c, hojeStr), 0);
-      const pagarAtrasado = data.lancamentos
-        .filter(c => c.tipo === 'Saida' && c.status !== 'Pago' && c.data < hojeStr)
+      const pagarAtrasado = saidas
+        .filter(c => getStatus(c) === STATUS.ATRASADO)
         .reduce((sum, c) => sum + getValorConsiderado(c, hojeStr), 0);
-      const pago = data.lancamentos
-        .filter(c => c.tipo === 'Saida' && c.status === 'Pago')
+      const pago = saidas
+        .filter(c => getStatus(c) === STATUS.PAGO)
         .reduce((sum, c) => sum + getValorConsiderado(c, hojeStr), 0);
       const totalPagarPendente = pagarAberto + pagarAtrasado;
       
-      const entradasAVencer = data.lancamentos
-        .filter(c => c.tipo === 'Entrada' && c.status === 'A Vencer')
-        .reduce((sum, c) => sum + getValorConsiderado(c, hojeStr), 0);
-      const saidasAVencer = data.lancamentos
-        .filter(c => c.tipo === 'Saida' && c.status === 'A Vencer')
-        .reduce((sum, c) => sum + getValorConsiderado(c, hojeStr), 0);
-      const resultadoOperacional = entradasAVencer - saidasAVencer;
+      const resultadoOperacional = totalReceber - totalPagar;
       const resultadoOperacionalComCash = resultadoOperacional + (emCashApplied ? emCashValue : 0);
     
       const summaryCards = [
         {
           title: 'Total a Receber',
-          value: formatCurrency(totalReceberPendenteComCash),
+          value: formatCurrency(totalReceberComCash),
           icon: TrendingUp,
           color: 'from-green-500 to-green-600',
           bgColor: 'bg-green-500/10',
           details: [
             { label: 'Em Aberto', value: formatCurrency(receberAberto) },
-            { label: 'Em Atraso', value: formatCurrency(receberAtrasadoComCash), color: 'text-red-400' },
+            { label: 'Em Atraso', value: formatCurrency(receberAtrasado), color: 'text-red-400' },
+            { label: 'Pendentes', value: formatCurrency(totalReceberPendente) },
+            { label: 'Recebido', value: formatCurrency(recebido), color: 'text-green-400' },
             ...(emCashApplied ? [{ label: 'Saldo em Cash', value: formatCurrency(emCashValue), color: 'text-green-300' }] : []),
-            { label: 'Recebido', value: formatCurrency(recebido), color: 'text-green-400' }
           ]
         },
         {
           title: 'Total a Pagar',
-          value: formatCurrency(totalPagarPendente),
+          value: formatCurrency(totalPagar),
           icon: TrendingDown,
           color: 'from-red-500 to-red-600',
           bgColor: 'bg-red-500/10',
@@ -347,7 +353,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
                               <SelectValue placeholder="Meses" />
                             </SelectTrigger>
                             <SelectContent>
-                              {[1, 2, 3, 4, 5, 6].map((option) => (
+                              {[3, 6, 9, 12].map((option) => (
                                 <SelectItem key={option} value={String(option)}>
                                   {option} {option === 1 ? 'mês' : 'meses'}
                                 </SelectItem>

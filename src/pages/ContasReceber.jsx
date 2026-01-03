@@ -12,6 +12,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { format as formatDateFns } from 'date-fns';
 import { useEmCashValue } from '@/hooks/useEmCashValue';
 import { getValorConsiderado } from '@/lib/lancamentoValor';
+import { getLancamentoStatus, STATUS, STATUS_LABELS, STATUS_COLORS, STATUS_OPTIONS } from '@/lib/lancamentoStatus';
 
     const ContasReceber = () => {
       const navigate = useNavigate();
@@ -46,13 +47,7 @@ import { getValorConsiderado } from '@/lib/lancamentoValor';
         setLoading(false);
       };
     
-      const getStatus = (conta) => {
-        if (conta.status === 'Pago') return 'pago';
-        const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0);
-        const vencimento = new Date(conta.data + 'T00:00:00');
-        return vencimento < hoje ? 'atrasado' : 'aberto';
-      };
+      const getStatus = (conta) => getLancamentoStatus(conta);
     
       const filteredContas = useMemo(() => {
         let filtered = [...contas];
@@ -83,15 +78,8 @@ import { getValorConsiderado } from '@/lib/lancamentoValor';
       const todayStr = new Date().toISOString().split('T')[0];
       const valorConsiderado = (conta) => getValorConsiderado(conta, todayStr);
     
-      const getStatusColor = (status) => ({
-        'atrasado': 'bg-red-500/20 text-red-400 border-red-500/30',
-        'aberto': 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-        'pago': 'bg-green-500/20 text-green-400 border-green-500/30',
-      }[status] || 'bg-gray-500/20 text-gray-400 border-gray-500/30');
-    
-      const getStatusLabel = (status) => ({
-        'atrasado': 'Atrasado', 'aberto': 'Em Aberto', 'pago': 'Pago'
-      }[status] || status);
+      const getStatusColor = (status) => STATUS_COLORS[status] || 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+      const getStatusLabel = (status) => STATUS_LABELS[status] || status;
     
       const groupedContas = useMemo(() => {
         return filteredContas.reduce((acc, conta) => {
@@ -115,11 +103,11 @@ import { getValorConsiderado } from '@/lib/lancamentoValor';
       };
     
       const totalGeralBase = filteredContas.reduce((sum, conta) => sum + valorConsiderado(conta), 0);
-      const totalAberto = filteredContas.filter(c => getStatus(c) === 'aberto');
-      const totalAtrasado = filteredContas.filter(c => getStatus(c) === 'atrasado');
+      const totalAberto = filteredContas.filter(c => getStatus(c) === STATUS.A_VENCER);
+      const totalAtrasado = filteredContas.filter(c => getStatus(c) === STATUS.ATRASADO);
       const totalAbertoValor = totalAberto.reduce((s, c) => s + valorConsiderado(c), 0);
       const totalAtrasadoValorBase = totalAtrasado.reduce((s, c) => s + valorConsiderado(c), 0);
-      const emCashApplies = (filters.status === 'todos' || filters.status === 'atrasado') && emCashValue > 0;
+      const emCashApplies = (filters.status === 'todos' || filters.status === STATUS.ATRASADO) && emCashValue > 0;
       const totalGeral = totalGeralBase + (emCashApplies ? emCashValue : 0);
       const totalAtrasadoValor = totalAtrasadoValorBase + (emCashApplies ? emCashValue : 0);
     
@@ -177,11 +165,11 @@ import { getValorConsiderado } from '@/lib/lancamentoValor';
             </Card>
             <Card className="glass-card">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-300">Em Aberto</CardTitle>
-                <Calendar className="w-4 h-4 text-yellow-400" />
+                <CardTitle className="text-sm font-medium text-gray-300">A Vencer</CardTitle>
+                <Calendar className="w-4 h-4 text-blue-300" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-yellow-400">{formatCurrency(totalAbertoValor)}</div>
+                <div className="text-2xl font-bold text-blue-300">{formatCurrency(totalAbertoValor)}</div>
                 <div className="mt-2 space-y-1 text-xs text-gray-400">
                   {Object.entries(totalAbertoPorUnidade).map(([unit, val]) => (
                     <div key={unit} className="flex justify-between">
@@ -236,7 +224,18 @@ import { getValorConsiderado } from '@/lib/lancamentoValor';
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                   <div><label className="text-sm text-gray-300 mb-2 block">Cliente</label><Input placeholder="Buscar cliente..." value={filters.cliente} onChange={(e) => setFilters({ ...filters, cliente: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
-                  <div><label className="text-sm text-gray-300 mb-2 block">Status</label><Select value={filters.status} onValueChange={(value) => setFilters({ ...filters, status: value })}><SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="todos">Todos</SelectItem><SelectItem value="aberto">Em Aberto</SelectItem><SelectItem value="atrasado">Atrasado</SelectItem><SelectItem value="pago">Pago</SelectItem></SelectContent></Select></div>
+                  <div>
+                    <label className="text-sm text-gray-300 mb-2 block">Status</label>
+                    <Select value={filters.status} onValueChange={(value) => setFilters({ ...filters, status: value })}>
+                      <SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Todos</SelectItem>
+                        {STATUS_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div><label className="text-sm text-gray-300 mb-2 block">Unidade</label><Select value={filters.unidade} onValueChange={(value) => setFilters({ ...filters, unidade: value })}><SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="todas">Todas</SelectItem><SelectItem value="CNA Angra dos Reis">CNA Angra dos Reis</SelectItem><SelectItem value="CNA Mangaratiba">CNA Mangaratiba</SelectItem><SelectItem value="Casa">Casa</SelectItem></SelectContent></Select></div>
                   <div><label className="text-sm text-gray-300 mb-2 block">Data Início</label><Input type="date" value={filters.dataInicio} onChange={(e) => setFilters({ ...filters, dataInicio: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
                   <div><label className="text-sm text-gray-300 mb-2 block">Data Fim</label><Input type="date" value={filters.dataFim} onChange={(e) => setFilters({ ...filters, dataFim: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>

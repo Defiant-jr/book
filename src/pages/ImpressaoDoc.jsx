@@ -14,6 +14,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { format } from 'date-fns';
 import { getValorConsiderado } from '@/lib/lancamentoValor';
+import { getLancamentoStatus, STATUS_LABELS, STATUS_OPTIONS } from '@/lib/lancamentoStatus';
 
 const columns = [
   'Data',
@@ -45,6 +46,7 @@ const ImpressaoDoc = () => {
   });
   const [reportGenerated, setReportGenerated] = useState(false);
   const [generatedAt, setGeneratedAt] = useState(null);
+  const todayStr = new Date().toISOString().split('T')[0];
 
   const handleGenerateReport = async () => {
     setLoading(true);
@@ -63,13 +65,8 @@ const ImpressaoDoc = () => {
     }
   };
 
-  const getStatus = (conta) => {
-    if (conta.status === 'Pago') return 'pago';
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    const vencimento = new Date(conta.data + 'T00:00:00');
-    return vencimento < hoje ? 'atrasado' : 'aberto';
-  };
+  const getStatus = (conta) => getLancamentoStatus(conta, todayStr);
+  const formatStatus = (conta) => STATUS_LABELS[getStatus(conta)] || getStatus(conta);
 
   const filteredLancamentos = useMemo(() => {
     let filtered = [...lancamentos];
@@ -101,7 +98,6 @@ const ImpressaoDoc = () => {
 
   const formatCurrency = (value) =>
     (value ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  const todayStr = new Date().toISOString().split('T')[0];
   const valorLancamento = (item) => getValorConsiderado(item, todayStr);
 
   const formatDate = (value) => (value ? format(new Date(value + 'T00:00:00'), 'dd/MM/yyyy') : '-');
@@ -187,7 +183,7 @@ const ImpressaoDoc = () => {
       { label: 'Nº DOC......:', value: docNumber, width: contentWidth * 0.20 },
       { label: 'Vlr.:', value: valorFormatado, width: contentWidth * 0.16 },
       { label: 'Tipo:', value: item.tipo || '-', width: contentWidth * 0.15 },
-      { label: 'Usuário:', value: `${item.status || 'Usuário'} - ${horaAgora}`, width: contentWidth * 0.26 },
+      { label: 'Usuário:', value: `${formatStatus(item)} - ${horaAgora}`, width: contentWidth * 0.26 },
       { label: 'Ref.:', value: empresa || '-', width: contentWidth * 0.23 }
     ]);
 
@@ -394,9 +390,9 @@ const ImpressaoDoc = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos</SelectItem>
-                  <SelectItem value="aberto">Em Aberto</SelectItem>
-                  <SelectItem value="atrasado">Atrasado</SelectItem>
-                  <SelectItem value="pago">Pago</SelectItem>
+                  {STATUS_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -490,7 +486,7 @@ const ImpressaoDoc = () => {
                           <td className="px-3 py-2">{item.cliente_fornecedor || '-'}</td>
                           <td className="px-3 py-2">{item.descricao || '-'}</td>
                           <td className="px-3 py-2 font-mono text-green-300">{formatCurrency(valorLancamento(item))}</td>
-                          <td className="px-3 py-2">{item.status || '-'}</td>
+                          <td className="px-3 py-2">{formatStatus(item)}</td>
                           <td className="px-3 py-2">{item.aluno || '-'}</td>
                           <td className="px-3 py-2">{item.parcela || '-'}</td>
                           <td className="px-3 py-2">{item.desc_pontual != null ? formatCurrency(item.desc_pontual) : '-'}</td>

@@ -14,6 +14,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { useEmCashValue } from '@/hooks/useEmCashValue';
 import { getValorConsiderado } from '@/lib/lancamentoValor';
+import { getLancamentoStatus, normalizeTipo, STATUS, STATUS_LABELS, STATUS_OPTIONS } from '@/lib/lancamentoStatus';
 
     const RelatorioContas = () => {
         const navigate = useNavigate();
@@ -21,7 +22,7 @@ import { getValorConsiderado } from '@/lib/lancamentoValor';
         const [contas, setContas] = useState([]);
         const [loading, setLoading] = useState(false);
         const [filters, setFilters] = useState({
-            tipo: 'todos',
+            tipo: 'Saida',
             status: 'todos',
             unidade: 'todas',
             dataInicio: '',
@@ -32,11 +33,28 @@ import { getValorConsiderado } from '@/lib/lancamentoValor';
         const [emCashValue] = useEmCashValue();
         const [reportGenerated, setReportGenerated] = useState(false);
         const [generatedAt, setGeneratedAt] = useState(null);
+        const todayStr = new Date().toISOString().split('T')[0];
 
         const handleGenerateReport = async () => {
             setLoading(true);
             setReportGenerated(false);
-            const { data, error } = await supabase.from('lancamentos').select('*');
+
+            let query = supabase.from('lancamentos').select('*', { count: 'exact' });
+
+            if (filters.tipo !== 'todos') {
+                query = query.eq('tipo', filters.tipo);
+            }
+            if (filters.unidade !== 'todas') {
+                query = query.eq('unidade', filters.unidade);
+            }
+            if (filters.dataInicio) {
+                query = query.gte('data', filters.dataInicio);
+            }
+            if (filters.dataFim) {
+                query = query.lte('data', filters.dataFim);
+            }
+
+            const { data, error } = await query.range(0, 9999);
             setLoading(false);
             if (error) {
                 toast({ title: "Erro ao carregar dados", description: error.message, variant: "destructive" });
@@ -48,28 +66,28 @@ import { getValorConsiderado } from '@/lib/lancamentoValor';
         };
 
         const getStatus = (conta) => {
-            if (conta?.__isCash) return 'Saldo em Cash';
-            if (conta.status === 'Pago') return 'pago';
-            const hoje = new Date();
-            hoje.setHours(0, 0, 0, 0);
-            const vencimento = new Date(conta.data + 'T00:00:00');
-            return vencimento < hoje ? 'atrasado' : 'aberto';
+            if (conta?.__isCash) return 'cash';
+            return getLancamentoStatus(conta, todayStr);
         };
 
         const emCashApplies = useMemo(() => {
             if (emCashValue <= 0) return false;
             const tipoOk = filters.tipo === 'todos' || filters.tipo === 'Entrada';
-            const statusOk = filters.status === 'todos' || filters.status === 'atrasado';
+            const statusOk = filters.status === 'todos' || filters.status === STATUS.ATRASADO;
             return tipoOk && statusOk;
         }, [emCashValue, filters.tipo, filters.status]);
 
         const filteredAndSortedContas = useMemo(() => {
-            let filtered = [...contas];
-            if (filters.tipo !== 'todos') filtered = filtered.filter(c => c.tipo === filters.tipo);
-            if (filters.status !== 'todos') filtered = filtered.filter(c => getStatus(c) === filters.status);
-            if (filters.unidade !== 'todas') filtered = filtered.filter(c => c.unidade === filters.unidade);
-            if (filters.dataInicio) filtered = filtered.filter(c => new Date(c.data + 'T00:00:00') >= new Date(filters.dataInicio + 'T00:00:00'));
-            if (filters.dataFim) filtered = filtered.filter(c => new Date(c.data + 'T00:00:00') <= new Date(filters.dataFim + 'T00:00:00'));
+            const tipoFiltro = normalizeTipo(filters.tipo);
+            const unidadeFiltro = (filters.unidade || '').trim();
+            let filtered = contas.filter((c) => {
+                const tipoOk = tipoFiltro === 'todos' || normalizeTipo(c.tipo) === tipoFiltro;
+                const statusOk = filters.status === 'todos' || getStatus(c) === filters.status;
+                const unidadeOk = filters.unidade === 'todas' || (c.unidade || '').trim() === unidadeFiltro;
+                const dataInicioOk = !filters.dataInicio || new Date(c.data + 'T00:00:00') >= new Date(filters.dataInicio + 'T00:00:00');
+                const dataFimOk = !filters.dataFim || new Date(c.data + 'T00:00:00') <= new Date(filters.dataFim + 'T00:00:00');
+                return tipoOk && statusOk && unidadeOk && dataInicioOk && dataFimOk;
+            });
 
             if (emCashApplies) {
                 filtered.push({
@@ -108,9 +126,12 @@ import { getValorConsiderado } from '@/lib/lancamentoValor';
         };
 
         const formatCurrency = (value) => (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        const todayStr = new Date().toISOString().split('T')[0];
         const valorConta = (conta) => conta?.__isCash ? conta.valor : getValorConsiderado(conta, todayStr);
         const formatDate = (dateString) => dateString ? format(new Date(dateString + 'T00:00:00'), 'dd/MM/yyyy') : '-';
+        const formatStatusDisplay = (status) => {
+            if (status === 'cash') return 'Saldo em Cash';
+            return STATUS_LABELS[status] || status;
+        };
 
         const handleDownloadPdf = () => {
             if (!reportGenerated) {
@@ -122,7 +143,7 @@ import { getValorConsiderado } from '@/lib/lancamentoValor';
             doc.autoTable({
                 head: [['Data', 'Tipo', 'Cliente/Fornecedor', 'Descrição', 'Unidade', 'Status', 'Valor']],
                 body: filteredAndSortedContas.map(c => [
-                    formatDate(c.data), c.tipo, c.cliente_fornecedor, c.descricao, c.unidade, getStatus(c), formatCurrency(valorConta(c))
+                    formatDate(c.data), c.tipo, c.cliente_fornecedor, c.descricao, c.unidade, formatStatusDisplay(getStatus(c)), formatCurrency(valorConta(c))
                 ]),
                 startY: 20,
                 theme: 'grid',
@@ -152,7 +173,15 @@ import { getValorConsiderado } from '@/lib/lancamentoValor';
                     <CardContent className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
                             <Select value={filters.tipo} onValueChange={(v) => setFilters(f => ({ ...f, tipo: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="todos">Todos os Tipos</SelectItem><SelectItem value="Entrada">Entrada</SelectItem><SelectItem value="Saida">Saída</SelectItem></SelectContent></Select>
-                            <Select value={filters.status} onValueChange={(v) => setFilters(f => ({ ...f, status: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="todos">Todos Status</SelectItem><SelectItem value="aberto">Em Aberto</SelectItem><SelectItem value="atrasado">Atrasado</SelectItem><SelectItem value="pago">Pago</SelectItem></SelectContent></Select>
+                            <Select value={filters.status} onValueChange={(v) => setFilters(f => ({ ...f, status: v }))}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="todos">Todos Status</SelectItem>
+                                    {STATUS_OPTIONS.map((option) => (
+                                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                             <Select value={filters.unidade} onValueChange={(v) => setFilters(f => ({ ...f, unidade: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="todas">Todas Unidades</SelectItem><SelectItem value="CNA Angra dos Reis">CNA Angra dos Reis</SelectItem><SelectItem value="CNA Mangaratiba">CNA Mangaratiba</SelectItem><SelectItem value="Casa">Casa</SelectItem></SelectContent></Select>
                             <Input type="date" value={filters.dataInicio} onChange={(e) => setFilters(f => ({ ...f, dataInicio: e.target.value }))} />
                             <Input type="date" value={filters.dataFim} onChange={(e) => setFilters(f => ({ ...f, dataFim: e.target.value }))} />
@@ -228,7 +257,7 @@ import { getValorConsiderado } from '@/lib/lancamentoValor';
                                                     <td className="px-6 py-4 font-medium text-white">{conta.cliente_fornecedor}</td>
                                                     <td className="px-6 py-4">{conta.descricao}</td>
                                                     <td className="px-6 py-4">{conta.unidade}</td>
-                                                    <td className="px-6 py-4">{getStatus(conta)}</td>
+                                                    <td className="px-6 py-4">{formatStatusDisplay(getStatus(conta))}</td>
                                                     <td className={`px-6 py-4 text-right font-mono ${conta.tipo === 'Entrada' ? 'text-green-400' : 'text-red-400'}`}>{formatCurrency(valorConta(conta))}</td>
                                                 </tr>
                                             ))}

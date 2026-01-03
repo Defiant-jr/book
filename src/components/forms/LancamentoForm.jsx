@@ -37,7 +37,6 @@ const LancamentoForm = ({
   const [aluno, setAluno] = useState(initialData?.aluno || '');
   const [parcela, setParcela] = useState(initialData?.parcela || '');
   const [descPontual, setDescPontual] = useState(initialData?.desc_pontual?.toString() || '');
-  const [status, setStatus] = useState(initialData?.status || '');
   const [obs, setObs] = useState(initialData?.obs || '');
   const [loading, setLoading] = useState(false);
   const [recurrence, setRecurrence] = useState('');
@@ -53,7 +52,6 @@ const LancamentoForm = ({
     setAluno(initialData?.aluno || '');
     setParcela(initialData?.parcela || '');
     setDescPontual(initialData?.desc_pontual?.toString() || '');
-    setStatus(initialData?.status || '');
     setObs(initialData?.obs || '');
     setRecurrence('');
     setRecurrenceCount(1);
@@ -69,7 +67,6 @@ const LancamentoForm = ({
     setAluno('');
     setParcela('');
     setDescPontual('');
-    setStatus('');
     setObs('');
     setRecurrence('');
     setRecurrenceCount(1);
@@ -83,7 +80,7 @@ const LancamentoForm = ({
   };
 
   const handleSave = async () => {
-    if (!date || !tipo || !unidade || !clienteFornecedor || !descricao || !valor || !status) {
+    if (!date || !tipo || !unidade || !clienteFornecedor || !descricao || !valor) {
       toast({
         title: 'Erro de Validação',
         description: 'Por favor, preencha todos os campos obrigatórios.',
@@ -123,7 +120,7 @@ const LancamentoForm = ({
       cliente_fornecedor: clienteFornecedor,
       descricao,
       valor: parseFloat(valor),
-      status,
+      status: 'A Vencer',
       obs,
       aluno: aluno.trim() || null,
       parcela: parcela.trim() || null,
@@ -323,36 +320,22 @@ const LancamentoForm = ({
               placeholder="Ex: 1/12"
               value={parcela}
               onChange={(event) => setParcela(event.target.value)}
-            />
-          </div>
+          />
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <Label htmlFor="status" className="text-gray-300">Status</Label>
-            <Select onValueChange={setStatus} value={status}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Selecione o status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="A Vencer">A Vencer</SelectItem>
-                <SelectItem value="Pago">Pago</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="descPontual" className="text-gray-300">Desc. Pontual</Label>
-            <Input
-              id="descPontual"
-              type="number"
-              inputMode="decimal"
-              step="0.01"
-              placeholder="0,00"
-              value={descPontual}
-              onChange={(event) => setDescPontual(event.target.value)}
-            />
-          </div>
-        </div>
+      <div className="space-y-2">
+        <Label htmlFor="descPontual" className="text-gray-300">Desc. Pontual</Label>
+        <Input
+          id="descPontual"
+          type="number"
+          inputMode="decimal"
+          step="0.01"
+          placeholder="0,00"
+          value={descPontual}
+          onChange={(event) => setDescPontual(event.target.value)}
+        />
+      </div>
 
         <div className="space-y-2">
           <Label htmlFor="obs" className="text-gray-300">Observações</Label>

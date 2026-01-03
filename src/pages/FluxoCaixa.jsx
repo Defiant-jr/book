@@ -22,6 +22,7 @@ import { startOfMonth, endOfMonth, format, eachDayOfInterval } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useEmCashValue } from '@/hooks/useEmCashValue';
 import { getValorConsiderado } from '@/lib/lancamentoValor';
+import { getLancamentoStatus, normalizeTipo, STATUS } from '@/lib/lancamentoStatus';
 
     const FluxoCaixa = () => {
       const navigate = useNavigate();
@@ -40,7 +41,10 @@ import { getValorConsiderado } from '@/lib/lancamentoValor';
 
       const loadData = async () => {
         setLoading(true);
-        const { data, error } = await supabase.from('lancamentos').select('*');
+        const { data, error } = await supabase
+          .from('lancamentos')
+          .select('*', { count: 'exact' })
+          .range(0, 9999);
         if (error) {
           toast({ title: "Erro ao buscar dados", description: error.message, variant: "destructive"});
         } else {
@@ -69,31 +73,33 @@ import { getValorConsiderado } from '@/lib/lancamentoValor';
       const todayStr = new Date().toISOString().split('T')[0];
 
       const monthData = useMemo(() => {
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth();
         const firstDayOfMonth = startOfMonth(currentDate);
         const lastDayOfMonth = endOfMonth(currentDate);
         const daysInMonth = eachDayOfInterval({ start: firstDayOfMonth, end: lastDayOfMonth });
+        const startStr = format(firstDayOfMonth, 'yyyy-MM-dd');
+        const endStr = format(lastDayOfMonth, 'yyyy-MM-dd');
+        const toDateStr = (value) => {
+          if (!value) return '';
+          if (typeof value === 'string') return value.slice(0, 10);
+          try {
+            return format(value, 'yyyy-MM-dd');
+          } catch {
+            return '';
+          }
+        };
 
-        let fluxo = daysInMonth.map(day => ({
-          dia: format(day, 'dd'),
-          receber: 0,
-          pagar: 0,
-          details: { receber: [], pagar: [] }
-        }));
+        const normalizedData = allData
+          .map((item) => ({
+            ...item,
+            dataStr: toDateStr(item.data),
+            tipoNorm: normalizeTipo(item.tipo),
+            statusNorm: getLancamentoStatus(item, todayStr),
+          }))
+          .filter((item) => item.dataStr && (item.tipoNorm === 'entrada' || item.tipoNorm === 'saida'));
 
-        const filteredByUnit = unidadeFiltro === 'todas' 
-          ? allData 
-          : allData.filter(item => item.unidade === unidadeFiltro);
-
-        const atrasadosLancamentos = filteredByUnit.filter(item => {
-          if (item.status === 'Pago') return false;
-          const vencimento = new Date(item.data + 'T00:00:00');
-          return vencimento < firstDayOfMonth;
-        });
-
-        const atrasadosReceber = atrasadosLancamentos.filter(i => i.tipo === 'Entrada');
-        const atrasadosPagar = atrasadosLancamentos.filter(i => i.tipo === 'Saida');
+        const atrasados = normalizedData.filter((item) => item.dataStr < startStr);
+        const atrasadosReceber = atrasados.filter((i) => i.tipoNorm === 'entrada');
+        const atrasadosPagar = atrasados.filter((i) => i.tipoNorm === 'saida');
 
         const totalAtrasadoReceber = atrasadosReceber.reduce((acc, i) => acc + getValorConsiderado(i, todayStr), 0) + emCashValue;
         const totalAtrasadoPagar = atrasadosPagar.reduce((acc, i) => acc + getValorConsiderado(i, todayStr), 0);
@@ -107,45 +113,44 @@ import { getValorConsiderado } from '@/lib/lancamentoValor';
           });
         }
 
-        const dia00 = {
-          dia: '00',
-          receber: totalAtrasadoReceber,
-          pagar: totalAtrasadoPagar,
-          details: {
-            receber: receberDetails,
-            pagar: atrasadosPagar
-          }
-        };
+        const fluxo = daysInMonth.map((day) => ({
+          dia: format(day, 'dd'),
+          receber: 0,
+          pagar: 0,
+          details: { receber: [], pagar: [] }
+        }));
 
-        const monthDataFiltered = filteredByUnit.filter(item => {
-          if (item.status === 'Pago') return false;
-          const vencimento = new Date(item.data + 'T00:00:00');
-          return vencimento.getUTCFullYear() === year && vencimento.getUTCMonth() === month;
-        });
+        const monthDataFiltered = normalizedData.filter((item) => item.dataStr >= startStr && item.dataStr <= endStr);
 
-        monthDataFiltered.forEach(item => {
-          const vencimento = new Date(item.data + 'T00:00:00');
-          const dayIndex = vencimento.getUTCDate() - 1;
-          if (fluxo[dayIndex]) {
-            if (item.tipo === 'Entrada') {
-              fluxo[dayIndex].receber += getValorConsiderado(item, todayStr);
-              fluxo[dayIndex].details.receber.push(item);
-            } else {
-              fluxo[dayIndex].pagar += getValorConsiderado(item, todayStr);
-              fluxo[dayIndex].details.pagar.push(item);
-            }
+        monthDataFiltered.forEach((item) => {
+          const dayIndex = Number(item.dataStr.slice(8, 10)) - 1;
+          if (Number.isNaN(dayIndex) || dayIndex < 0 || dayIndex >= fluxo.length) return;
+          if (item.tipoNorm === 'entrada') {
+            fluxo[dayIndex].receber += getValorConsiderado(item, todayStr);
+            fluxo[dayIndex].details.receber.push(item);
+          } else {
+            fluxo[dayIndex].pagar += getValorConsiderado(item, todayStr);
+            fluxo[dayIndex].details.pagar.push(item);
           }
         });
 
-        const fullFluxo = [dia00, ...fluxo];
+        const fullFluxo = [
+          {
+            dia: '00',
+            receber: totalAtrasadoReceber,
+            pagar: totalAtrasadoPagar,
+            details: { receber: receberDetails, pagar: atrasadosPagar }
+          },
+          ...fluxo
+        ];
 
         let saldoAcumulado = 0;
-        return fullFluxo.map(dia => {
+        return fullFluxo.map((dia) => {
           const saldoDia = dia.receber - dia.pagar;
           saldoAcumulado += saldoDia;
           return { ...dia, saldoDia, saldoAcumulado };
         });
-      }, [allData, currentDate, unidadeFiltro, emCashValue]);
+      }, [allData, currentDate, emCashValue]);
 
       const chartData = monthData.map(d => ({
         name: d.dia,

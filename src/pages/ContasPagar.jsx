@@ -5,12 +5,13 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Calendar, Filter, Building, DollarSign, AlertTriangle, ArrowLeft, CheckCircle, Settings } from 'lucide-react';
     import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
     import { Button } from '@/components/ui/button';
-    import { Input } from '@/components/ui/input';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import { format as formatDateFns } from 'date-fns';
 import { getValorConsiderado } from '@/lib/lancamentoValor';
+import { getLancamentoStatus, STATUS, STATUS_LABELS, STATUS_COLORS, STATUS_OPTIONS } from '@/lib/lancamentoStatus';
     
     const ContasPagar = () => {
       const navigate = useNavigate();
@@ -40,13 +41,7 @@ import { getValorConsiderado } from '@/lib/lancamentoValor';
         setLoading(false);
       };
     
-      const getStatus = (conta) => {
-        if (conta.status === 'Pago') return 'pago';
-        const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0);
-        const vencimento = new Date(conta.data + 'T00:00:00');
-        return vencimento < hoje ? 'vencido' : 'aberto';
-      };
+      const getStatus = (conta) => getLancamentoStatus(conta);
     
       const filteredContas = useMemo(() => {
         let filtered = [...contas];
@@ -74,15 +69,8 @@ import { getValorConsiderado } from '@/lib/lancamentoValor';
       const formatDate = (dateString) => new Date(dateString + 'T00:00:00').toLocaleDateString('pt-BR', { timeZone: 'UTC' });
       const todayStr = new Date().toISOString().split('T')[0];
     
-      const getStatusColor = (status) => ({
-        'vencido': 'bg-red-500/20 text-red-400 border-red-500/30',
-        'aberto': 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-        'pago': 'bg-green-500/20 text-green-400 border-green-500/30',
-      }[status] || 'bg-gray-500/20 text-gray-400 border-gray-500/30');
-    
-      const getStatusLabel = (status) => ({
-        'vencido': 'Vencido', 'aberto': 'Em Aberto', 'pago': 'Pago'
-      }[status] || status);
+      const getStatusColor = (status) => STATUS_COLORS[status] || 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+      const getStatusLabel = (status) => STATUS_LABELS[status] || status;
     
       const groupedContas = useMemo(() => {
         return filteredContas.reduce((acc, conta) => {
@@ -100,8 +88,8 @@ import { getValorConsiderado } from '@/lib/lancamentoValor';
       };
     
       const totalGeral = filteredContas.reduce((sum, c) => sum + getValorConsiderado(c, todayStr), 0);
-      const totalAberto = filteredContas.filter(c => getStatus(c) === 'aberto');
-      const totalVencido = filteredContas.filter(c => getStatus(c) === 'vencido');
+      const totalAberto = filteredContas.filter(c => getStatus(c) === STATUS.A_VENCER);
+      const totalVencido = filteredContas.filter(c => getStatus(c) === STATUS.ATRASADO);
     
       const totalAbertoPorUnidade = calculateTotalsByUnit(totalAberto);
       const totalVencidoPorUnidade = calculateTotalsByUnit(totalVencido);
@@ -140,8 +128,8 @@ import { getValorConsiderado } from '@/lib/lancamentoValor';
     
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Card className="glass-card"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-gray-300">Total Filtrado</CardTitle><DollarSign className="w-4 h-4 text-blue-400" /></CardHeader><CardContent><div className="text-2xl font-bold text-blue-400">{formatCurrency(totalGeral)}</div></CardContent></Card>
-            <Card className="glass-card"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-gray-300">Em Aberto</CardTitle><Calendar className="w-4 h-4 text-yellow-400" /></CardHeader><CardContent><div className="text-2xl font-bold text-yellow-400">{formatCurrency(totalAberto.reduce((s, c) => s + getValorConsiderado(c, todayStr), 0))}</div><div className="mt-2 space-y-1 text-xs text-gray-400">{Object.entries(totalAbertoPorUnidade).map(([unit, val]) => <div key={unit} className="flex justify-between"><span>{unit}:</span><span className="font-semibold">{formatCurrency(val)}</span></div>)}</div></CardContent></Card>
-            <Card className="glass-card"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-gray-300">Vencido</CardTitle><AlertTriangle className="w-4 h-4 text-red-400" /></CardHeader><CardContent><div className="text-2xl font-bold text-red-400">{formatCurrency(totalVencido.reduce((s, c) => s + getValorConsiderado(c, todayStr), 0))}</div><div className="mt-2 space-y-1 text-xs text-gray-400">{Object.entries(totalVencidoPorUnidade).map(([unit, val]) => <div key={unit} className="flex justify-between"><span>{unit}:</span><span className="font-semibold">{formatCurrency(val)}</span></div>)}</div></CardContent></Card>
+            <Card className="glass-card"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-gray-300">A Vencer</CardTitle><Calendar className="w-4 h-4 text-blue-300" /></CardHeader><CardContent><div className="text-2xl font-bold text-blue-300">{formatCurrency(totalAberto.reduce((s, c) => s + getValorConsiderado(c, todayStr), 0))}</div><div className="mt-2 space-y-1 text-xs text-gray-400">{Object.entries(totalAbertoPorUnidade).map(([unit, val]) => <div key={unit} className="flex justify-between"><span>{unit}:</span><span className="font-semibold">{formatCurrency(val)}</span></div>)}</div></CardContent></Card>
+            <Card className="glass-card"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-gray-300">Atrasado</CardTitle><AlertTriangle className="w-4 h-4 text-red-400" /></CardHeader><CardContent><div className="text-2xl font-bold text-red-400">{formatCurrency(totalVencido.reduce((s, c) => s + getValorConsiderado(c, todayStr), 0))}</div><div className="mt-2 space-y-1 text-xs text-gray-400">{Object.entries(totalVencidoPorUnidade).map(([unit, val]) => <div key={unit} className="flex justify-between"><span>{unit}:</span><span className="font-semibold">{formatCurrency(val)}</span></div>)}</div></CardContent></Card>
           </div>
     
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
@@ -150,7 +138,18 @@ import { getValorConsiderado } from '@/lib/lancamentoValor';
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                   <div><label className="text-sm text-gray-300 mb-2 block">Fornecedor</label><Input placeholder="Buscar fornecedor..." value={filters.fornecedor} onChange={(e) => setFilters({ ...filters, fornecedor: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
-                  <div><label className="text-sm text-gray-300 mb-2 block">Status</label><Select value={filters.status} onValueChange={(value) => setFilters({ ...filters, status: value })}><SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="todos">Todos</SelectItem><SelectItem value="aberto">Em Aberto</SelectItem><SelectItem value="vencido">Vencido</SelectItem><SelectItem value="pago">Pago</SelectItem></SelectContent></Select></div>
+                  <div>
+                    <label className="text-sm text-gray-300 mb-2 block">Status</label>
+                    <Select value={filters.status} onValueChange={(value) => setFilters({ ...filters, status: value })}>
+                      <SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Todos</SelectItem>
+                        {STATUS_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div><label className="text-sm text-gray-300 mb-2 block">Unidade</label><Select value={filters.unidade} onValueChange={(value) => setFilters({ ...filters, unidade: value })}><SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="todas">Todas</SelectItem><SelectItem value="CNA Angra dos Reis">CNA Angra dos Reis</SelectItem><SelectItem value="CNA Mangaratiba">CNA Mangaratiba</SelectItem><SelectItem value="Casa">Casa</SelectItem></SelectContent></Select></div>
                   <div><label className="text-sm text-gray-300 mb-2 block">Data Início</label><Input type="date" value={filters.dataInicio} onChange={(e) => setFilters({ ...filters, dataInicio: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
                   <div><label className="text-sm text-gray-300 mb-2 block">Data Fim</label><Input type="date" value={filters.dataFim} onChange={(e) => setFilters({ ...filters, dataFim: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
