@@ -10,14 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import { format as formatDateFns } from 'date-fns';
-import { useEmCashValue } from '@/hooks/useEmCashValue';
 import { getValorConsiderado } from '@/lib/lancamentoValor';
 import { getLancamentoStatus, STATUS, STATUS_LABELS, STATUS_COLORS, STATUS_OPTIONS } from '@/lib/lancamentoStatus';
 
     const ContasReceber = () => {
       const navigate = useNavigate();
       const { toast } = useToast();
-      const [emCashValue] = useEmCashValue();
       const [contas, setContas] = useState([]);
       const [loading, setLoading] = useState(false);
       const [filters, setFilters] = useState({
@@ -107,17 +105,13 @@ import { getLancamentoStatus, STATUS, STATUS_LABELS, STATUS_COLORS, STATUS_OPTIO
       const totalAtrasado = filteredContas.filter(c => getStatus(c) === STATUS.ATRASADO);
       const totalAbertoValor = totalAberto.reduce((s, c) => s + valorConsiderado(c), 0);
       const totalAtrasadoValorBase = totalAtrasado.reduce((s, c) => s + valorConsiderado(c), 0);
-      const emCashApplies = (filters.status === 'todos' || filters.status === STATUS.ATRASADO) && emCashValue > 0;
-      const totalGeral = totalGeralBase + (emCashApplies ? emCashValue : 0);
-      const totalAtrasadoValor = totalAtrasadoValorBase + (emCashApplies ? emCashValue : 0);
-    
+      const totalGeral = totalGeralBase;
+      const totalAtrasadoValor = totalAtrasadoValorBase;
+
       const totalAbertoPorUnidade = calculateTotalsByUnit(totalAberto);
       const totalAtrasadoPorUnidade = calculateTotalsByUnit(totalAtrasado);
       const totalAtrasadoDetalhes = Object.entries(totalAtrasadoPorUnidade);
-      if (emCashApplies) {
-        totalAtrasadoDetalhes.push(['Saldo em Cash', emCashValue]);
-      }
-    
+
   const handleMarkAsPaid = async (id) => {
     const today = formatDateFns(new Date(), 'yyyy-MM-dd');
     const { error } = await supabase.from('lancamentos').update({ status: 'Pago', datapag: today }).eq('id', id);
@@ -158,9 +152,6 @@ import { getLancamentoStatus, STATUS, STATUS_LABELS, STATUS_COLORS, STATUS_OPTIO
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-blue-400">{formatCurrency(totalGeral)}</div>
-                {emCashApplies && (
-                  <p className="mt-1 text-xs text-gray-400">Inclui {formatCurrency(emCashValue)} de saldo em cash.</p>
-                )}
               </CardContent>
             </Card>
             <Card className="glass-card">
@@ -198,25 +189,6 @@ import { getLancamentoStatus, STATUS, STATUS_LABELS, STATUS_COLORS, STATUS_OPTIO
               </CardContent>
             </Card>
           </div>
-
-          {emCashApplies && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-              <Card className="glass-card border-green-500/40 bg-green-500/5">
-                <CardHeader className="flex flex-col gap-2">
-                  <CardTitle className="text-sm font-medium text-green-300 flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4" />
-                    Saldo em Cash aplicado
-                  </CardTitle>
-                  <p className="text-2xl font-bold text-white">{formatCurrency(emCashValue)}</p>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-gray-300">
-                    Este valor foi confirmado no Dashboard e está sendo somado automaticamente em todos os cálculos de atrasados.
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
     
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
             <Card className="glass-card">

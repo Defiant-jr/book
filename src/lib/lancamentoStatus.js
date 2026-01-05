@@ -6,7 +6,14 @@ const STATUS = {
 
 const normalizeDate = (value) => {
   if (!value) return null;
-  const date = new Date(value + 'T00:00:00');
+  const brPattern = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+  let normalizedValue = value;
+  const matchBr = brPattern.exec(value);
+  if (matchBr) {
+    const [, day, month, year] = matchBr;
+    normalizedValue = `${year}-${month}-${day}`;
+  }
+  const date = new Date(`${normalizedValue}T00:00:00`);
   return Number.isNaN(date.getTime()) ? null : date;
 };
 
@@ -23,14 +30,6 @@ export const getLancamentoStatus = (lancamento, todayStr) => {
 
   const vencimento = normalizeDate(lancamento.data);
   if (!vencimento) return STATUS.A_VENCER;
-
-  const tipo = normalizeTipo(lancamento.tipo);
-  if (tipo === 'saida') {
-    return vencimento < today ? STATUS.ATRASADO : STATUS.A_VENCER;
-  }
-
-  if (rawStatus.includes('atras')) return STATUS.ATRASADO;
-  if (rawStatus.includes('venc')) return STATUS.A_VENCER;
 
   return vencimento < today ? STATUS.ATRASADO : STATUS.A_VENCER;
 };

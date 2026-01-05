@@ -1,18 +1,17 @@
 import React, { useState, useMemo, useRef } from 'react';
-    import { useNavigate } from 'react-router-dom';
-    import { Helmet } from 'react-helmet';
-    import { motion } from 'framer-motion';
-import { ArrowLeft, FileDown, Filter, ArrowUp, ArrowDown, CheckCircle } from 'lucide-react';
-    import { Button } from '@/components/ui/button';
-    import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-    import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-    import { Input } from '@/components/ui/input';
+import { useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet';
+import { motion } from 'framer-motion';
+import { ArrowLeft, FileDown, Filter, ArrowUp, ArrowDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import { format } from 'date-fns';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { useEmCashValue } from '@/hooks/useEmCashValue';
 import { getValorConsiderado } from '@/lib/lancamentoValor';
 import { getLancamentoStatus, normalizeTipo, STATUS, STATUS_LABELS, STATUS_OPTIONS } from '@/lib/lancamentoStatus';
 
@@ -22,7 +21,7 @@ import { getLancamentoStatus, normalizeTipo, STATUS, STATUS_LABELS, STATUS_OPTIO
         const [contas, setContas] = useState([]);
         const [loading, setLoading] = useState(false);
         const [filters, setFilters] = useState({
-            tipo: 'Saida',
+            tipo: 'todos',
             status: 'todos',
             unidade: 'todas',
             dataInicio: '',
@@ -30,7 +29,6 @@ import { getLancamentoStatus, normalizeTipo, STATUS, STATUS_LABELS, STATUS_OPTIO
         });
         const [sortConfig, setSortConfig] = useState({ key: 'data', direction: 'ascending' });
         const reportRef = useRef();
-        const [emCashValue] = useEmCashValue();
         const [reportGenerated, setReportGenerated] = useState(false);
         const [generatedAt, setGeneratedAt] = useState(null);
         const todayStr = new Date().toISOString().split('T')[0];
@@ -40,10 +38,6 @@ import { getLancamentoStatus, normalizeTipo, STATUS, STATUS_LABELS, STATUS_OPTIO
             setReportGenerated(false);
 
             let query = supabase.from('lancamentos').select('*', { count: 'exact' });
-
-            if (filters.tipo !== 'todos') {
-                query = query.eq('tipo', filters.tipo);
-            }
             if (filters.unidade !== 'todas') {
                 query = query.eq('unidade', filters.unidade);
             }
@@ -65,22 +59,12 @@ import { getLancamentoStatus, normalizeTipo, STATUS, STATUS_LABELS, STATUS_OPTIO
             }
         };
 
-        const getStatus = (conta) => {
-            if (conta?.__isCash) return 'cash';
-            return getLancamentoStatus(conta, todayStr);
-        };
-
-        const emCashApplies = useMemo(() => {
-            if (emCashValue <= 0) return false;
-            const tipoOk = filters.tipo === 'todos' || filters.tipo === 'Entrada';
-            const statusOk = filters.status === 'todos' || filters.status === STATUS.ATRASADO;
-            return tipoOk && statusOk;
-        }, [emCashValue, filters.tipo, filters.status]);
+        const getStatus = (conta) => getLancamentoStatus(conta, todayStr);
 
         const filteredAndSortedContas = useMemo(() => {
             const tipoFiltro = normalizeTipo(filters.tipo);
             const unidadeFiltro = (filters.unidade || '').trim();
-            let filtered = contas.filter((c) => {
+            const filtered = contas.filter((c) => {
                 const tipoOk = tipoFiltro === 'todos' || normalizeTipo(c.tipo) === tipoFiltro;
                 const statusOk = filters.status === 'todos' || getStatus(c) === filters.status;
                 const unidadeOk = filters.unidade === 'todas' || (c.unidade || '').trim() === unidadeFiltro;
@@ -88,20 +72,6 @@ import { getLancamentoStatus, normalizeTipo, STATUS, STATUS_LABELS, STATUS_OPTIO
                 const dataFimOk = !filters.dataFim || new Date(c.data + 'T00:00:00') <= new Date(filters.dataFim + 'T00:00:00');
                 return tipoOk && statusOk && unidadeOk && dataInicioOk && dataFimOk;
             });
-
-            if (emCashApplies) {
-                filtered.push({
-                    id: 'em-cash',
-                    data: '',
-                    tipo: 'Entrada',
-                    cliente_fornecedor: 'Saldo em Cash',
-                    descricao: 'Ajuste manual confirmado no Dashboard',
-                    unidade: 'Todas',
-                    status: 'cash',
-                    valor: emCashValue,
-                    __isCash: true
-                });
-            }
 
             filtered.sort((a, b) => {
                 let aValue = a[sortConfig.key];
@@ -115,7 +85,7 @@ import { getLancamentoStatus, normalizeTipo, STATUS, STATUS_LABELS, STATUS_OPTIO
                 return 0;
             });
             return filtered;
-        }, [contas, filters, sortConfig, emCashApplies, emCashValue]);
+        }, [contas, filters, sortConfig]);
 
         const requestSort = (key) => {
             let direction = 'ascending';
@@ -126,12 +96,9 @@ import { getLancamentoStatus, normalizeTipo, STATUS, STATUS_LABELS, STATUS_OPTIO
         };
 
         const formatCurrency = (value) => (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        const valorConta = (conta) => conta?.__isCash ? conta.valor : getValorConsiderado(conta, todayStr);
+        const valorConta = (conta) => getValorConsiderado(conta, todayStr);
         const formatDate = (dateString) => dateString ? format(new Date(dateString + 'T00:00:00'), 'dd/MM/yyyy') : '-';
-        const formatStatusDisplay = (status) => {
-            if (status === 'cash') return 'Saldo em Cash';
-            return STATUS_LABELS[status] || status;
-        };
+        const formatStatusDisplay = (status) => STATUS_LABELS[status] || status;
 
         const handleDownloadPdf = () => {
             if (!reportGenerated) {
@@ -171,20 +138,62 @@ import { getLancamentoStatus, normalizeTipo, STATUS, STATUS_LABELS, STATUS_OPTIO
                 <Card className="glass-card">
                     <CardHeader><CardTitle className="text-white flex items-center gap-2"><Filter className="w-5 h-5" />Configuração do Relatório</CardTitle></CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                            <Select value={filters.tipo} onValueChange={(v) => setFilters(f => ({ ...f, tipo: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="todos">Todos os Tipos</SelectItem><SelectItem value="Entrada">Entrada</SelectItem><SelectItem value="Saida">Saída</SelectItem></SelectContent></Select>
-                            <Select value={filters.status} onValueChange={(v) => setFilters(f => ({ ...f, status: v }))}>
-                                <SelectTrigger><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="todos">Todos Status</SelectItem>
-                                    {STATUS_OPTIONS.map((option) => (
-                                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <Select value={filters.unidade} onValueChange={(v) => setFilters(f => ({ ...f, unidade: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="todas">Todas Unidades</SelectItem><SelectItem value="CNA Angra dos Reis">CNA Angra dos Reis</SelectItem><SelectItem value="CNA Mangaratiba">CNA Mangaratiba</SelectItem><SelectItem value="Casa">Casa</SelectItem></SelectContent></Select>
-                            <Input type="date" value={filters.dataInicio} onChange={(e) => setFilters(f => ({ ...f, dataInicio: e.target.value }))} />
-                            <Input type="date" value={filters.dataFim} onChange={(e) => setFilters(f => ({ ...f, dataFim: e.target.value }))} />
+                        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                            <div>
+                                <label className="text-sm text-gray-300 mb-2 block">Tipo</label>
+                                <Select value={filters.tipo} onValueChange={(v) => setFilters(f => ({ ...f, tipo: v }))}>
+                                    <SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="todos">Todos</SelectItem>
+                                        <SelectItem value="Entrada">Entradas</SelectItem>
+                                        <SelectItem value="Saida">Saídas</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div>
+                                <label className="text-sm text-gray-300 mb-2 block">Status</label>
+                                <Select value={filters.status} onValueChange={(v) => setFilters(f => ({ ...f, status: v }))}>
+                                    <SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="todos">Todos</SelectItem>
+                                        {STATUS_OPTIONS.map((option) => (
+                                            <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div>
+                                <label className="text-sm text-gray-300 mb-2 block">Unidade</label>
+                                <Select value={filters.unidade} onValueChange={(v) => setFilters(f => ({ ...f, unidade: v }))}>
+                                    <SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="todas">Todas</SelectItem>
+                                        <SelectItem value="CNA Angra dos Reis">CNA Angra dos Reis</SelectItem>
+                                        <SelectItem value="CNA Mangaratiba">CNA Mangaratiba</SelectItem>
+                                        <SelectItem value="Casa">Casa</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div>
+                                <label className="text-sm text-gray-300 mb-2 block">Data Início</label>
+                                <Input
+                                    type="date"
+                                    placeholder="dd/mm/aaaa"
+                                    value={filters.dataInicio}
+                                    onChange={(e) => setFilters(f => ({ ...f, dataInicio: e.target.value }))}
+                                    className="bg-white/10 border-white/20 text-white"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-sm text-gray-300 mb-2 block">Data Fim</label>
+                                <Input
+                                    type="date"
+                                    placeholder="dd/mm/aaaa"
+                                    value={filters.dataFim}
+                                    onChange={(e) => setFilters(f => ({ ...f, dataFim: e.target.value }))}
+                                    className="bg-white/10 border-white/20 text-white"
+                                />
+                            </div>
                         </div>
                         <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
                             <Button onClick={handleGenerateReport} disabled={loading} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white">{loading ? 'Gerando...' : 'Gerar Relatório'}</Button>
@@ -208,31 +217,10 @@ import { getLancamentoStatus, normalizeTipo, STATUS, STATUS_LABELS, STATUS_OPTIO
                 )}
                 {reportGenerated && !loading && (
                     <div className="space-y-6">
-                        {(generatedAt || emCashApplies) && (
-                            <div className="flex flex-col md:flex-row md:items-center md:justify-between text-sm text-gray-300 gap-2">
-                                {generatedAt && (
-                                    <div><span className="text-white font-medium">Gerado em:</span> {format(generatedAt, 'dd/MM/yyyy HH:mm')}</div>
-                                )}
-                                {emCashApplies && (
-                                    <div className="text-green-300 flex items-center gap-2"><CheckCircle className="w-4 h-4" /> Saldo em cash considerado.</div>
-                                )}
+                        {generatedAt && (
+                            <div className="text-sm text-gray-300">
+                                <span className="text-white font-medium">Gerado em:</span> {format(generatedAt, 'dd/MM/yyyy HH:mm')}
                             </div>
-                        )}
-                        {emCashApplies && (
-                            <Card className="glass-card border-green-500/40 bg-green-500/5">
-                                <CardHeader className="flex flex-row items-center gap-3">
-                                    <div className="p-2 rounded-full bg-green-500/20 text-green-300">
-                                        <CheckCircle className="w-5 h-5" />
-                                    </div>
-                                    <div>
-                                        <CardTitle className="text-sm font-medium text-green-200">Saldo em Cash aplicado</CardTitle>
-                                        <p className="text-lg font-semibold text-white">{formatCurrency(emCashValue)}</p>
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="text-sm text-gray-300">
-                                    O valor confirmado no Dashboard está incluído nos totais e listagens de entradas atrasadas deste relatório.
-                                </CardContent>
-                            </Card>
                         )}
                         <Card className="glass-card">
                             <CardContent className="p-0">

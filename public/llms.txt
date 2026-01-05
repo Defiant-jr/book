@@ -1,9 +1,11 @@
 ## Pages
+- [Administrativo - SysFina](/administrativo): Módulo administrativo
+- [Área Financeira - SysFina](/dashboard): Área financeira com visão geral das finanças
+- [Cadastro Financeiro - SysFina](/financeirocadastro): Cadastre lançamentos financeiros.
 - [Cadastros - SysFina](/cadastros): Central de cadastros de clientes, fornecedores e unidades.
 - [Central de Relatórios - SysFina](/relatorios): Gere relatórios financeiros detalhados.
 - [Contas a Pagar - SysFina](/contaspagar): Gerencie suas contas a pagar com filtros e totalizadores
 - [Contas a Receber - SysFina](/contasreceber): Gerencie suas contas a receber com filtros e totalizadores
-- [Dashboard - SysFina](/dashboard): Dashboard principal com visÃ£o geral das finanÃ§as
 - [DRE Gerencial - SysFina](/dregerencial): No description available
 - [Emissão de Duplicata - SysFina](/emissaoduplicata): Emita duplicatas a partir das contas a receber.
 - [Financeiro - SysFina](/financeiro): Central de ações financeiras.
@@ -15,3 +17,5 @@
 - [Relatório de Contas - SysFina](/relatoriocontas): No description available
 - [Relatorio de Fechamento - SysFina](/relatoriofechamento): Relatorio mensal de fechamento com totais de entradas, saidas e saldo final.
 - [Relatório de Fluxo de Caixa - SysFina](/fluxocaixadetalhado): Gere e visualize o relatório de fluxo de caixa detalhado.
+- [Relatórios Administrativos - SysFina](/administrativorelatorios): Área reservada para relatórios administrativos.
+- [Selecione uma área - SysFina](/areaselection): Escolha o módulo que deseja acessar.

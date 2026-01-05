@@ -18,7 +18,6 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { startOfMonth, endOfMonth, eachDayOfInterval, format, getDay } from 'date-fns';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { useEmCashValue } from '@/hooks/useEmCashValue';
 import { getValorConsiderado } from '@/lib/lancamentoValor';
 
 const weekdayLabels = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
@@ -31,7 +30,6 @@ const MapaMensal = () => {
   const [loading, setLoading] = useState(false);
   const [reportGenerated, setReportGenerated] = useState(false);
   const [generatedAt, setGeneratedAt] = useState(null);
-  const [emCashValue] = useEmCashValue();
 
   useEffect(() => {
     handleGenerateReport();
@@ -123,10 +121,10 @@ const calendarCells = useMemo(() => {
   }, [allData, selectedMonth]);
 
   const totalsWithAdjustments = useMemo(() => {
-    const entradas = monthTotals.entradas + overdueTotals.entradas + emCashValue;
+    const entradas = monthTotals.entradas + overdueTotals.entradas;
     const saidas = monthTotals.saidas + overdueTotals.saidas;
     return { entradas, saidas, saldo: entradas - saidas };
-  }, [monthTotals, overdueTotals, emCashValue]);
+  }, [monthTotals, overdueTotals]);
 
   const leadingEmptyCells = useMemo(() => {
     if (!calendarCells.length) return 0;
@@ -178,7 +176,7 @@ const calendarCells = useMemo(() => {
     doc.setTextColor(0);
     doc.setFontSize(12);
     doc.text(
-      `Total de Entradas (inclui atrasados e cash): ${formatCurrency(totalsWithAdjustments.entradas)}`,
+      `Total de Entradas (inclui atrasados): ${formatCurrency(totalsWithAdjustments.entradas)}`,
       margin,
       summaryStartY,
     );
@@ -378,7 +376,7 @@ const calendarCells = useMemo(() => {
               </p>
             </div>
             <div className="text-xs text-gray-400 md:col-span-3">
-              Totais incluem valores em atraso e saldo em cash.
+              Totais incluem valores em atraso.
             </div>
           </CardContent>
         </Card>

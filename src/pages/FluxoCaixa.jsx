@@ -20,9 +20,8 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import { startOfMonth, endOfMonth, format, eachDayOfInterval } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { useEmCashValue } from '@/hooks/useEmCashValue';
 import { getValorConsiderado } from '@/lib/lancamentoValor';
-import { getLancamentoStatus, normalizeTipo, STATUS } from '@/lib/lancamentoStatus';
+import { getLancamentoStatus, normalizeTipo } from '@/lib/lancamentoStatus';
 
     const FluxoCaixa = () => {
       const navigate = useNavigate();
@@ -33,7 +32,6 @@ import { getLancamentoStatus, normalizeTipo, STATUS } from '@/lib/lancamentoStat
       const [unidadeFiltro, setUnidadeFiltro] = useState('todas');
       const [viewType, setViewType] = useState('sintetico');
       const [expandedRows, setExpandedRows] = useState({});
-      const [emCashValue] = useEmCashValue();
 
       useEffect(() => {
         loadData();
@@ -101,17 +99,10 @@ import { getLancamentoStatus, normalizeTipo, STATUS } from '@/lib/lancamentoStat
         const atrasadosReceber = atrasados.filter((i) => i.tipoNorm === 'entrada');
         const atrasadosPagar = atrasados.filter((i) => i.tipoNorm === 'saida');
 
-        const totalAtrasadoReceber = atrasadosReceber.reduce((acc, i) => acc + getValorConsiderado(i, todayStr), 0) + emCashValue;
+        const totalAtrasadoReceber = atrasadosReceber.reduce((acc, i) => acc + getValorConsiderado(i, todayStr), 0);
         const totalAtrasadoPagar = atrasadosPagar.reduce((acc, i) => acc + getValorConsiderado(i, todayStr), 0);
 
         const receberDetails = [...atrasadosReceber];
-        if (emCashValue !== 0) {
-          receberDetails.push({
-            id: 'em-cash-adjustment',
-            cliente_fornecedor: 'Saldo em Cash',
-            valor: emCashValue
-          });
-        }
 
         const fluxo = daysInMonth.map((day) => ({
           dia: format(day, 'dd'),
@@ -150,7 +141,7 @@ import { getLancamentoStatus, normalizeTipo, STATUS } from '@/lib/lancamentoStat
           saldoAcumulado += saldoDia;
           return { ...dia, saldoDia, saldoAcumulado };
         });
-      }, [allData, currentDate, emCashValue]);
+      }, [allData, currentDate]);
 
       const chartData = monthData.map(d => ({
         name: d.dia,

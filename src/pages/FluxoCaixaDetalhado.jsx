@@ -12,7 +12,6 @@ import { startOfMonth, endOfMonth, format, eachDayOfInterval } from 'date-fns';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { cn } from '@/lib/utils';
-import { useEmCashValue } from '@/hooks/useEmCashValue';
 import { getValorConsiderado } from '@/lib/lancamentoValor';
 
     const FluxoCaixaDetalhado = () => {
@@ -24,7 +23,6 @@ import { getValorConsiderado } from '@/lib/lancamentoValor';
       const [unidadeFiltro, setUnidadeFiltro] = useState('todas');
       const [viewType, setViewType] = useState('sintetico');
       const [expandedRows, setExpandedRows] = useState({});
-      const [emCashValue] = useEmCashValue();
       const [reportGenerated, setReportGenerated] = useState(false);
       const [generatedAt, setGeneratedAt] = useState(null);
 
@@ -87,15 +85,8 @@ import { getValorConsiderado } from '@/lib/lancamentoValor';
 
         const atrasadosReceber = atrasadosLancamentos.filter(i => i.tipo === 'Entrada');
         const atrasadosPagar = atrasadosLancamentos.filter(i => i.tipo === 'Saida');
-        const totalReceberAtrasado = atrasadosReceber.reduce((acc, i) => acc + getValorConsiderado(i, todayStr), 0) + emCashValue;
+        const totalReceberAtrasado = atrasadosReceber.reduce((acc, i) => acc + getValorConsiderado(i, todayStr), 0);
         const receberDetails = [...atrasadosReceber];
-        if (emCashValue !== 0) {
-          receberDetails.push({
-            id: 'em-cash-adjustment',
-            cliente_fornecedor: 'Saldo em Cash',
-            valor: emCashValue
-          });
-        }
 
         const dia00 = {
           dia: '00',
@@ -135,7 +126,7 @@ import { getValorConsiderado } from '@/lib/lancamentoValor';
           saldoAcumulado += saldoDia;
           return { ...dia, saldoDia, saldoAcumulado };
         });
-      }, [allData, currentDate, unidadeFiltro, emCashValue]);
+      }, [allData, currentDate, unidadeFiltro]);
 
       const monthName = currentDate.toLocaleString('pt-BR', { month: 'long', timeZone: 'UTC' });
       const year = currentDate.getFullYear();

@@ -13,7 +13,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { getValorConsiderado } from '@/lib/lancamentoValor';
 import { getLancamentoStatus, normalizeTipo, STATUS } from '@/lib/lancamentoStatus';
 import { useEmCashValue } from '@/hooks/useEmCashValue';
-    
+
     const Dashboard = () => {
       const navigate = useNavigate();
       const { toast } = useToast();
@@ -34,59 +34,101 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
     
       const loadDataFromSupabase = async () => {
         setLoading(true);
-        const { data: lancamentos, error } = await supabase
-          .from('lancamentos')
-          .select('*', { count: 'exact' })
-          .range(0, 9999);
-        if (error) {
-          toast({ title: "Erro ao carregar dados", description: error.message, variant: "destructive" });
-        } else {
-          setData({ lancamentos: lancamentos ?? [] });
+        try {
+          const { data: lancamentos, error } = await supabase
+            .from('lancamentos')
+            .select('*', { count: 'exact' })
+            .range(0, 9999);
+          if (error) {
+            toast({ title: "Erro ao carregar dados", description: error.message, variant: "destructive" });
+            setData({ lancamentos: [] });
+          } else {
+            setData({ lancamentos: lancamentos ?? [] });
+          }
+        } catch (err) {
+          console.error('Falha ao buscar lançamentos', err);
+          toast({ title: "Erro ao carregar dados", description: "Não foi possível carregar os lançamentos.", variant: "destructive" });
+          setData({ lancamentos: [] });
+        } finally {
+          setLoading(false);
         }
-        setLoading(false);
       };
     
       const generateChartData = (financialData, span = monthsSpan, cashValue = 0) => {
-        const todayStr = new Date().toISOString().split('T')[0];
-        const getStatus = (conta) => getLancamentoStatus(conta, todayStr);
-        const months = [];
-        const currentDate = new Date();
-        const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+        try {
+          const lancamentos = Array.isArray(financialData?.lancamentos) ? financialData.lancamentos : [];
+          const todayStr = new Date().toISOString().split('T')[0];
+          const getStatus = (conta) => getLancamentoStatus(conta, todayStr);
+          const months = [];
+          const currentDate = new Date();
+          const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
 
-        for (let i = 0; i < span; i++) {
-          const date = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
-          const monthName = date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
+          const parseDateSafe = (value) => {
+            if (!value) return null;
+            const parsed = new Date(`${value}T00:00:00`);
+            return Number.isNaN(parsed.getTime()) ? null : parsed;
+          };
+          const sumValores = (lista) => lista.reduce((acc, conta) => acc + getValorConsiderado(conta, todayStr), 0);
 
-          const monthPagar = financialData.lancamentos
-            .filter(conta => {
-              if (normalizeTipo(conta.tipo) !== 'saida') return false;
-              const vencimento = new Date(conta.data + 'T00:00:00');
-              return vencimento.getUTCMonth() === date.getMonth() &&
-                     vencimento.getUTCFullYear() === date.getFullYear();
-            })
-            .reduce((sum, conta) => sum + getValorConsiderado(conta, todayStr), 0);
-          
-          let monthReceber = financialData.lancamentos
-            .filter(conta => {
+          const overdueReceber = sumValores(
+            lancamentos.filter((conta) => {
               if (normalizeTipo(conta.tipo) !== 'entrada') return false;
-              const vencimento = new Date(conta.data + 'T00:00:00');
-              return vencimento.getUTCMonth() === date.getMonth() &&
-                     vencimento.getUTCFullYear() === date.getFullYear();
+              if (getStatus(conta) === STATUS.PAGO) return false;
+              const venc = parseDateSafe(conta.data);
+              return venc && venc < startDate;
             })
-            .reduce((sum, conta) => sum + getValorConsiderado(conta, todayStr), 0);
+          );
+          const overduePagar = sumValores(
+            lancamentos.filter((conta) => {
+              if (normalizeTipo(conta.tipo) !== 'saida') return false;
+              if (getStatus(conta) === STATUS.PAGO) return false;
+              const venc = parseDateSafe(conta.data);
+              return venc && venc < startDate;
+            })
+          );
 
-          if (i === 0) {
-            monthReceber += cashValue;
+          for (let i = 0; i < span; i++) {
+            const date = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
+            const monthName = date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
+
+            const monthPagar = lancamentos
+              .filter(conta => {
+                if (normalizeTipo(conta.tipo) !== 'saida') return false;
+                const vencimento = parseDateSafe(conta.data);
+                return vencimento && vencimento.getUTCMonth() === date.getMonth() &&
+                       vencimento.getUTCFullYear() === date.getFullYear();
+              })
+              .reduce((sum, conta) => sum + getValorConsiderado(conta, todayStr), 0);
+            
+            let monthReceber = lancamentos
+              .filter(conta => {
+                if (normalizeTipo(conta.tipo) !== 'entrada') return false;
+                const vencimento = parseDateSafe(conta.data);
+                return vencimento && vencimento.getUTCMonth() === date.getMonth() &&
+                       vencimento.getUTCFullYear() === date.getFullYear();
+              })
+              .reduce((sum, conta) => sum + getValorConsiderado(conta, todayStr), 0);
+
+            if (i === 0) {
+              monthReceber += cashValue + overdueReceber;
+              months.push({
+                month: monthName,
+                pagar: monthPagar + overduePagar,
+                receber: monthReceber
+              });
+            } else {
+              months.push({
+                month: monthName,
+                pagar: monthPagar,
+                receber: monthReceber
+              });
+            }
           }
-          
-          months.push({
-            month: monthName,
-            pagar: monthPagar,
-            receber: monthReceber
-          });
+          setChartData(months);
+        } catch (err) {
+          console.error('Erro ao gerar dados do gráfico', err);
+          setChartData([]);
         }
-        
-        setChartData(months);
       };
     
       useEffect(() => {
