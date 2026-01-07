@@ -32,23 +32,37 @@ import { getLancamentoStatus, STATUS, STATUS_LABELS, STATUS_COLORS, STATUS_OPTIO
     
       const loadData = async () => {
         setLoading(true);
-        const { data, error } = await supabase
-          .from('lancamentos')
-          .select('*')
-          .eq('tipo', 'Entrada');
-    
-        if (error) {
-          toast({ title: 'Erro ao carregar dados', description: error.message, variant: 'destructive' });
-        } else {
-          setContas(data || []);
+        try {
+          const pageSize = 1000;
+          let from = 0;
+          const allContas = [];
+          while (true) {
+            const to = from + pageSize - 1;
+            const { data, error } = await supabase
+              .from('lancamentos')
+              .select('*')
+              .eq('tipo', 'Entrada')
+              .range(from, to);
+            if (error) {
+              toast({ title: 'Erro ao carregar dados', description: error.message, variant: 'destructive' });
+              return;
+            }
+            if (data?.length) {
+              allContas.push(...data);
+            }
+            if (!data || data.length < pageSize) break;
+            from += pageSize;
+          }
+          setContas(allContas);
+        } finally {
+          setLoading(false);
         }
-        setLoading(false);
       };
     
       const getStatus = (conta) => getLancamentoStatus(conta);
     
       const filteredContas = useMemo(() => {
-        let filtered = [...contas];
+        let filtered = [...contas].filter((conta) => getStatus(conta) !== STATUS.PAGO);
         if (filters.cliente) {
           filtered = filtered.filter(conta => 
             conta.cliente_fornecedor?.toLowerCase().includes(filters.cliente.toLowerCase())
@@ -94,17 +108,17 @@ import { getLancamentoStatus, STATUS, STATUS_LABELS, STATUS_COLORS, STATUS_OPTIO
         };
         contas.forEach(conta => {
           if (totals.hasOwnProperty(conta.unidade)) {
-            totals[conta.unidade] += valorConsiderado(conta);
+            totals[conta.unidade] += Number(conta?.valor) || 0;
           }
         });
         return totals;
       };
     
-      const totalGeralBase = filteredContas.reduce((sum, conta) => sum + valorConsiderado(conta), 0);
+      const totalGeralBase = filteredContas.reduce((sum, conta) => sum + (Number(conta?.valor) || 0), 0);
       const totalAberto = filteredContas.filter(c => getStatus(c) === STATUS.A_VENCER);
       const totalAtrasado = filteredContas.filter(c => getStatus(c) === STATUS.ATRASADO);
-      const totalAbertoValor = totalAberto.reduce((s, c) => s + valorConsiderado(c), 0);
-      const totalAtrasadoValorBase = totalAtrasado.reduce((s, c) => s + valorConsiderado(c), 0);
+      const totalAbertoValor = totalAberto.reduce((s, c) => s + (Number(c?.valor) || 0), 0);
+      const totalAtrasadoValorBase = totalAtrasado.reduce((s, c) => s + (Number(c?.valor) || 0), 0);
       const totalGeral = totalGeralBase;
       const totalAtrasadoValor = totalAtrasadoValorBase;
 

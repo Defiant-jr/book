@@ -21,7 +21,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { startOfMonth, endOfMonth, format, eachDayOfInterval } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { getValorConsiderado } from '@/lib/lancamentoValor';
-import { getLancamentoStatus, normalizeTipo } from '@/lib/lancamentoStatus';
+import { getLancamentoStatus, normalizeTipo, STATUS } from '@/lib/lancamentoStatus';
+import { useEmCashValue } from '@/hooks/useEmCashValue';
 
     const FluxoCaixa = () => {
       const navigate = useNavigate();
@@ -32,6 +33,7 @@ import { getLancamentoStatus, normalizeTipo } from '@/lib/lancamentoStatus';
       const [unidadeFiltro, setUnidadeFiltro] = useState('todas');
       const [viewType, setViewType] = useState('sintetico');
       const [expandedRows, setExpandedRows] = useState({});
+      const [emCashValue] = useEmCashValue();
 
       useEffect(() => {
         loadData();
@@ -39,16 +41,31 @@ import { getLancamentoStatus, normalizeTipo } from '@/lib/lancamentoStatus';
 
       const loadData = async () => {
         setLoading(true);
-        const { data, error } = await supabase
-          .from('lancamentos')
-          .select('*', { count: 'exact' })
-          .range(0, 9999);
-        if (error) {
-          toast({ title: "Erro ao buscar dados", description: error.message, variant: "destructive"});
-        } else {
-          setAllData(data || []);
+        try {
+          const pageSize = 1000;
+          let from = 0;
+          const allLancamentos = [];
+          while (true) {
+            const to = from + pageSize - 1;
+            const { data: page, error } = await supabase
+              .from('lancamentos')
+              .select('*')
+              .range(from, to);
+            if (error) {
+              toast({ title: "Erro ao buscar dados", description: error.message, variant: "destructive"});
+              setAllData([]);
+              return;
+            }
+            if (page?.length) {
+              allLancamentos.push(...page);
+            }
+            if (!page || page.length < pageSize) break;
+            from += pageSize;
+          }
+          setAllData(allLancamentos);
+        } finally {
+          setLoading(false);
         }
-        setLoading(false);
       };
 
       const handlePrevMonth = () => {
@@ -93,14 +110,18 @@ import { getLancamentoStatus, normalizeTipo } from '@/lib/lancamentoStatus';
             tipoNorm: normalizeTipo(item.tipo),
             statusNorm: getLancamentoStatus(item, todayStr),
           }))
-          .filter((item) => item.dataStr && (item.tipoNorm === 'entrada' || item.tipoNorm === 'saida'));
+          .filter((item) =>
+            item.dataStr &&
+            (item.tipoNorm === 'entrada' || item.tipoNorm === 'saida') &&
+            item.statusNorm !== STATUS.PAGO
+          );
 
         const atrasados = normalizedData.filter((item) => item.dataStr < startStr);
         const atrasadosReceber = atrasados.filter((i) => i.tipoNorm === 'entrada');
         const atrasadosPagar = atrasados.filter((i) => i.tipoNorm === 'saida');
 
-        const totalAtrasadoReceber = atrasadosReceber.reduce((acc, i) => acc + getValorConsiderado(i, todayStr), 0);
-        const totalAtrasadoPagar = atrasadosPagar.reduce((acc, i) => acc + getValorConsiderado(i, todayStr), 0);
+        const totalAtrasadoReceber = atrasadosReceber.reduce((acc, i) => acc + (Number(i?.valor) || 0), 0) + (Number(emCashValue) || 0);
+        const totalAtrasadoPagar = atrasadosPagar.reduce((acc, i) => acc + (Number(i?.valor) || 0), 0);
 
         const receberDetails = [...atrasadosReceber];
 
@@ -117,10 +138,10 @@ import { getLancamentoStatus, normalizeTipo } from '@/lib/lancamentoStatus';
           const dayIndex = Number(item.dataStr.slice(8, 10)) - 1;
           if (Number.isNaN(dayIndex) || dayIndex < 0 || dayIndex >= fluxo.length) return;
           if (item.tipoNorm === 'entrada') {
-            fluxo[dayIndex].receber += getValorConsiderado(item, todayStr);
+            fluxo[dayIndex].receber += Number(item?.valor) || 0;
             fluxo[dayIndex].details.receber.push(item);
           } else {
-            fluxo[dayIndex].pagar += getValorConsiderado(item, todayStr);
+            fluxo[dayIndex].pagar += Number(item?.valor) || 0;
             fluxo[dayIndex].details.pagar.push(item);
           }
         });
@@ -269,7 +290,7 @@ import { getLancamentoStatus, normalizeTipo } from '@/lib/lancamentoStatus';
                                       {dia.details.receber.length > 0 ? dia.details.receber.map(item => (
                                         <div key={item.id} className="flex justify-between text-sm py-1">
                                           <span>{item.cliente_fornecedor}</span>
-                                          <span className="font-mono">{formatCurrency(getValorConsiderado(item, todayStr))}</span>
+                                          <span className="font-mono">{formatCurrency(Number(item?.valor) || 0)}</span>
                                         </div>
                                       )) : <p className="text-xs text-slate-400">Nenhuma entrada.</p>}
                                     </div>
@@ -278,7 +299,7 @@ import { getLancamentoStatus, normalizeTipo } from '@/lib/lancamentoStatus';
                                       {dia.details.pagar.length > 0 ? dia.details.pagar.map(item => (
                                         <div key={item.id} className="flex justify-between text-sm py-1">
                                           <span>{item.cliente_fornecedor}</span>
-                                          <span className="font-mono">{formatCurrency(getValorConsiderado(item, todayStr))}</span>
+                                          <span className="font-mono">{formatCurrency(Number(item?.valor) || 0)}</span>
                                         </div>
                                       )) : <p className="text-xs text-slate-400">Nenhuma saída.</p>}
                                     </div>

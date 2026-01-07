@@ -6,14 +6,21 @@ const STATUS = {
 
 const normalizeDate = (value) => {
   if (!value) return null;
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+  const raw = String(value).trim();
+  if (!raw) return null;
   const brPattern = /^(\d{2})\/(\d{2})\/(\d{4})$/;
-  let normalizedValue = value;
+  let normalizedValue = raw;
   const matchBr = brPattern.exec(value);
   if (matchBr) {
     const [, day, month, year] = matchBr;
     normalizedValue = `${year}-${month}-${day}`;
   }
-  const date = new Date(`${normalizedValue}T00:00:00`);
+  const date = normalizedValue.includes('T')
+    ? new Date(normalizedValue)
+    : new Date(`${normalizedValue}T00:00:00`);
   return Number.isNaN(date.getTime()) ? null : date;
 };
 

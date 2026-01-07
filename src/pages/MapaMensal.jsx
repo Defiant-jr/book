@@ -19,6 +19,7 @@ import { startOfMonth, endOfMonth, eachDayOfInterval, format, getDay } from 'dat
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { getValorConsiderado } from '@/lib/lancamentoValor';
+import { getLancamentoStatus, STATUS } from '@/lib/lancamentoStatus';
 
 const weekdayLabels = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 
@@ -66,6 +67,7 @@ const MapaMensal = () => {
     (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const todayStr = new Date().toISOString().split('T')[0];
   const valorLancamento = (item) => getValorConsiderado(item, todayStr);
+  const isPago = (item) => getLancamentoStatus(item, todayStr) === STATUS.PAGO;
 
 const calendarCells = useMemo(() => {
   const current = new Date(`${selectedMonth}-01T00:00:00`);
@@ -75,7 +77,7 @@ const calendarCells = useMemo(() => {
 
     return days.map((day) => {
       const dayIso = format(day, 'yyyy-MM-dd');
-      const dayItems = allData.filter((item) => item.data === dayIso);
+      const dayItems = allData.filter((item) => item.data === dayIso && !isPago(item));
       const entradasTotal = dayItems
         .filter((d) => d.tipo === 'Entrada')
         .reduce((acc, d) => acc + valorLancamento(d), 0);
@@ -106,12 +108,11 @@ const calendarCells = useMemo(() => {
   const overdueTotals = useMemo(() => {
     const current = new Date(`${selectedMonth}-01T00:00:00`);
     const start = startOfMonth(current);
-    const isPaid = (status) => (status || '').toLowerCase() === 'pago';
 
     return allData.reduce(
       (acc, item) => {
         const dateObj = new Date(`${item.data}T00:00:00`);
-        if (dateObj >= start || isPaid(item.status)) return acc;
+        if (dateObj >= start || isPago(item)) return acc;
         if (item.tipo === 'Entrada') acc.entradas += valorLancamento(item);
         if (item.tipo === 'Saida') acc.saidas += valorLancamento(item);
         return acc;

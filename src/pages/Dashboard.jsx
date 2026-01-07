@@ -35,16 +35,27 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
       const loadDataFromSupabase = async () => {
         setLoading(true);
         try {
-          const { data: lancamentos, error } = await supabase
-            .from('lancamentos')
-            .select('*', { count: 'exact' })
-            .range(0, 9999);
-          if (error) {
-            toast({ title: "Erro ao carregar dados", description: error.message, variant: "destructive" });
-            setData({ lancamentos: [] });
-          } else {
-            setData({ lancamentos: lancamentos ?? [] });
+          const pageSize = 1000;
+          let from = 0;
+          const allLancamentos = [];
+          while (true) {
+            const to = from + pageSize - 1;
+            const { data: page, error } = await supabase
+              .from('lancamentos')
+              .select('*')
+              .range(from, to);
+            if (error) {
+              toast({ title: "Erro ao carregar dados", description: error.message, variant: "destructive" });
+              setData({ lancamentos: [] });
+              return;
+            }
+            if (page?.length) {
+              allLancamentos.push(...page);
+            }
+            if (!page || page.length < pageSize) break;
+            from += pageSize;
           }
+          setData({ lancamentos: allLancamentos });
         } catch (err) {
           console.error('Falha ao buscar lançamentos', err);
           toast({ title: "Erro ao carregar dados", description: "Não foi possível carregar os lançamentos.", variant: "destructive" });
@@ -59,29 +70,38 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
           const lancamentos = Array.isArray(financialData?.lancamentos) ? financialData.lancamentos : [];
           const todayStr = new Date().toISOString().split('T')[0];
           const getStatus = (conta) => getLancamentoStatus(conta, todayStr);
+          const lancamentosEmAberto = lancamentos.filter((conta) => getStatus(conta) !== STATUS.PAGO);
           const months = [];
           const currentDate = new Date();
           const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
 
           const parseDateSafe = (value) => {
             if (!value) return null;
-            const parsed = new Date(`${value}T00:00:00`);
+            if (value instanceof Date) {
+              return Number.isNaN(value.getTime()) ? null : value;
+            }
+            const raw = String(value).trim();
+            if (!raw) return null;
+            const brPattern = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+            const matchBr = brPattern.exec(raw);
+            const normalized = matchBr ? `${matchBr[3]}-${matchBr[2]}-${matchBr[1]}` : raw;
+            const parsed = normalized.includes('T')
+              ? new Date(normalized)
+              : new Date(`${normalized}T00:00:00`);
             return Number.isNaN(parsed.getTime()) ? null : parsed;
           };
-          const sumValores = (lista) => lista.reduce((acc, conta) => acc + getValorConsiderado(conta, todayStr), 0);
+          const sumValores = (lista) => lista.reduce((acc, conta) => acc + (Number(conta?.valor) || 0), 0);
 
           const overdueReceber = sumValores(
-            lancamentos.filter((conta) => {
+            lancamentosEmAberto.filter((conta) => {
               if (normalizeTipo(conta.tipo) !== 'entrada') return false;
-              if (getStatus(conta) === STATUS.PAGO) return false;
               const venc = parseDateSafe(conta.data);
               return venc && venc < startDate;
             })
           );
           const overduePagar = sumValores(
-            lancamentos.filter((conta) => {
+            lancamentosEmAberto.filter((conta) => {
               if (normalizeTipo(conta.tipo) !== 'saida') return false;
-              if (getStatus(conta) === STATUS.PAGO) return false;
               const venc = parseDateSafe(conta.data);
               return venc && venc < startDate;
             })
@@ -91,23 +111,23 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
             const date = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
             const monthName = date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
 
-            const monthPagar = lancamentos
+            const monthPagar = lancamentosEmAberto
               .filter(conta => {
                 if (normalizeTipo(conta.tipo) !== 'saida') return false;
                 const vencimento = parseDateSafe(conta.data);
-                return vencimento && vencimento.getUTCMonth() === date.getMonth() &&
-                       vencimento.getUTCFullYear() === date.getFullYear();
+                return vencimento && vencimento.getMonth() === date.getMonth() &&
+                       vencimento.getFullYear() === date.getFullYear();
               })
-              .reduce((sum, conta) => sum + getValorConsiderado(conta, todayStr), 0);
+              .reduce((sum, conta) => sum + (Number(conta?.valor) || 0), 0);
             
-            let monthReceber = lancamentos
+            let monthReceber = lancamentosEmAberto
               .filter(conta => {
                 if (normalizeTipo(conta.tipo) !== 'entrada') return false;
                 const vencimento = parseDateSafe(conta.data);
-                return vencimento && vencimento.getUTCMonth() === date.getMonth() &&
-                       vencimento.getUTCFullYear() === date.getFullYear();
+                return vencimento && vencimento.getMonth() === date.getMonth() &&
+                       vencimento.getFullYear() === date.getFullYear();
               })
-              .reduce((sum, conta) => sum + getValorConsiderado(conta, todayStr), 0);
+              .reduce((sum, conta) => sum + (Number(conta?.valor) || 0), 0);
 
             if (i === 0) {
               monthReceber += cashValue + overdueReceber;
@@ -173,40 +193,38 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
       const entradas = data.lancamentos.filter(c => normalizeTipo(c.tipo) === 'entrada');
       const saidas = data.lancamentos.filter(c => normalizeTipo(c.tipo) === 'saida');
       const getStatus = (conta) => getLancamentoStatus(conta, hojeStr);
+      const entradasEmAberto = entradas.filter((c) => getStatus(c) !== STATUS.PAGO);
+      const saidasEmAberto = saidas.filter((c) => getStatus(c) !== STATUS.PAGO);
 
-      const totalReceber = entradas.reduce((sum, c) => sum + getValorConsiderado(c, hojeStr), 0);
-      const receberAberto = entradas
+      const getValorBase = (lancamento) => Number(lancamento?.valor) || 0;
+
+      const totalReceber = entradasEmAberto.reduce((sum, c) => sum + getValorBase(c), 0);
+      const receberAberto = entradasEmAberto
         .filter(c => getStatus(c) === STATUS.A_VENCER)
-        .reduce((sum, c) => sum + getValorConsiderado(c, hojeStr), 0);
-      const receberAtrasado = entradas
+        .reduce((sum, c) => sum + getValorBase(c), 0);
+      const receberAtrasado = entradasEmAberto
         .filter(c => getStatus(c) === STATUS.ATRASADO)
-        .reduce((sum, c) => sum + getValorConsiderado(c, hojeStr), 0);
-      const recebido = entradas
-        .filter(c => getStatus(c) === STATUS.PAGO)
-        .reduce((sum, c) => sum + getValorConsiderado(c, hojeStr), 0);
+        .reduce((sum, c) => sum + getValorBase(c), 0);
       const emCashApplied = emCashValue > 0;
       const totalReceberComCash = totalReceber + (emCashApplied ? emCashValue : 0);
       const totalReceberPendente = receberAberto + receberAtrasado;
 
-      const totalPagar = saidas.reduce((sum, c) => sum + getValorConsiderado(c, hojeStr), 0);
-      const pagarAberto = saidas
+      const totalPagar = saidasEmAberto.reduce((sum, c) => sum + getValorBase(c), 0);
+      const pagarAberto = saidasEmAberto
         .filter(c => getStatus(c) === STATUS.A_VENCER)
-        .reduce((sum, c) => sum + getValorConsiderado(c, hojeStr), 0);
-      const pagarAtrasado = saidas
+        .reduce((sum, c) => sum + getValorBase(c), 0);
+      const pagarAtrasado = saidasEmAberto
         .filter(c => getStatus(c) === STATUS.ATRASADO)
-        .reduce((sum, c) => sum + getValorConsiderado(c, hojeStr), 0);
-      const pago = saidas
-        .filter(c => getStatus(c) === STATUS.PAGO)
-        .reduce((sum, c) => sum + getValorConsiderado(c, hojeStr), 0);
+        .reduce((sum, c) => sum + getValorBase(c), 0);
       const totalPagarPendente = pagarAberto + pagarAtrasado;
       
       const resultadoOperacional = totalReceber - totalPagar;
-      const resultadoOperacionalComCash = resultadoOperacional + (emCashApplied ? emCashValue : 0);
+      const resultadoOperacionalComCash = (emCashApplied ? (totalReceber + emCashValue) : totalReceber) - totalPagar;
     
       const summaryCards = [
         {
           title: 'Total a Receber',
-          value: formatCurrency(totalReceberComCash),
+          value: formatCurrency(totalReceber),
           icon: TrendingUp,
           color: 'from-green-500 to-green-600',
           bgColor: 'bg-green-500/10',
@@ -214,8 +232,6 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
             { label: 'Em Aberto', value: formatCurrency(receberAberto) },
             { label: 'Em Atraso', value: formatCurrency(receberAtrasado), color: 'text-red-400' },
             { label: 'Pendentes', value: formatCurrency(totalReceberPendente) },
-            { label: 'Recebido', value: formatCurrency(recebido), color: 'text-green-400' },
-            ...(emCashApplied ? [{ label: 'Saldo em Cash', value: formatCurrency(emCashValue), color: 'text-green-300' }] : []),
           ]
         },
         {
@@ -226,8 +242,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
           bgColor: 'bg-red-500/10',
           details: [
             { label: 'Em Aberto', value: formatCurrency(pagarAberto) },
-            { label: 'Vencido', value: formatCurrency(pagarAtrasado), color: 'text-red-400' },
-            { label: 'Pago', value: formatCurrency(pago), color: 'text-green-400' }
+            { label: 'Vencido', value: formatCurrency(pagarAtrasado), color: 'text-red-400' }
           ]
         },
         {

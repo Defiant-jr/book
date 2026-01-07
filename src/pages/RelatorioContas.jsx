@@ -37,25 +37,37 @@ import { getLancamentoStatus, normalizeTipo, STATUS, STATUS_LABELS, STATUS_OPTIO
             setLoading(true);
             setReportGenerated(false);
 
-            let query = supabase.from('lancamentos').select('*', { count: 'exact' });
-            if (filters.unidade !== 'todas') {
-                query = query.eq('unidade', filters.unidade);
-            }
-            if (filters.dataInicio) {
-                query = query.gte('data', filters.dataInicio);
-            }
-            if (filters.dataFim) {
-                query = query.lte('data', filters.dataFim);
-            }
-
-            const { data, error } = await query.range(0, 9999);
-            setLoading(false);
-            if (error) {
-                toast({ title: "Erro ao carregar dados", description: error.message, variant: "destructive" });
-            } else {
-                setContas(data || []);
+            try {
+                const pageSize = 1000;
+                let from = 0;
+                const allContas = [];
+                while (true) {
+                    let query = supabase.from('lancamentos').select('*');
+                    if (filters.unidade !== 'todas') {
+                        query = query.eq('unidade', filters.unidade);
+                    }
+                    if (filters.dataInicio) {
+                        query = query.gte('data', filters.dataInicio);
+                    }
+                    if (filters.dataFim) {
+                        query = query.lte('data', filters.dataFim);
+                    }
+                    const { data, error } = await query.range(from, from + pageSize - 1);
+                    if (error) {
+                        toast({ title: "Erro ao carregar dados", description: error.message, variant: "destructive" });
+                        return;
+                    }
+                    if (data?.length) {
+                        allContas.push(...data);
+                    }
+                    if (!data || data.length < pageSize) break;
+                    from += pageSize;
+                }
+                setContas(allContas);
                 setReportGenerated(true);
                 setGeneratedAt(new Date());
+            } finally {
+                setLoading(false);
             }
         };
 
@@ -65,11 +77,13 @@ import { getLancamentoStatus, normalizeTipo, STATUS, STATUS_LABELS, STATUS_OPTIO
             const tipoFiltro = normalizeTipo(filters.tipo);
             const unidadeFiltro = (filters.unidade || '').trim();
             const filtered = contas.filter((c) => {
+                const statusAtual = getStatus(c);
                 const tipoOk = tipoFiltro === 'todos' || normalizeTipo(c.tipo) === tipoFiltro;
-                const statusOk = filters.status === 'todos' || getStatus(c) === filters.status;
+                const statusOk = filters.status === 'todos' || statusAtual === filters.status;
                 const unidadeOk = filters.unidade === 'todas' || (c.unidade || '').trim() === unidadeFiltro;
                 const dataInicioOk = !filters.dataInicio || new Date(c.data + 'T00:00:00') >= new Date(filters.dataInicio + 'T00:00:00');
                 const dataFimOk = !filters.dataFim || new Date(c.data + 'T00:00:00') <= new Date(filters.dataFim + 'T00:00:00');
+                if (tipoFiltro === 'entrada' && statusAtual === STATUS.PAGO) return false;
                 return tipoOk && statusOk && unidadeOk && dataInicioOk && dataFimOk;
             });
 
@@ -96,9 +110,16 @@ import { getLancamentoStatus, normalizeTipo, STATUS, STATUS_LABELS, STATUS_OPTIO
         };
 
         const formatCurrency = (value) => (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        const valorConta = (conta) => getValorConsiderado(conta, todayStr);
+        const valorConta = (conta) => Number(conta?.valor) || 0;
         const formatDate = (dateString) => dateString ? format(new Date(dateString + 'T00:00:00'), 'dd/MM/yyyy') : '-';
         const formatStatusDisplay = (status) => STATUS_LABELS[status] || status;
+        const totalGeral = useMemo(() => {
+            const tipoFiltro = normalizeTipo(filters.tipo);
+            if (tipoFiltro === 'entrada' || tipoFiltro === 'saida') {
+                return filteredAndSortedContas.reduce((acc, c) => acc + valorConta(c), 0);
+            }
+            return filteredAndSortedContas.reduce((acc, c) => acc + (normalizeTipo(c.tipo) === 'entrada' ? valorConta(c) : -valorConta(c)), 0);
+        }, [filteredAndSortedContas, filters.tipo]);
 
         const handleDownloadPdf = () => {
             if (!reportGenerated) {
@@ -253,7 +274,7 @@ import { getLancamentoStatus, normalizeTipo, STATUS, STATUS_LABELS, STATUS_OPTIO
                                         <tfoot>
                                             <tr className="font-semibold text-white bg-white/5">
                                                 <td colSpan={6} className="px-6 py-3 text-right">Total</td>
-                                                <td className="px-6 py-3 text-right font-mono">{formatCurrency(filteredAndSortedContas.reduce((acc, c) => acc + (c.tipo === 'Entrada' ? valorConta(c) : -valorConta(c)), 0))}</td>
+                                                <td className="px-6 py-3 text-right font-mono">{formatCurrency(totalGeral)}</td>
                                             </tr>
                                         </tfoot>
                                     </table>

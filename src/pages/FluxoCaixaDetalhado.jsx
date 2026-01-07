@@ -13,6 +13,8 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { cn } from '@/lib/utils';
 import { getValorConsiderado } from '@/lib/lancamentoValor';
+import { getLancamentoStatus, normalizeTipo, STATUS } from '@/lib/lancamentoStatus';
+import { useEmCashValue } from '@/hooks/useEmCashValue';
 
     const FluxoCaixaDetalhado = () => {
       const navigate = useNavigate();
@@ -25,19 +27,37 @@ import { getValorConsiderado } from '@/lib/lancamentoValor';
       const [expandedRows, setExpandedRows] = useState({});
       const [reportGenerated, setReportGenerated] = useState(false);
       const [generatedAt, setGeneratedAt] = useState(null);
+      const [emCashValue] = useEmCashValue();
 
       const handleGenerateReport = async () => {
         setLoading(true);
         setReportGenerated(false);
-        const { data, error } = await supabase.from('lancamentos').select('*');
-        if (error) {
-          toast({ title: "Erro ao buscar dados", description: error.message, variant: "destructive"});
-        } else {
-          setAllData(data || []);
+        try {
+          const pageSize = 1000;
+          let from = 0;
+          const allLancamentos = [];
+          while (true) {
+            const to = from + pageSize - 1;
+            const { data: page, error } = await supabase
+              .from('lancamentos')
+              .select('*')
+              .range(from, to);
+            if (error) {
+              toast({ title: "Erro ao buscar dados", description: error.message, variant: "destructive"});
+              return;
+            }
+            if (page?.length) {
+              allLancamentos.push(...page);
+            }
+            if (!page || page.length < pageSize) break;
+            from += pageSize;
+          }
+          setAllData(allLancamentos);
           setReportGenerated(true);
           setGeneratedAt(new Date());
+        } finally {
+          setLoading(false);
         }
-        setLoading(false);
       };
 
       const handlePrevMonth = () => {
@@ -60,11 +80,20 @@ import { getValorConsiderado } from '@/lib/lancamentoValor';
       const todayStr = new Date().toISOString().split('T')[0];
 
       const monthData = useMemo(() => {
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth();
         const firstDayOfMonth = startOfMonth(currentDate);
         const lastDayOfMonth = endOfMonth(currentDate);
         const daysInMonth = eachDayOfInterval({ start: firstDayOfMonth, end: lastDayOfMonth });
+        const startStr = format(firstDayOfMonth, 'yyyy-MM-dd');
+        const endStr = format(lastDayOfMonth, 'yyyy-MM-dd');
+        const toDateStr = (value) => {
+          if (!value) return '';
+          if (typeof value === 'string') return value.slice(0, 10);
+          try {
+            return format(value, 'yyyy-MM-dd');
+          } catch {
+            return '';
+          }
+        };
 
         let fluxo = daysInMonth.map(day => ({
           dia: format(day, 'dd'),
@@ -73,19 +102,28 @@ import { getValorConsiderado } from '@/lib/lancamentoValor';
           details: { receber: [], pagar: [] }
         }));
 
-        const filteredByUnit = unidadeFiltro === 'todas' 
-          ? allData 
-          : allData.filter(item => item.unidade === unidadeFiltro);
+        const normalizedData = allData
+          .map((item) => ({
+            ...item,
+            dataStr: toDateStr(item.data),
+            tipoNorm: normalizeTipo(item.tipo),
+            statusNorm: getLancamentoStatus(item, todayStr),
+          }))
+          .filter((item) =>
+            item.dataStr &&
+            (item.tipoNorm === 'entrada' || item.tipoNorm === 'saida') &&
+            item.statusNorm !== STATUS.PAGO
+          );
 
-        const atrasadosLancamentos = filteredByUnit.filter(item => {
-          if (item.status === 'Pago') return false;
-          const vencimento = new Date(item.data + 'T00:00:00');
-          return vencimento < firstDayOfMonth;
-        });
+        const filteredByUnit = unidadeFiltro === 'todas'
+          ? normalizedData
+          : normalizedData.filter(item => item.unidade === unidadeFiltro);
 
-        const atrasadosReceber = atrasadosLancamentos.filter(i => i.tipo === 'Entrada');
-        const atrasadosPagar = atrasadosLancamentos.filter(i => i.tipo === 'Saida');
-        const totalReceberAtrasado = atrasadosReceber.reduce((acc, i) => acc + getValorConsiderado(i, todayStr), 0);
+        const atrasadosLancamentos = filteredByUnit.filter(item => item.dataStr < startStr);
+
+        const atrasadosReceber = atrasadosLancamentos.filter(i => i.tipoNorm === 'entrada');
+        const atrasadosPagar = atrasadosLancamentos.filter(i => i.tipoNorm === 'saida');
+        const totalReceberAtrasado = atrasadosReceber.reduce((acc, i) => acc + getValorConsiderado(i, todayStr), 0) + (Number(emCashValue) || 0);
         const receberDetails = [...atrasadosReceber];
 
         const dia00 = {
@@ -98,17 +136,14 @@ import { getValorConsiderado } from '@/lib/lancamentoValor';
           }
         };
 
-        const monthDataFiltered = filteredByUnit.filter(item => {
-          if (item.status === 'Pago') return false;
-          const vencimento = new Date(item.data + 'T00:00:00');
-          return vencimento.getUTCFullYear() === year && vencimento.getUTCMonth() === month;
-        });
+        const monthDataFiltered = filteredByUnit.filter(
+          item => item.dataStr >= startStr && item.dataStr <= endStr
+        );
 
         monthDataFiltered.forEach(item => {
-          const vencimento = new Date(item.data + 'T00:00:00');
-          const dayIndex = vencimento.getUTCDate() - 1;
+          const dayIndex = Number(item.dataStr.slice(8, 10)) - 1;
           if (fluxo[dayIndex]) {
-            if (item.tipo === 'Entrada') {
+            if (item.tipoNorm === 'entrada') {
               fluxo[dayIndex].receber += getValorConsiderado(item, todayStr);
               fluxo[dayIndex].details.receber.push(item);
             } else {
