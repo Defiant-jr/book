@@ -236,7 +236,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
         .reduce((sum, c) => sum + getValorBase(c), 0) + receberAtrasadoAnterior;
       const emCashApplied = emCashValue > 0;
       const totalReceberComCash = totalReceber + (emCashApplied ? emCashValue : 0);
-      const totalReceberPendente = receberAberto + receberAtrasado;
+      const totalReceberPendente = receberAberto + receberAtrasado + (emCashApplied ? emCashValue : 0);
 
       const totalPagar = saidasPeriodo.reduce((sum, c) => sum + getValorBase(c), 0);
       const pagarAberto = saidasPeriodo
@@ -247,8 +247,8 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
         .reduce((sum, c) => sum + getValorBase(c), 0) + pagarAtrasadoAnterior;
       const totalPagarPendente = pagarAberto + pagarAtrasado;
 
-      const resultadoOperacional = totalReceber - totalPagar;
-      const resultadoOperacionalComCash = (emCashApplied ? (totalReceber + emCashValue) : totalReceber) - totalPagar;
+      const resultadoOperacional = totalReceberPendente - totalPagar;
+      const resultadoOperacionalComCash = resultadoOperacional;
     
       const summaryCards = [
         {
@@ -277,13 +277,13 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
         },
         {
           title: 'Resultado Operacional (Previsto)',
-          value: formatCurrency(resultadoOperacionalComCash),
+          value: formatCurrency(resultadoOperacional),
           icon: DollarSign,
-          color: resultadoOperacionalComCash >= 0 ? 'from-blue-500 to-blue-600' : 'from-orange-500 to-orange-600',
-          bgColor: resultadoOperacionalComCash >= 0 ? 'bg-blue-500/10' : 'bg-orange-500/10',
+          color: resultadoOperacional >= 0 ? 'from-blue-500 to-blue-600' : 'from-orange-500 to-orange-600',
+          bgColor: resultadoOperacional >= 0 ? 'bg-blue-500/10' : 'bg-orange-500/10',
           showSpanSelector: true,
           details: emCashApplied ? [
-            { label: 'Previsto sem Cash', value: formatCurrency(resultadoOperacional), color: 'text-gray-300' },
+            { label: 'Previsto com Cash', value: formatCurrency(resultadoOperacionalComCash), color: 'text-gray-300' },
             { label: 'Saldo em Cash', value: formatCurrency(emCashValue), color: 'text-green-300' },
           ] : undefined
         }
@@ -440,9 +440,9 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
                               <SelectValue placeholder="Meses" />
                             </SelectTrigger>
                             <SelectContent>
-                              {[3, 6, 9, 12].map((option) => (
+                              {Array.from({ length: 12 }, (_, index) => index + 1).map((option) => (
                                 <SelectItem key={option} value={String(option)}>
-                                  {option} {option === 1 ? 'mês' : 'meses'}
+                                  {option} {option === 1 ? 'mes' : 'meses'}
                                 </SelectItem>
                               ))}
                             </SelectContent>
