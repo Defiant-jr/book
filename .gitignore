@@ -1,10 +1,8 @@
 # Dependencies
 node_modules/
-node_modules
 
 # Build output
 dist/
-dist
 
 # Logs
 logs/
@@ -24,4 +22,3 @@ logs/
 # Editor directories
 .idea/
 .vscode/
-.vercel

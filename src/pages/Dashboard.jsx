@@ -65,6 +65,22 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
         }
       };
     
+      const parseDateSafe = (value) => {
+        if (!value) return null;
+        if (value instanceof Date) {
+          return Number.isNaN(value.getTime()) ? null : value;
+        }
+        const raw = String(value).trim();
+        if (!raw) return null;
+        const brPattern = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+        const matchBr = brPattern.exec(raw);
+        const normalized = matchBr ? `${matchBr[3]}-${matchBr[2]}-${matchBr[1]}` : raw;
+        const parsed = normalized.includes('T')
+          ? new Date(normalized)
+          : new Date(`${normalized}T00:00:00`);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+      };
+
       const generateChartData = (financialData, span = monthsSpan, cashValue = 0) => {
         try {
           const lancamentos = Array.isArray(financialData?.lancamentos) ? financialData.lancamentos : [];
@@ -75,21 +91,6 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
           const currentDate = new Date();
           const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
 
-          const parseDateSafe = (value) => {
-            if (!value) return null;
-            if (value instanceof Date) {
-              return Number.isNaN(value.getTime()) ? null : value;
-            }
-            const raw = String(value).trim();
-            if (!raw) return null;
-            const brPattern = /^(\d{2})\/(\d{2})\/(\d{4})$/;
-            const matchBr = brPattern.exec(raw);
-            const normalized = matchBr ? `${matchBr[3]}-${matchBr[2]}-${matchBr[1]}` : raw;
-            const parsed = normalized.includes('T')
-              ? new Date(normalized)
-              : new Date(`${normalized}T00:00:00`);
-            return Number.isNaN(parsed.getTime()) ? null : parsed;
-          };
           const sumValores = (lista) => lista.reduce((acc, conta) => acc + (Number(conta?.valor) || 0), 0);
 
           const overdueReceber = sumValores(
@@ -189,6 +190,19 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
       const hoje = new Date();
       hoje.setHours(0, 0, 0, 0);
       const hojeStr = hoje.toISOString().split('T')[0];
+      const getPeriodRange = (span) => {
+        const start = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+        const end = new Date(hoje.getFullYear(), hoje.getMonth() + span, 0);
+        end.setHours(23, 59, 59, 999);
+        return { start, end };
+      };
+
+      const { start: periodStart, end: periodEnd } = getPeriodRange(monthsSpan);
+      const isInPeriod = (conta) => {
+        const vencimento = parseDateSafe(conta.data);
+        return vencimento && vencimento >= periodStart && vencimento <= periodEnd;
+      };
+
     
       const entradas = data.lancamentos.filter(c => normalizeTipo(c.tipo) === 'entrada');
       const saidas = data.lancamentos.filter(c => normalizeTipo(c.tipo) === 'saida');
@@ -196,35 +210,50 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
       const entradasEmAberto = entradas.filter((c) => getStatus(c) !== STATUS.PAGO);
       const saidasEmAberto = saidas.filter((c) => getStatus(c) !== STATUS.PAGO);
 
-      const getValorBase = (lancamento) => Number(lancamento?.valor) || 0;
+      const entradasPeriodo = entradasEmAberto.filter(isInPeriod);
+      const saidasPeriodo = saidasEmAberto.filter(isInPeriod);
 
-      const totalReceber = entradasEmAberto.reduce((sum, c) => sum + getValorBase(c), 0);
-      const receberAberto = entradasEmAberto
+      const getValorBase = (lancamento) => Number(lancamento?.valor) || 0;
+      const getOverdueBeforeCurrentMonth = (conta) => {
+        if (getStatus(conta) !== STATUS.ATRASADO) return false;
+        const vencimento = parseDateSafe(conta.data);
+        return vencimento && vencimento < periodStart;
+      };
+
+      const receberAtrasadoAnterior = entradasEmAberto
+        .filter(getOverdueBeforeCurrentMonth)
+        .reduce((sum, c) => sum + getValorBase(c), 0);
+      const pagarAtrasadoAnterior = saidasEmAberto
+        .filter(getOverdueBeforeCurrentMonth)
+        .reduce((sum, c) => sum + getValorBase(c), 0);
+
+      const totalReceber = entradasPeriodo.reduce((sum, c) => sum + getValorBase(c), 0);
+      const receberAberto = entradasPeriodo
         .filter(c => getStatus(c) === STATUS.A_VENCER)
         .reduce((sum, c) => sum + getValorBase(c), 0);
-      const receberAtrasado = entradasEmAberto
+      const receberAtrasado = entradasPeriodo
         .filter(c => getStatus(c) === STATUS.ATRASADO)
-        .reduce((sum, c) => sum + getValorBase(c), 0);
+        .reduce((sum, c) => sum + getValorBase(c), 0) + receberAtrasadoAnterior;
       const emCashApplied = emCashValue > 0;
       const totalReceberComCash = totalReceber + (emCashApplied ? emCashValue : 0);
       const totalReceberPendente = receberAberto + receberAtrasado;
 
-      const totalPagar = saidasEmAberto.reduce((sum, c) => sum + getValorBase(c), 0);
-      const pagarAberto = saidasEmAberto
+      const totalPagar = saidasPeriodo.reduce((sum, c) => sum + getValorBase(c), 0);
+      const pagarAberto = saidasPeriodo
         .filter(c => getStatus(c) === STATUS.A_VENCER)
         .reduce((sum, c) => sum + getValorBase(c), 0);
-      const pagarAtrasado = saidasEmAberto
+      const pagarAtrasado = saidasPeriodo
         .filter(c => getStatus(c) === STATUS.ATRASADO)
-        .reduce((sum, c) => sum + getValorBase(c), 0);
+        .reduce((sum, c) => sum + getValorBase(c), 0) + pagarAtrasadoAnterior;
       const totalPagarPendente = pagarAberto + pagarAtrasado;
-      
+
       const resultadoOperacional = totalReceber - totalPagar;
       const resultadoOperacionalComCash = (emCashApplied ? (totalReceber + emCashValue) : totalReceber) - totalPagar;
     
       const summaryCards = [
         {
           title: 'Total a Receber',
-          value: formatCurrency(totalReceber),
+          value: formatCurrency(totalReceberPendente),
           icon: TrendingUp,
           color: 'from-green-500 to-green-600',
           bgColor: 'bg-green-500/10',
@@ -242,7 +271,8 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
           bgColor: 'bg-red-500/10',
           details: [
             { label: 'Em Aberto', value: formatCurrency(pagarAberto) },
-            { label: 'Vencido', value: formatCurrency(pagarAtrasado), color: 'text-red-400' }
+            { label: 'Vencido', value: formatCurrency(pagarAtrasado), color: 'text-red-400' },
+            { label: 'Pendentes', value: formatCurrency(totalPagarPendente) },
           ]
         },
         {

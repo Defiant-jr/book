@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
-import { endOfMonth, format } from 'date-fns';
+import { endOfMonth, endOfWeek, format } from 'date-fns';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { useEmCashValue } from '@/hooks/useEmCashValue';
@@ -21,6 +21,12 @@ const unitOptions = [
   { value: 'casa', label: 'Casa' },
 ];
 
+const periodOptions = [
+  { value: 'mensal', label: 'Mensal' },
+  { value: 'semanal', label: 'Semanal' },
+  { value: 'diario', label: 'Diário' },
+];
+
 const unitFilterMap = {
   angra: 'Angra dos Reis',
   mangaratiba: 'Mangaratiba',
@@ -31,6 +37,7 @@ const RelatorioFechamento = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [selectedUnit, setSelectedUnit] = useState('todas');
+  const [selectedPeriod, setSelectedPeriod] = useState('mensal');
   const [entries, setEntries] = useState([]);
   const [exits, setExits] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -52,6 +59,31 @@ const RelatorioFechamento = () => {
   };
 
   const unitLabel = unitOptions.find((option) => option.value === selectedUnit)?.label ?? 'Todas';
+  const periodLabel = periodOptions.find((option) => option.value === selectedPeriod)?.label ?? 'Mensal';
+
+  const getPeriodEndDateIso = () => {
+    if (selectedPeriod === 'semanal') {
+      return format(endOfWeek(new Date(), { weekStartsOn: 0 }), 'yyyy-MM-dd');
+    }
+
+    if (selectedPeriod === 'diario') {
+      return format(new Date(), 'yyyy-MM-dd');
+    }
+
+    return format(endOfMonth(new Date()), 'yyyy-MM-dd');
+  };
+
+  const getPeriodDescription = () => {
+    if (selectedPeriod === 'semanal') {
+      return 'Periodo considerado ate o sabado da semana corrente.';
+    }
+
+    if (selectedPeriod === 'diario') {
+      return 'Periodo considerado referente ao dia corrente.';
+    }
+
+    return 'Periodo considerado ate o ultimo dia do mes corrente.';
+  };
 
   const totalEntries = useMemo(
     () => entries.reduce((sum, item) => sum + valorLancamento(item), 0),
@@ -74,21 +106,20 @@ const RelatorioFechamento = () => {
     setReportGenerated(false);
 
     try {
-      const endOfCurrentMonth = endOfMonth(new Date());
-      const endOfCurrentMonthIso = format(endOfCurrentMonth, 'yyyy-MM-dd');
+      const endDateIso = getPeriodEndDateIso();
 
       let entriesQuery = supabase
         .from('lancamentos')
         .select('id, cliente_fornecedor, contato, aluno, data, unidade, valor, valor_aberto, desc_pontual, tipo, status')
         .eq('tipo', 'Entrada')
-        .lte('data', endOfCurrentMonthIso)
+        .lte('data', endDateIso)
         .or('status.is.null,status.neq.Pago');
 
       let exitsQuery = supabase
         .from('lancamentos')
         .select('id, cliente_fornecedor, contato, aluno, data, unidade, valor, valor_aberto, desc_pontual, tipo, status')
         .eq('tipo', 'Saida')
-        .lte('data', endOfCurrentMonthIso)
+        .lte('data', endDateIso)
         .or('status.is.null,status.neq.Pago');
 
       if (selectedUnit !== 'todas') {
@@ -162,6 +193,8 @@ const RelatorioFechamento = () => {
     doc.text(`Gerado em: ${generatedAt ? format(generatedAt, 'dd/MM/yyyy HH:mm') : '-'}`, marginLeft, cursorY);
     cursorY += 14;
     doc.text(`Unidade: ${unitLabel}`, marginLeft, cursorY);
+    cursorY += 14;
+    doc.text(`Periodo: ${periodLabel}`, marginLeft, cursorY);
 
     const buildTable = (title, items, options = {}) => {
       const { fontSize = 8, cellPadding = 3 } = options;
@@ -231,7 +264,7 @@ const RelatorioFechamento = () => {
         <title>Relatorio de Fechamento - SysFina</title>
         <meta
           name="description"
-          content="Relatorio mensal de fechamento com totais de entradas, saidas e saldo final."
+          content="Relatorio de fechamento com totais de entradas, saidas e saldo final."
         />
       </Helmet>
 
@@ -253,20 +286,37 @@ const RelatorioFechamento = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div className="w-full md:w-1/3">
-            <label className="block text-sm font-medium text-gray-300 mb-2">Unidade</label>
-            <Select value={selectedUnit} onValueChange={setSelectedUnit}>
-              <SelectTrigger className="bg-white/10 border-white/20 text-white">
-                <SelectValue placeholder="Selecione a unidade" />
-              </SelectTrigger>
-              <SelectContent>
-                {unitOptions.map(({ value, label }) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex w-full flex-col gap-4 md:flex-row md:gap-6">
+            <div className="w-full md:w-1/3">
+              <label className="block text-sm font-medium text-gray-300 mb-2">Unidade</label>
+              <Select value={selectedUnit} onValueChange={setSelectedUnit}>
+                <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                  <SelectValue placeholder="Selecione a unidade" />
+                </SelectTrigger>
+                <SelectContent>
+                  {unitOptions.map(({ value, label }) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-full md:w-1/3">
+              <label className="block text-sm font-medium text-gray-300 mb-2">Periodo</label>
+              <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+                <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                  <SelectValue placeholder="Selecione o periodo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {periodOptions.map(({ value, label }) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="flex flex-col sm:flex-row gap-3 md:justify-end">
             <Button
@@ -293,7 +343,7 @@ const RelatorioFechamento = () => {
         <CardContent className="space-y-8">
           {!reportGenerated && !loading && (
             <div className="text-center text-gray-300">
-              Escolha uma unidade e clique em <span className="text-white font-semibold">"Gerar Relatorio"</span> para visualizar os dados do mes corrente.
+              Escolha uma unidade e clique em <span className="text-white font-semibold">"Gerar Relatorio"</span> para visualizar os dados do periodo selecionado.
             </div>
           )}
 
@@ -308,11 +358,14 @@ const RelatorioFechamento = () => {
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-gray-300">
                 <div>
                   <h2 className="text-2xl font-semibold text-white">Resumo do Fechamento</h2>
-                  <p className="text-sm text-gray-400">Periodo considerado ate o ultimo dia do mes corrente.</p>
+                  <p className="text-sm text-gray-400">{getPeriodDescription()}</p>
                 </div>
                 <div className="text-sm">
                   <span className="font-medium text-white">Unidade: </span>
                   {unitLabel}
+                  <span className="ml-4">
+                    <span className="font-medium text-white/80">Periodo:</span> {periodLabel}
+                  </span>
                   {generatedAt && (
                     <span className="ml-4">
                       <span className="font-medium text-white/80">Gerado em:</span> {format(generatedAt, 'dd/MM/yyyy HH:mm')}
@@ -324,7 +377,7 @@ const RelatorioFechamento = () => {
               <section className="space-y-4">
                 <header>
                   <h3 className="text-xl font-semibold text-white">Entradas em aberto e a vencer</h3>
-                  <p className="text-sm text-gray-400">Lancamentos ate o ultimo dia do mes corrente, desconsiderando valores ja pagos.</p>
+                  <p className="text-sm text-gray-400">Lancamentos ate o periodo selecionado, desconsiderando valores ja pagos.</p>
                 </header>
                 {entries.length === 0 ? (
                   <div className="rounded-lg border border-dashed border-white/20 p-6 text-center text-gray-400">
@@ -369,7 +422,7 @@ const RelatorioFechamento = () => {
               <section className="space-y-4">
                 <header>
                   <h3 className="text-xl font-semibold text-white">Saidas em atraso e em aberto</h3>
-                  <p className="text-sm text-gray-400">Compras e despesas ate o ultimo dia do mes corrente ainda nao quitadas.</p>
+                  <p className="text-sm text-gray-400">Compras e despesas ate o periodo selecionado ainda nao quitadas.</p>
                 </header>
                 {exits.length === 0 ? (
                   <div className="rounded-lg border border-dashed border-white/20 p-6 text-center text-gray-400">

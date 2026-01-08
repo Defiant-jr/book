@@ -13,7 +13,10 @@ import { format as formatDateFns } from 'date-fns';
 import { getValorConsiderado } from '@/lib/lancamentoValor';
 import { getLancamentoStatus, STATUS, STATUS_LABELS, STATUS_COLORS, STATUS_OPTIONS } from '@/lib/lancamentoStatus';
     
-    const ContasPagar = () => {
+    
+const STATUS_ABERTO = 'em_aberto';
+const STATUS_ABERTO_LABEL = 'Em Aberto';
+const ContasPagar = () => {
       const navigate = useNavigate();
       const { toast } = useToast();
       const [contas, setContas] = useState([]);
@@ -49,7 +52,14 @@ import { getLancamentoStatus, STATUS, STATUS_LABELS, STATUS_COLORS, STATUS_OPTIO
           filtered = filtered.filter(c => c.cliente_fornecedor?.toLowerCase().includes(filters.fornecedor.toLowerCase()));
         }
         if (filters.status !== 'todos') {
-          filtered = filtered.filter(c => getStatus(c) === filters.status);
+          if (filters.status === STATUS_ABERTO) {
+            filtered = filtered.filter((c) => {
+              const status = getStatus(c);
+              return status === STATUS.A_VENCER || status === STATUS.ATRASADO;
+            });
+          } else {
+            filtered = filtered.filter(c => getStatus(c) === filters.status);
+          }
         }
         if (filters.unidade !== 'todas') {
           filtered = filtered.filter(c => c.unidade === filters.unidade);
@@ -144,6 +154,7 @@ import { getLancamentoStatus, STATUS, STATUS_LABELS, STATUS_COLORS, STATUS_OPTIO
                       <SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="todos">Todos</SelectItem>
+                        <SelectItem value={STATUS_ABERTO}>{STATUS_ABERTO_LABEL}</SelectItem>
                         {STATUS_OPTIONS.map((option) => (
                           <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                         ))}
@@ -216,3 +227,5 @@ import { getLancamentoStatus, STATUS, STATUS_LABELS, STATUS_COLORS, STATUS_OPTIO
     };
     
     export default ContasPagar;
+
+
