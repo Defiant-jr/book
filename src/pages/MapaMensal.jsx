@@ -277,7 +277,7 @@ const calendarCells = useMemo(() => {
   return (
     <>
       <Helmet>
-        <title>Mapa Mensal - SysFina</title>
+        <title>Mapa Mensal - BooK+</title>
         <meta
           name="description"
           content="Visualize o calendário mensal com despesas por dia e somatório de entradas."

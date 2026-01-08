@@ -336,7 +336,7 @@ const ImpressaoDoc = () => {
       className="space-y-8"
     >
       <Helmet>
-        <title>Impressão de DOC - SysFina</title>
+        <title>Impressão de DOC - BooK+</title>
         <meta name="description" content="Relatório completo dos lançamentos para impressão em DOC." />
       </Helmet>
 

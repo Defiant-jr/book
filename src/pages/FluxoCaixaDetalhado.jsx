@@ -212,7 +212,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
       return (
         <>
           <Helmet>
-            <title>Relatório de Fluxo de Caixa - SysFina</title>
+            <title>Relatório de Fluxo de Caixa - BooK+</title>
             <meta name="description" content="Gere e visualize o relatório de fluxo de caixa detalhado." />
           </Helmet>
           <motion.div

@@ -26,7 +26,9 @@ const ContasPagar = () => {
         status: 'todos',
         unidade: 'todas',
         dataInicio: '',
-        dataFim: ''
+        dataFim: '',
+        valorInicio: '',
+        valorFim: ''
       });
     
       useEffect(() => {
@@ -45,9 +47,14 @@ const ContasPagar = () => {
       };
     
       const getStatus = (conta) => getLancamentoStatus(conta);
-    
+
+      const formatCurrency = (value) => (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      const formatDate = (dateString) => new Date(dateString + 'T00:00:00').toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+      const todayStr = new Date().toISOString().split('T')[0];
+
       const filteredContas = useMemo(() => {
         let filtered = [...contas];
+        const toCents = (value) => Math.round((Number(value) || 0) * 100);
         if (filters.fornecedor) {
           filtered = filtered.filter(c => c.cliente_fornecedor?.toLowerCase().includes(filters.fornecedor.toLowerCase()));
         }
@@ -72,12 +79,24 @@ const ContasPagar = () => {
           const endDate = new Date(filters.dataFim + 'T00:00:00');
           filtered = filtered.filter(c => new Date(c.data + 'T00:00:00') <= endDate);
         }
+        if (filters.valorInicio || filters.valorFim) {
+          const hasInicio = filters.valorInicio !== '';
+          const hasFim = filters.valorFim !== '';
+          const inicioCents = hasInicio ? toCents(filters.valorInicio) : null;
+          const fimCents = hasFim ? toCents(filters.valorFim) : null;
+          filtered = filtered.filter((conta) => {
+            const contaCents = toCents(getValorConsiderado(conta, todayStr));
+            if (hasInicio && hasFim) {
+              return contaCents >= inicioCents && contaCents <= fimCents;
+            }
+            if (hasInicio) {
+              return contaCents === inicioCents;
+            }
+            return contaCents <= fimCents;
+          });
+        }
         return filtered.sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
       }, [contas, filters]);
-    
-      const formatCurrency = (value) => (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-      const formatDate = (dateString) => new Date(dateString + 'T00:00:00').toLocaleDateString('pt-BR', { timeZone: 'UTC' });
-      const todayStr = new Date().toISOString().split('T')[0];
     
       const getStatusColor = (status) => STATUS_COLORS[status] || 'bg-gray-500/20 text-gray-400 border-gray-500/30';
       const getStatusLabel = (status) => STATUS_LABELS[status] || status;
@@ -122,7 +141,7 @@ const ContasPagar = () => {
       return (
         <div className="space-y-8">
           <Helmet>
-            <title>Contas a Pagar - SysFina</title>
+            <title>Contas a Pagar - BooK+</title>
             <meta name="description" content="Gerencie suas contas a pagar com filtros e totalizadores" />
           </Helmet>
     
@@ -146,7 +165,7 @@ const ContasPagar = () => {
             <Card className="glass-card">
               <CardHeader><CardTitle className="text-white flex items-center gap-2"><Filter className="w-5 h-5" />Filtros</CardTitle></CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
                   <div><label className="text-sm text-gray-300 mb-2 block">Fornecedor</label><Input placeholder="Buscar fornecedor..." value={filters.fornecedor} onChange={(e) => setFilters({ ...filters, fornecedor: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
                   <div>
                     <label className="text-sm text-gray-300 mb-2 block">Status</label>
@@ -164,6 +183,8 @@ const ContasPagar = () => {
                   <div><label className="text-sm text-gray-300 mb-2 block">Unidade</label><Select value={filters.unidade} onValueChange={(value) => setFilters({ ...filters, unidade: value })}><SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="todas">Todas</SelectItem><SelectItem value="CNA Angra dos Reis">CNA Angra dos Reis</SelectItem><SelectItem value="CNA Mangaratiba">CNA Mangaratiba</SelectItem><SelectItem value="Casa">Casa</SelectItem></SelectContent></Select></div>
                   <div><label className="text-sm text-gray-300 mb-2 block">Data Início</label><Input type="date" value={filters.dataInicio} onChange={(e) => setFilters({ ...filters, dataInicio: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
                   <div><label className="text-sm text-gray-300 mb-2 block">Data Fim</label><Input type="date" value={filters.dataFim} onChange={(e) => setFilters({ ...filters, dataFim: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
+                  <div><label className="text-sm text-gray-300 mb-2 block">Valor Inicial</label><Input type="number" min="0" step="0.01" placeholder="0,00" value={filters.valorInicio} onChange={(e) => setFilters({ ...filters, valorInicio: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
+                  <div><label className="text-sm text-gray-300 mb-2 block">Valor Final</label><Input type="number" min="0" step="0.01" placeholder="0,00" value={filters.valorFim} onChange={(e) => setFilters({ ...filters, valorFim: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
                 </div>
               </CardContent>
             </Card>

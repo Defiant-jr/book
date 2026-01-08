@@ -81,7 +81,7 @@ const Integracao = () => {
       className="space-y-8"
     >
       <Helmet>
-        <title>Integração - SysFina</title>
+        <title>Integração - BooK+</title>
         <meta name="description" content="Central de integrações com serviços externos." />
       </Helmet>
 

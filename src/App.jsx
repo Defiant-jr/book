@@ -44,7 +44,7 @@ function App() {
 		<Router>
 			<div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900">
 				<Helmet>
-					<title>SysFina v1.0.0 - Dashboard Financeiro</title>
+					<title>BooK+ v1.0.0 - Dashboard Financeiro</title>
 					<meta
 						name="description"
 						content="Dashboard moderno para controle de contas a pagar e receber com integração ao Google Sheets"

@@ -19,7 +19,7 @@ const Administrativo = () => {
   return (
     <div className="space-y-8">
       <Helmet>
-        <title>Administrativo - SysFina</title>
+        <title>Administrativo - BooK+</title>
         <meta name="description" content="Módulo administrativo" />
       </Helmet>
 

@@ -303,7 +303,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
       return (
         <div className="space-y-8">
           <Helmet>
-            <title>Área Financeira - SysFina</title>
+            <title>Área Financeira - BooK+</title>
             <meta name="description" content="Área financeira com visão geral das finanças" />
           </Helmet>
     

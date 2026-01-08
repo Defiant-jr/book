@@ -56,12 +56,19 @@ const AreaSelection = () => {
       className="space-y-10"
     >
       <Helmet>
-        <title>Selecione uma área - SysFina</title>
+        <title>Selecione uma área - BooK+</title>
         <meta name="description" content="Escolha o módulo que deseja acessar." />
       </Helmet>
 
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div className="flex flex-col gap-2">
+          <div className="flex justify-center md:justify-start">
+            <img
+              src="/brand/book-plus-logo.png"
+              alt="BooK+"
+              className="w-52 max-w-full opacity-80 mix-blend-screen select-none pointer-events-none"
+            />
+          </div>
           <p className="text-sm text-gray-400">Bem-vindo{user?.email ? `, ${user.email}` : ''}</p>
           <h1 className="text-3xl font-bold gradient-text">Escolha uma área para continuar</h1>
           <p className="text-gray-300">

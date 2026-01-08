@@ -83,7 +83,7 @@ import { BarChart3, PieChart, TrendingUp, ArrowLeft, FileClock, Printer, Calenda
                 className="space-y-8"
             >
                 <Helmet>
-                    <title>Central de Relatórios - SysFina</title>
+                    <title>Central de Relatórios - BooK+</title>
                     <meta name="description" content="Gere relatórios financeiros detalhados." />
                 </Helmet>
     

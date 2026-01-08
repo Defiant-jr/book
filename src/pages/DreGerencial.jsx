@@ -117,7 +117,7 @@ import { getValorConsiderado } from '@/lib/lancamentoValor';
 
         return (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-                <Helmet><title>DRE Gerencial - SysFina</title></Helmet>
+                <Helmet><title>DRE Gerencial - BooK+</title></Helmet>
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => navigate('/relatorios')}><ArrowLeft className="h-5 w-5" /><span className="sr-only">Voltar</span></Button>

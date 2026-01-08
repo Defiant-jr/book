@@ -13,7 +13,7 @@ const AdministrativoRelatorios = () => {
   return (
     <div className="space-y-8">
       <Helmet>
-        <title>Relatórios Administrativos - SysFina</title>
+        <title>Relatórios Administrativos - BooK+</title>
         <meta name="description" content="Área reservada para relatórios administrativos." />
       </Helmet>
 

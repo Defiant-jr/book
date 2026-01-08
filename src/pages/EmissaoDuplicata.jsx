@@ -233,7 +233,7 @@ const EmissaoDuplicata = () => {
       className="space-y-8"
     >
       <Helmet>
-        <title>Emissão de Duplicata - SysFina</title>
+        <title>Emissão de Duplicata - BooK+</title>
         <meta name="description" content="Emita duplicatas a partir das contas a receber." />
       </Helmet>
 

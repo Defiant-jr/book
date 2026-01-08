@@ -13,6 +13,9 @@ import { format as formatDateFns } from 'date-fns';
 import { getValorConsiderado } from '@/lib/lancamentoValor';
 import { getLancamentoStatus, STATUS, STATUS_LABELS, STATUS_COLORS, STATUS_OPTIONS } from '@/lib/lancamentoStatus';
 
+const STATUS_ABERTO = 'em_aberto';
+const STATUS_ABERTO_LABEL = 'Em Aberto';
+
     const ContasReceber = () => {
       const navigate = useNavigate();
       const { toast } = useToast();
@@ -23,7 +26,9 @@ import { getLancamentoStatus, STATUS, STATUS_LABELS, STATUS_COLORS, STATUS_OPTIO
         status: 'todos',
         unidade: 'todas',
         dataInicio: '',
-        dataFim: ''
+        dataFim: '',
+        valorInicio: '',
+        valorFim: ''
       });
     
       useEffect(() => {
@@ -60,16 +65,29 @@ import { getLancamentoStatus, STATUS, STATUS_LABELS, STATUS_COLORS, STATUS_OPTIO
       };
     
       const getStatus = (conta) => getLancamentoStatus(conta);
+
+      const formatCurrency = (value) => (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      const formatDate = (dateString) => new Date(dateString + 'T00:00:00').toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+      const todayStr = new Date().toISOString().split('T')[0];
+      const valorConsiderado = (conta) => getValorConsiderado(conta, todayStr);
     
       const filteredContas = useMemo(() => {
-        let filtered = [...contas].filter((conta) => getStatus(conta) !== STATUS.PAGO);
+        let filtered = [...contas];
+        const toCents = (value) => Math.round((Number(value) || 0) * 100);
         if (filters.cliente) {
           filtered = filtered.filter(conta => 
             conta.cliente_fornecedor?.toLowerCase().includes(filters.cliente.toLowerCase())
           );
         }
         if (filters.status !== 'todos') {
-          filtered = filtered.filter(conta => getStatus(conta) === filters.status);
+          if (filters.status === STATUS_ABERTO) {
+            filtered = filtered.filter((conta) => {
+              const status = getStatus(conta);
+              return status === STATUS.A_VENCER || status === STATUS.ATRASADO;
+            });
+          } else {
+            filtered = filtered.filter(conta => getStatus(conta) === filters.status);
+          }
         }
         if (filters.unidade !== 'todas') {
           filtered = filtered.filter(conta => conta.unidade === filters.unidade);
@@ -82,13 +100,24 @@ import { getLancamentoStatus, STATUS, STATUS_LABELS, STATUS_COLORS, STATUS_OPTIO
           const endDate = new Date(filters.dataFim + 'T00:00:00');
           filtered = filtered.filter(conta => new Date(conta.data + 'T00:00:00') <= endDate);
         }
+        if (filters.valorInicio || filters.valorFim) {
+          const hasInicio = filters.valorInicio !== '';
+          const hasFim = filters.valorFim !== '';
+          const inicioCents = hasInicio ? toCents(filters.valorInicio) : null;
+          const fimCents = hasFim ? toCents(filters.valorFim) : null;
+          filtered = filtered.filter((conta) => {
+            const contaCents = toCents(valorConsiderado(conta));
+            if (hasInicio && hasFim) {
+              return contaCents >= inicioCents && contaCents <= fimCents;
+            }
+            if (hasInicio) {
+              return contaCents === inicioCents;
+            }
+            return contaCents <= fimCents;
+          });
+        }
         return filtered.sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
       }, [contas, filters]);
-    
-      const formatCurrency = (value) => (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-      const formatDate = (dateString) => new Date(dateString + 'T00:00:00').toLocaleDateString('pt-BR', { timeZone: 'UTC' });
-      const todayStr = new Date().toISOString().split('T')[0];
-      const valorConsiderado = (conta) => getValorConsiderado(conta, todayStr);
     
       const getStatusColor = (status) => STATUS_COLORS[status] || 'bg-gray-500/20 text-gray-400 border-gray-500/30';
       const getStatusLabel = (status) => STATUS_LABELS[status] || status;
@@ -144,7 +173,7 @@ import { getLancamentoStatus, STATUS, STATUS_LABELS, STATUS_COLORS, STATUS_OPTIO
       return (
         <div className="space-y-8">
           <Helmet>
-            <title>Contas a Receber - SysFina</title>
+            <title>Contas a Receber - BooK+</title>
             <meta name="description" content="Gerencie suas contas a receber com filtros e totalizadores" />
           </Helmet>
     
@@ -208,7 +237,7 @@ import { getLancamentoStatus, STATUS, STATUS_LABELS, STATUS_COLORS, STATUS_OPTIO
             <Card className="glass-card">
               <CardHeader><CardTitle className="text-white flex items-center gap-2"><Filter className="w-5 h-5" />Filtros</CardTitle></CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
                   <div><label className="text-sm text-gray-300 mb-2 block">Cliente</label><Input placeholder="Buscar cliente..." value={filters.cliente} onChange={(e) => setFilters({ ...filters, cliente: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
                   <div>
                     <label className="text-sm text-gray-300 mb-2 block">Status</label>
@@ -216,6 +245,7 @@ import { getLancamentoStatus, STATUS, STATUS_LABELS, STATUS_COLORS, STATUS_OPTIO
                       <SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="todos">Todos</SelectItem>
+                        <SelectItem value={STATUS_ABERTO}>{STATUS_ABERTO_LABEL}</SelectItem>
                         {STATUS_OPTIONS.map((option) => (
                           <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                         ))}
@@ -225,6 +255,8 @@ import { getLancamentoStatus, STATUS, STATUS_LABELS, STATUS_COLORS, STATUS_OPTIO
                   <div><label className="text-sm text-gray-300 mb-2 block">Unidade</label><Select value={filters.unidade} onValueChange={(value) => setFilters({ ...filters, unidade: value })}><SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="todas">Todas</SelectItem><SelectItem value="CNA Angra dos Reis">CNA Angra dos Reis</SelectItem><SelectItem value="CNA Mangaratiba">CNA Mangaratiba</SelectItem><SelectItem value="Casa">Casa</SelectItem></SelectContent></Select></div>
                   <div><label className="text-sm text-gray-300 mb-2 block">Data Início</label><Input type="date" value={filters.dataInicio} onChange={(e) => setFilters({ ...filters, dataInicio: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
                   <div><label className="text-sm text-gray-300 mb-2 block">Data Fim</label><Input type="date" value={filters.dataFim} onChange={(e) => setFilters({ ...filters, dataFim: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
+                  <div><label className="text-sm text-gray-300 mb-2 block">Valor Inicial</label><Input type="number" min="0" step="0.01" placeholder="0,00" value={filters.valorInicio} onChange={(e) => setFilters({ ...filters, valorInicio: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
+                  <div><label className="text-sm text-gray-300 mb-2 block">Valor Final</label><Input type="number" min="0" step="0.01" placeholder="0,00" value={filters.valorFim} onChange={(e) => setFilters({ ...filters, valorFim: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
                 </div>
               </CardContent>
             </Card>

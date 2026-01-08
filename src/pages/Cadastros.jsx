@@ -224,7 +224,7 @@ const Cadastros = () => {
       className="space-y-8"
     >
       <Helmet>
-        <title>Cadastros - SysFina</title>
+        <title>Cadastros - BooK+</title>
         <meta name="description" content="Central de cadastros de clientes, fornecedores e unidades." />
       </Helmet>
 

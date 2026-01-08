@@ -175,7 +175,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
       return (
         <>
           <Helmet>
-            <title>Fluxo de Caixa Previsto - SysFina</title>
+            <title>Fluxo de Caixa Previsto - BooK+</title>
             <meta name="description" content="Análise do fluxo de caixa previsto (valores a vencer)." />
           </Helmet>
           <motion.div

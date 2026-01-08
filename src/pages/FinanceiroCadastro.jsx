@@ -28,7 +28,7 @@ const FinanceiroCadastro = () => {
       className="space-y-8"
     >
       <Helmet>
-        <title>Cadastro Financeiro - SysFina</title>
+        <title>Cadastro Financeiro - BooK+</title>
         <meta name="description" content="Cadastre lançamentos financeiros." />
       </Helmet>
 

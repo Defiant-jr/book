@@ -28,7 +28,7 @@ const Lancamentos = () => {
       className="space-y-8"
     >
       <Helmet>
-        <title>Novo Lançamento - SysFina</title>
+        <title>Novo Lançamento - BooK+</title>
         <meta name="description" content="Tela para adicionar novos lançamentos financeiros." />
       </Helmet>
 

@@ -261,7 +261,7 @@ const RelatorioFechamento = () => {
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
       <Helmet>
-        <title>Relatorio de Fechamento - SysFina</title>
+        <title>Relatorio de Fechamento - BooK+</title>
         <meta
           name="description"
           content="Relatorio de fechamento com totais de entradas, saidas e saldo final."

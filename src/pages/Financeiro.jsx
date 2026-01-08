@@ -43,7 +43,7 @@ const Financeiro = () => {
       className="space-y-8"
     >
       <Helmet>
-        <title>Financeiro - SysFina</title>
+        <title>Financeiro - BooK+</title>
         <meta name="description" content="Central de ações financeiras." />
       </Helmet>
 

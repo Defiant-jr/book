@@ -61,7 +61,7 @@ import React, { useState } from 'react';
           >
             <div className="text-center">
               <h1 className="text-4xl font-bold gradient-text">Criar Conta</h1>
-              <p className="text-muted-foreground">Junte-se ao SysFina e organize suas finanças.</p>
+              <p className="text-muted-foreground">Junte-se ao BooK+ e organize suas finanças.</p>
             </div>
             <form onSubmit={handleSignUp} className="space-y-6">
               <div className="space-y-2">

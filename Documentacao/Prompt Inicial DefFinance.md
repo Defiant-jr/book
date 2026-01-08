@@ -5,7 +5,7 @@
 -	Usar cores para diferenciar Receitas (verde) e Despesas (vermelho).
 -	Permitir filtros, ordenações e navegação intuitiva.
 -	Atualização em tempo real conforme alterações no Google Sheets.
--	No topo do dashboard de conter logo abaixa do titulo da pagina inicias "SysFina v1.0.0" os seguintes botões: "Dashboard", "Contas a Receber", "Contas a Pagar", "Fluxo de Caixa", "Lançamentos", "Cadastros" e "Relatorios", "Importar", todos agrupados e alinhados simetricamente nessa ordem.
+-	No topo do dashboard de conter logo abaixa do titulo da pagina inicias "BooK+ v1.0.0" os seguintes botões: "Dashboard", "Contas a Receber", "Contas a Pagar", "Fluxo de Caixa", "Lançamentos", "Cadastros" e "Relatorios", "Importar", todos agrupados e alinhados simetricamente nessa ordem.
 -	Colocar um botão para retorno para pagina anterior quando for necessário.
 -	Usar o fuso horário America/sao_paulo.
 -	Na tela inicial do dashboard os cards tevem ter a ordem: Total a Receber, Total a Pagar e Resultado Operacional

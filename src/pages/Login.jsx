@@ -77,7 +77,14 @@ import React, { useState } from 'react';
             className="w-full max-w-md p-8 space-y-8 glass-card"
           >
             <div className="text-center">
-              <h1 className="text-4xl font-bold gradient-text">SysFina</h1>
+              <div className="flex justify-center">
+                <img
+                  src="/brand/book-plus-logo.png"
+                  alt="BooK+"
+                  className="w-60 max-w-full opacity-85 mix-blend-screen select-none pointer-events-none"
+                />
+              </div>
+              <h1 className="text-4xl font-bold gradient-text">BooK+</h1>
               <p className="text-muted-foreground">Bem-vindo de volta! Faça login para continuar.</p>
             </div>
             <form onSubmit={handleLogin} className="space-y-6">
