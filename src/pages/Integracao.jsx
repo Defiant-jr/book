@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Download, Users, UserCheck } from 'lucide-react';
+import { ArrowLeft, Download, Layers } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -61,15 +61,9 @@ const Integracao = () => {
       loadingLabel: 'Integrando...',
     },
     {
-      title: 'Alunos',
-      description: 'Integração futura para cadastro de alunos.',
-      icon: Users,
-      disabled: true,
-    },
-    {
-      title: 'Responsáveis',
-      description: 'Integração futura para cadastro de responsáveis.',
-      icon: UserCheck,
+      title: 'Operações',
+      description: 'Integração futura para sincronizar operações registradas.',
+      icon: Layers,
       disabled: true,
     },
   ];
