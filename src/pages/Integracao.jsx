@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Download, Users, UserCheck } from 'lucide-react';
+import { ArrowLeft, Download, Briefcase } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,6 +13,7 @@ const Integracao = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [importLoading, setImportLoading] = useState(false);
+  const [operacoesLoading, setOperacoesLoading] = useState(false);
 
   const handleImportData = async () => {
     setImportLoading(true);
@@ -51,6 +52,43 @@ const Integracao = () => {
     }
   };
 
+  const handleImportOperacoes = async () => {
+    setOperacoesLoading(true);
+    try {
+      toast({
+        title: 'Iniciando integração de operações...',
+        description: 'Buscando dados da planilha Operacoes.',
+      });
+
+      const response = await fetch('/api/operacoes/import', { method: 'POST' });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.message || 'Falha ao importar operações.');
+      }
+
+      toast({
+        title: 'Sucesso!',
+        description: payload?.message || 'Operações importadas e sincronizadas!',
+      });
+    } catch (error) {
+      let description = 'Ocorreu um erro durante a integração de operações.';
+      if (error?.message?.includes('non-2xx')) {
+        description =
+          'A função de integração falhou no servidor. Verifique os logs da função no Supabase.';
+      } else if (error?.message) {
+        description = error.message;
+      }
+
+      toast({
+        title: 'Erro na integração de operações',
+        description,
+        variant: 'destructive',
+      });
+    } finally {
+      setOperacoesLoading(false);
+    }
+  };
+
   const integrationCards = [
     {
       title: 'A Receber',
@@ -61,16 +99,12 @@ const Integracao = () => {
       loadingLabel: 'Integrando...',
     },
     {
-      title: 'Alunos',
-      description: 'Integração futura para cadastro de alunos.',
-      icon: Users,
-      disabled: true,
-    },
-    {
-      title: 'Responsáveis',
-      description: 'Integração futura para cadastro de responsáveis.',
-      icon: UserCheck,
-      disabled: true,
+      title: 'Operações',
+      description: 'Integração da planilha Operacoes para consolidar operações no banco.',
+      icon: Briefcase,
+      action: handleImportOperacoes,
+      loading: operacoesLoading,
+      loadingLabel: 'Integrando...',
     },
   ];
 
@@ -118,7 +152,9 @@ const Integracao = () => {
                       <CardTitle className="text-base text-white">{option.title}</CardTitle>
                     </div>
                     {option.disabled && (
-                      <span className="text-xs text-gray-300 bg-white/10 px-2 py-1 rounded-full">Em breve</span>
+                      <span className="text-xs text-gray-300 bg-white/10 px-2 py-1 rounded-full">
+                        Em breve
+                      </span>
                     )}
                   </CardHeader>
                   <CardContent className="space-y-4">

@@ -1,4 +1,9 @@
-import { createApp } from './app.js';
+import dotenv from 'dotenv';
+
+const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.local';
+dotenv.config({ path: envFile });
+
+const { createApp } = await import('./app.js');
 
 const PORT = Number.parseInt(process.env.PORT ?? '3000', 10);
 const HOST = process.env.HOST ?? '0.0.0.0';
