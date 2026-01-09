@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "cross-env NODE_ENV=development node server/index.js",
+    "dev": "NODE_ENV=development node server/index.js",
     "prebuild": "node tools/generate-llms.js || true",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1 --port 3000",
@@ -54,7 +54,6 @@
     "@babel/traverse": "^7.27.0",
     "@babel/types": "^7.27.0",
     "@vitejs/plugin-react": "^4.7.0",
-    "cross-env": "^7.0.3",
     "autoprefixer": "^10.4.16",
     "eslint": "^8.57.1",
     "eslint-config-react-app": "^7.0.1",
