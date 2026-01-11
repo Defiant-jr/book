@@ -280,6 +280,7 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
                               <div>
                                 <h3 className="font-medium text-white">{conta.cliente_fornecedor}</h3>
                                 <p className="text-sm text-gray-400">{conta.descricao}</p>
+                                <p className="text-xs text-gray-500">Unidade: {conta.unidade || 'Nao informado'}</p>
                               </div>
                             </div>
                             <div className="flex items-center gap-4">
