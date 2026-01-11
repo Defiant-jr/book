@@ -5,6 +5,10 @@ const RECEBIMENTOS_SHEET_ID =
   Deno.env.get('GOOGLE_SHEET_RECEBIMENTOS_ID') ??
   '1vDw0K8w3qHxYgPo-t9bapMOZ4Q2zlOsWUGaz12cDQRY';
 
+const OPERACOES_SHEET_ID =
+  Deno.env.get('GOOGLE_SHEET_OPERACOES_ID') ??
+  '1v4G3GGE6DgwUc18LsbgfTuv-MhlA38KQgjCrZFiXGdk';
+
 const parseDate = (dateString: string | null | undefined): string | null => {
   if (!dateString || typeof dateString !== 'string' || !/^\d{2}\/\d{2}\/\d{4}$/.test(dateString)) {
     return null;
@@ -19,6 +23,22 @@ const parseCurrency = (value: string | null | undefined): number => {
   const normalized = value.replace('R$', '').replace(/\./g, '').replace(',', '.').trim();
   const number = Number.parseFloat(normalized);
   return Number.isFinite(number) ? number : 0;
+};
+
+const normalizeHeader = (value: string) =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]/g, '')
+    .toLowerCase();
+
+const getSheetValues = async (sheetId: string, sheetName: string, apiKey: string) => {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/'${sheetName}'!A:V?key=${apiKey}`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Erro ao buscar ${sheetName}: ${await response.text()}`);
+  }
+  return response.json();
 };
 
 Deno.serve(async (req: Request) => {
@@ -36,29 +56,84 @@ Deno.serve(async (req: Request) => {
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const recebimentosUrl = `https://sheets.googleapis.com/v4/spreadsheets/${RECEBIMENTOS_SHEET_ID}/values/'Recebimentos'!A:V?key=${GOOGLE_API_KEY}`;
 
-    const recebimentosResponse = await fetch(recebimentosUrl);
-    if (!recebimentosResponse.ok) {
-      throw new Error(`Erro ao buscar recebimentos: ${await recebimentosResponse.text()}`);
+    let payload: Record<string, unknown> = {};
+    try {
+      payload = await req.json();
+    } catch {
+      payload = {};
+    }
+    const type = typeof payload.type === 'string' ? payload.type : 'recebimentos';
+
+    if (type === 'operacoes') {
+      const operacoesData = await getSheetValues(OPERACOES_SHEET_ID, 'operacoes', GOOGLE_API_KEY);
+      const operacoes: Record<string, unknown>[] = [];
+
+      if (operacoesData.values && operacoesData.values.length > 1) {
+        const headers: string[] = operacoesData.values[0].map((h: string) => h.trim());
+        const normalizedHeaders = headers.map((h) => normalizeHeader(h));
+        const findHeader = (candidates: string[]) =>
+          candidates
+            .map((candidate) => normalizedHeaders.indexOf(normalizeHeader(candidate)))
+            .find((idx) => idx !== -1) ?? -1;
+
+        const rows: string[][] = operacoesData.values.slice(1);
+        const colMap = {
+          responsavel: findHeader(['Responsavel Financeiro', 'Responsável Financeiro']),
+          aluno: findHeader(['Aluno']),
+          dataBaixa: findHeader(['Data da Baixa']),
+          recebido: findHeader(['Recebido']),
+          unidade: findHeader(['Unidade']),
+        };
+
+        for (const row of rows) {
+          const valor = parseCurrency(row[colMap.recebido]);
+          if (valor === 0) continue;
+
+          const data = parseDate(row[colMap.dataBaixa]);
+          if (!data) continue;
+
+          operacoes.push({
+            responsavel: row[colMap.responsavel] || 'N/A',
+            aluno: row[colMap.aluno] || 'N/A',
+            data,
+            valor,
+            unidade: row[colMap.unidade] || 'N/A',
+          });
+        }
+      }
+
+      const { error: deleteError } = await supabase.from('operacoes').delete();
+      if (deleteError) throw deleteError;
+
+      let operacoesInseridas = 0;
+      if (operacoes.length > 0) {
+        const { error: insertError } = await supabase.from('operacoes').insert(operacoes);
+        if (insertError) throw insertError;
+        operacoesInseridas = operacoes.length;
+      }
+
+      return new Response(
+        JSON.stringify({
+          message: `Importação concluída. ${operacoesInseridas} operações processadas.`,
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        },
+      );
     }
 
-    const recebimentosData = await recebimentosResponse.json();
+    const recebimentosData = await getSheetValues(RECEBIMENTOS_SHEET_ID, 'Recebimentos', GOOGLE_API_KEY);
     const lancamentos: Record<string, unknown>[] = [];
     const clientesData = new Map<string, { sacado: string }>();
 
     if (recebimentosData.values && recebimentosData.values.length > 1) {
       const headers: string[] = recebimentosData.values[0].map((h: string) => h.trim());
-      const normalize = (value: string) =>
-        value
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .replace(/[^a-zA-Z0-9]/g, '')
-          .toLowerCase();
-      const normalizedHeaders = headers.map((h) => normalize(h));
+      const normalizedHeaders = headers.map((h) => normalizeHeader(h));
       const findHeader = (candidates: string[]) =>
         candidates
-          .map((candidate) => normalizedHeaders.indexOf(normalize(candidate)))
+          .map((candidate) => normalizedHeaders.indexOf(normalizeHeader(candidate)))
           .find((idx) => idx !== -1) ?? -1;
 
       const rows: string[][] = recebimentosData.values.slice(1);
@@ -70,7 +145,7 @@ Deno.serve(async (req: Request) => {
         dataVencimento: findHeader(['Data de Vencimento']),
         dataBaixa: findHeader(['Data da Baixa']),
         categoria: findHeader(['Categoria']),
-        descricao: findHeader(['Descrição', 'Descricao']),
+        descricao: findHeader(['Descricao', 'Descrição']),
         parcela: findHeader(['Parcela']),
         valorOriginal: findHeader(['Valor Original']),
         valorComDescPont: findHeader(['Valor com Desc. Pont.']),
@@ -126,7 +201,7 @@ Deno.serve(async (req: Request) => {
       lancamentosInseridos = lancamentos.length;
     }
 
-    // Para cada CPF/CNPJ encontrado, chama a função de upsert após inserir os lançamentos.
+    // Para cada CPF/CNPJ encontrado, chama a função de upsert apos inserir os lancamentos.
     let clientesProcessados = 0;
     for (const [cpf, dadosCliente] of clientesData.entries()) {
       const { error: upsertError } = await supabase.rpc('upsert_cliente_fornecedor', {

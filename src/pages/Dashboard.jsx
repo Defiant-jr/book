@@ -234,9 +234,9 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
       const receberAtrasado = entradasPeriodo
         .filter(c => getStatus(c) === STATUS.ATRASADO)
         .reduce((sum, c) => sum + getValorBase(c), 0) + receberAtrasadoAnterior;
-      const emCashApplied = emCashValue > 0;
-      const totalReceberComCash = totalReceber + (emCashApplied ? emCashValue : 0);
-      const totalReceberPendente = receberAberto + receberAtrasado + (emCashApplied ? emCashValue : 0);
+      const emCashAmount = Number(emCashValue) || 0;
+      const totalReceberComCash = totalReceber + emCashAmount;
+      const totalReceberPendente = receberAberto + receberAtrasado + emCashAmount;
 
       const totalPagar = saidasPeriodo.reduce((sum, c) => sum + getValorBase(c), 0);
       const pagarAberto = saidasPeriodo
@@ -260,6 +260,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
           details: [
             { label: 'Em Aberto', value: formatCurrency(receberAberto) },
             { label: 'Em Atraso', value: formatCurrency(receberAtrasado), color: 'text-red-400' },
+            { label: 'Em Cash', value: formatCurrency(emCashAmount), color: 'text-green-300' },
             { label: 'Pendentes', value: formatCurrency(totalReceberPendente) },
           ]
         },
@@ -282,9 +283,9 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
           color: resultadoOperacional >= 0 ? 'from-blue-500 to-blue-600' : 'from-orange-500 to-orange-600',
           bgColor: resultadoOperacional >= 0 ? 'bg-blue-500/10' : 'bg-orange-500/10',
           showSpanSelector: true,
-          details: emCashApplied ? [
+          details: emCashAmount ? [
             { label: 'Previsto com Cash', value: formatCurrency(resultadoOperacionalComCash), color: 'text-gray-300' },
-            { label: 'Saldo em Cash', value: formatCurrency(emCashValue), color: 'text-green-300' },
+            { label: 'Saldo em Cash', value: formatCurrency(emCashAmount), color: 'text-green-300' },
           ] : undefined
         }
       ];

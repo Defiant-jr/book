@@ -15,7 +15,7 @@
 - [Mapa Mensal - BooK+](/mapamensal): Visualize o calendário mensal com despesas por dia e somatório de entradas.
 - [Novo Lançamento - BooK+](/lancamentos): Tela para adicionar novos lançamentos financeiros.
 - [Relatório de Contas - BooK+](/relatoriocontas): No description available
-- [Relatorio de Fechamento - BooK+](/relatoriofechamento): Relatorio mensal de fechamento com totais de entradas, saidas e saldo final.
+- [Relatorio de Fechamento - BooK+](/relatoriofechamento): Relatorio de fechamento com totais de entradas, saidas e saldo final.
 - [Relatório de Fluxo de Caixa - BooK+](/fluxocaixadetalhado): Gere e visualize o relatório de fluxo de caixa detalhado.
 - [Relatórios Administrativos - BooK+](/administrativorelatorios): Área reservada para relatórios administrativos.
 - [Selecione uma área - BooK+](/areaselection): Escolha o módulo que deseja acessar.

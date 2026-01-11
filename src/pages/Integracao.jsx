@@ -13,6 +13,7 @@ const Integracao = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [importLoading, setImportLoading] = useState(false);
+  const [operacoesLoading, setOperacoesLoading] = useState(false);
 
   const handleImportData = async () => {
     setImportLoading(true);
@@ -51,6 +52,43 @@ const Integracao = () => {
     }
   };
 
+  const handleImportOperacoes = async () => {
+    setOperacoesLoading(true);
+    try {
+      toast({
+        title: 'Iniciando integração...',
+        description: 'Buscando dados de operações.',
+      });
+
+      const { data: functionData, error: functionError } = await supabase.functions.invoke(
+        'import-google-sheets',
+        { body: { type: 'operacoes' } },
+      );
+
+      if (functionError) throw functionError;
+
+      toast({
+        title: 'Sucesso!',
+        description: functionData?.message || 'Operações importadas e sincronizadas!',
+      });
+    } catch (error) {
+      let description = 'Ocorreu um erro durante a integração.';
+      if (error?.message?.includes('non-2xx')) {
+        description = 'A função de integração falhou no servidor. Verifique os logs da função no Supabase.';
+      } else if (error?.message) {
+        description = error.message;
+      }
+
+      toast({
+        title: 'Erro na integração',
+        description,
+        variant: 'destructive',
+      });
+    } finally {
+      setOperacoesLoading(false);
+    }
+  };
+
   const integrationCards = [
     {
       title: 'A Receber',
@@ -62,9 +100,11 @@ const Integracao = () => {
     },
     {
       title: 'Operações',
-      description: 'Integração futura para sincronizar operações registradas.',
+      description: 'Sincroniza operações registradas com a planilha operacoes.',
       icon: Layers,
-      disabled: true,
+      action: handleImportOperacoes,
+      loading: operacoesLoading,
+      loadingLabel: 'Integrando...',
     },
   ];
 
@@ -111,15 +151,12 @@ const Integracao = () => {
                       </div>
                       <CardTitle className="text-base text-white">{option.title}</CardTitle>
                     </div>
-                    {option.disabled && (
-                      <span className="text-xs text-gray-300 bg-white/10 px-2 py-1 rounded-full">Em breve</span>
-                    )}
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <p className="text-sm text-gray-400">{option.description}</p>
                     <Button
                       onClick={option.action}
-                      disabled={option.disabled || isLoading}
+                      disabled={isLoading}
                       className="w-full"
                       variant="secondary"
                     >

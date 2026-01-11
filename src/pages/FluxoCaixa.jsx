@@ -120,10 +120,20 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
         const atrasadosReceber = atrasados.filter((i) => i.tipoNorm === 'entrada');
         const atrasadosPagar = atrasados.filter((i) => i.tipoNorm === 'saida');
 
-        const totalAtrasadoReceber = atrasadosReceber.reduce((acc, i) => acc + (Number(i?.valor) || 0), 0) + (Number(emCashValue) || 0);
+        const emCashAmount = Number(emCashValue) || 0;
+        const totalAtrasadoReceber = atrasadosReceber.reduce((acc, i) => acc + (Number(i?.valor) || 0), 0) + emCashAmount;
         const totalAtrasadoPagar = atrasadosPagar.reduce((acc, i) => acc + (Number(i?.valor) || 0), 0);
 
         const receberDetails = [...atrasadosReceber];
+        if (emCashAmount > 0) {
+          receberDetails.push({
+            id: 'em-cash',
+            cliente_fornecedor: 'Em Cash',
+            valor: emCashAmount,
+            tipoNorm: 'entrada',
+            dataStr: startStr,
+          });
+        }
 
         const fluxo = daysInMonth.map((day) => ({
           dia: format(day, 'dd'),
@@ -162,7 +172,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
           saldoAcumulado += saldoDia;
           return { ...dia, saldoDia, saldoAcumulado };
         });
-      }, [allData, currentDate]);
+      }, [allData, currentDate, emCashValue]);
 
       const chartData = monthData.map(d => ({
         name: d.dia,
