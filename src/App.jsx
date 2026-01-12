@@ -8,6 +8,7 @@ import DreGerencial from '@/pages/DreGerencial';
 import AreaSelection from '@/pages/AreaSelection';
 import Administrativo from '@/pages/Administrativo';
 import AdministrativoRelatorios from '@/pages/AdministrativoRelatorios';
+import AdministrativoTarefas from '@/pages/AdministrativoTarefas';
 import Financeiro from '@/pages/Financeiro';
 import FluxoCaixa from '@/pages/FluxoCaixa';
 import FluxoCaixaDetalhado from '@/pages/FluxoCaixaDetalhado';
@@ -84,6 +85,14 @@ function App() {
 							element={
 								<PrivateRoute>
 									<AdministrativoRelatorios />
+								</PrivateRoute>
+							}
+						/>
+						<Route
+							path="/administrativo/tarefas"
+							element={
+								<PrivateRoute>
+									<AdministrativoTarefas />
 								</PrivateRoute>
 							}
 						/>

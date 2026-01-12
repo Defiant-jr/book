@@ -1,18 +1,107 @@
-﻿import React from 'react';
+﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
-import { ArrowLeft, UserPlus, Download, FileText, LayoutDashboard, Settings, ClipboardList } from 'lucide-react';
+import { ArrowLeft, UserPlus, Download, FileText, LayoutDashboard, Settings, ClipboardList, Check, Calendar } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/lib/customSupabaseClient';
 
 const Administrativo = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [tarefas, setTarefas] = useState([]);
+  const [loadingTarefas, setLoadingTarefas] = useState(false);
+  const dateInputRefs = useRef({});
+
+  const noteColors = useMemo(
+    () => [
+      'from-yellow-100 to-yellow-300 text-yellow-900',
+      'from-green-100 to-green-300 text-green-900',
+      'from-blue-100 to-blue-300 text-blue-900',
+      'from-orange-100 to-orange-300 text-orange-900',
+      'from-rose-100 to-rose-300 text-rose-900',
+      'from-amber-100 to-amber-300 text-amber-900',
+      'from-lime-100 to-lime-300 text-lime-900',
+      'from-teal-100 to-teal-300 text-teal-900',
+      'from-cyan-100 to-cyan-300 text-cyan-900',
+      'from-sky-100 to-sky-300 text-sky-900',
+      'from-violet-100 to-violet-300 text-violet-900',
+      'from-fuchsia-100 to-fuchsia-300 text-fuchsia-900',
+    ],
+    [],
+  );
+
+  useEffect(() => {
+    const loadTarefas = async () => {
+      setLoadingTarefas(true);
+      const { data, error } = await supabase.from('postit').select('*');
+      if (error) {
+        toast({ title: 'Erro ao carregar tarefas', description: error.message, variant: 'destructive' });
+        setLoadingTarefas(false);
+        return;
+      }
+
+      const sorted = (data || []).slice().sort((a, b) => {
+        const aTime = a?.data ? new Date(a.data).getTime() : Number.POSITIVE_INFINITY;
+        const bTime = b?.data ? new Date(b.data).getTime() : Number.POSITIVE_INFINITY;
+        return aTime - bTime;
+      });
+      setTarefas(sorted);
+      setLoadingTarefas(false);
+    };
+
+    loadTarefas();
+  }, [toast]);
+
+  const handleConcluir = async (tarefa) => {
+    const { error } = await supabase
+      .from('postit')
+      .update({ concluida: 'S' })
+      .eq('id', tarefa.id);
+
+    if (error) {
+      toast({ title: 'Erro ao concluir', description: error.message, variant: 'destructive' });
+      return;
+    }
+
+    setTarefas((prev) => prev.filter((item) => item.id !== tarefa.id));
+  };
+
+  const handleAlterarData = async (tarefa, novaData) => {
+    if (!novaData) return;
+
+    const iso = new Date(`${novaData}T00:00:00`).toISOString();
+    const { error } = await supabase
+      .from('postit')
+      .update({ data: iso })
+      .eq('id', tarefa.id);
+
+    if (error) {
+      toast({ title: 'Erro ao atualizar data', description: error.message, variant: 'destructive' });
+      return;
+    }
+
+    setTarefas((prev) =>
+      prev.map((item) => (item.id === tarefa.id ? { ...item, data: iso } : item)),
+    );
+  };
+
+  const openDatePicker = (tarefaId) => {
+    const input = dateInputRefs.current[tarefaId];
+    if (!input) return;
+    if (typeof input.showPicker === 'function') {
+      input.showPicker();
+      return;
+    }
+    input.click();
+  };
 
   const navButtons = [
     { label: 'Dashboard', path: '/administrativo', icon: LayoutDashboard },
-    { label: 'Tarefas', icon: ClipboardList, disabled: true, loadingLabel: 'Em breve' },
+    { label: 'Tarefas', path: '/administrativo/tarefas', icon: ClipboardList },
     { label: 'Cadastro', path: '/cadastros', icon: UserPlus },
     { label: 'Operações', path: '/lancamentos', icon: Settings },
     { label: 'Relatórios', path: '/administrativo/relatorios', icon: FileText },
@@ -114,21 +203,66 @@ const Administrativo = () => {
           <CardContent className="space-y-3">
             <p className="text-sm text-gray-400">Post-its das tarefas cadastradas.</p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-              <div className="aspect-square rounded-xl bg-gradient-to-br from-yellow-100 to-yellow-300 p-3 text-yellow-900 shadow-lg shadow-black/20">
-                <p className="text-xs font-semibold">Sem tarefas</p>
-                <p className="text-[10px] opacity-80">Aguardando</p>
-              </div>
-              <div className="aspect-square rounded-xl bg-gradient-to-br from-green-100 to-green-300 p-3 text-green-900 shadow-lg shadow-black/20" />
-              <div className="aspect-square rounded-xl bg-gradient-to-br from-blue-100 to-blue-300 p-3 text-blue-900 shadow-lg shadow-black/20" />
-              <div className="aspect-square rounded-xl bg-gradient-to-br from-orange-100 to-orange-300 p-3 text-orange-900 shadow-lg shadow-black/20" />
-              <div className="aspect-square rounded-xl bg-gradient-to-br from-rose-100 to-rose-300 p-3 text-rose-900 shadow-lg shadow-black/20" />
-              <div className="aspect-square rounded-xl bg-gradient-to-br from-amber-100 to-amber-300 p-3 text-amber-900 shadow-lg shadow-black/20" />
-              <div className="aspect-square rounded-xl bg-gradient-to-br from-lime-100 to-lime-300 p-3 text-lime-900 shadow-lg shadow-black/20" />
-              <div className="aspect-square rounded-xl bg-gradient-to-br from-teal-100 to-teal-300 p-3 text-teal-900 shadow-lg shadow-black/20" />
-              <div className="aspect-square rounded-xl bg-gradient-to-br from-cyan-100 to-cyan-300 p-3 text-cyan-900 shadow-lg shadow-black/20" />
-              <div className="aspect-square rounded-xl bg-gradient-to-br from-sky-100 to-sky-300 p-3 text-sky-900 shadow-lg shadow-black/20" />
-              <div className="aspect-square rounded-xl bg-gradient-to-br from-violet-100 to-violet-300 p-3 text-violet-900 shadow-lg shadow-black/20" />
-              <div className="aspect-square rounded-xl bg-gradient-to-br from-fuchsia-100 to-fuchsia-300 p-3 text-fuchsia-900 shadow-lg shadow-black/20" />
+              {tarefas.filter((tarefa) => tarefa.concluida === 'N').length === 0 ? (
+                <div className="aspect-square rounded-xl bg-gradient-to-br from-yellow-100 to-yellow-300 p-3 text-yellow-900 shadow-lg shadow-black/20">
+                  <p className="text-xs font-semibold">
+                    {loadingTarefas ? 'Carregando...' : 'Sem tarefas'}
+                  </p>
+                  <p className="text-[10px] opacity-80">Aguardando</p>
+                </div>
+              ) : (
+                tarefas
+                  .filter((tarefa) => tarefa.concluida === 'N')
+                  .slice(0, 12)
+                  .map((tarefa, index) => {
+                  const color = noteColors[index % noteColors.length];
+                  return (
+                    <div
+                      key={tarefa.id}
+                      className={`aspect-square rounded-xl bg-gradient-to-br ${color} p-3 shadow-lg shadow-black/20`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-xs font-semibold">{tarefa.tarefa}</p>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleConcluir(tarefa)}
+                            className="rounded-full p-1 text-xs bg-white/40 hover:bg-white/60"
+                            aria-label="Concluir tarefa"
+                          >
+                            <Check className="h-3 w-3 text-black/80" />
+                          </button>
+                          <div className="relative">
+                            <button
+                              type="button"
+                              onClick={() => openDatePicker(tarefa.id)}
+                              className="rounded-full p-1 text-xs bg-white/40 hover:bg-white/60"
+                              aria-label="Alterar data"
+                            >
+                              <Calendar className="h-3 w-3 text-black/80" />
+                            </button>
+                            <input
+                              ref={(el) => {
+                                dateInputRefs.current[tarefa.id] = el;
+                              }}
+                              type="date"
+                              value={tarefa.data ? tarefa.data.slice(0, 10) : ''}
+                              onChange={(event) => handleAlterarData(tarefa, event.target.value)}
+                              className="absolute inset-0 opacity-0 pointer-events-none"
+                              tabIndex={-1}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      {tarefa.data && (
+                        <p className="mt-2 text-[10px] opacity-80">
+                          {new Date(tarefa.data).toLocaleDateString('pt-BR')}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </div>
           </CardContent>
         </Card>
@@ -138,6 +272,16 @@ const Administrativo = () => {
 };
 
 export default Administrativo;
+
+
+
+
+
+
+
+
+
+
 
 
 
