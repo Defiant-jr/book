@@ -9,13 +9,34 @@ const OPERACOES_SHEET_ID =
   Deno.env.get('GOOGLE_SHEET_OPERACOES_ID') ??
   '1v4G3GGE6DgwUc18LsbgfTuv-MhlA38KQgjCrZFiXGdk';
 
-const parseDate = (dateString: string | null | undefined): string | null => {
-  if (!dateString || typeof dateString !== 'string' || !/^\d{2}\/\d{2}\/\d{4}$/.test(dateString)) {
-    return null;
+const parseDate = (dateValue: string | number | null | undefined): string | null => {
+  if (dateValue === null || dateValue === undefined) return null;
+
+  if (typeof dateValue === 'number' && Number.isFinite(dateValue)) {
+    const base = Date.UTC(1899, 11, 30);
+    const date = new Date(base + dateValue * 86400000);
+    return date.toISOString().split('T')[0];
   }
-  const [day, month, year] = dateString.split('/');
-  const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
-  return date.toISOString().split('T')[0];
+
+  if (typeof dateValue !== 'string') return null;
+  const raw = dateValue.trim();
+  if (!raw) return null;
+
+  const brMatch = /^(\d{2})\/(\d{2})\/(\d{4})(?:\s+.*)?$/.exec(raw);
+  if (brMatch) {
+    const [, day, month, year] = brMatch;
+    const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+    return date.toISOString().split('T')[0];
+  }
+
+  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})/.exec(raw);
+  if (isoMatch) {
+    const [, year, month, day] = isoMatch;
+    const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+    return date.toISOString().split('T')[0];
+  }
+
+  return null;
 };
 
 const parseCurrency = (value: string | null | undefined): number => {
@@ -33,7 +54,13 @@ const normalizeHeader = (value: string) =>
     .toLowerCase();
 
 const getSheetValues = async (sheetId: string, sheetName: string, apiKey: string) => {
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/'${sheetName}'!A:V?key=${apiKey}`;
+  const cleanSheetId = sheetId.replace(/\/+$/, '');
+  const cleanSheetName = sheetName.replace(/^'+|'+$/g, '').trim();
+  const range = `${cleanSheetName}!A:V`;
+  const url = new URL(
+    `https://sheets.googleapis.com/v4/spreadsheets/${cleanSheetId}/values/${encodeURIComponent(range)}`
+  );
+  url.searchParams.set('key', apiKey);
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Erro ao buscar ${sheetName}: ${await response.text()}`);
@@ -103,7 +130,10 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      const { error: deleteError } = await supabase.from('operacoes').delete();
+      const { error: deleteError } = await supabase
+        .from('operacoes')
+        .delete()
+        .not('id', 'is', null);
       if (deleteError) throw deleteError;
 
       let operacoesInseridas = 0;
