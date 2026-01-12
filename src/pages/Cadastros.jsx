@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Users, Building2, Home } from 'lucide-react';
+import { ArrowLeft, Users, Building2, Home, UserCheck, GraduationCap } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,22 +14,26 @@ import { supabase } from '@/lib/customSupabaseClient';
 const Cadastros = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [activeCard, setActiveCard] = useState('cliente');
+  const [activeCard, setActiveCard] = useState('aluno');
 
-  const [clienteDescricao, setClienteDescricao] = useState('');
   const [fornecedorDescricao, setFornecedorDescricao] = useState('');
   const [unidadeDescricao, setUnidadeDescricao] = useState('');
 
-  const [clienteLoading, setClienteLoading] = useState(false);
   const [fornecedorLoading, setFornecedorLoading] = useState(false);
   const [unidadeLoading, setUnidadeLoading] = useState(false);
 
   const cardOptions = [
     {
-      id: 'cliente',
-      title: 'Cliente',
-      description: 'Cadastrar novos clientes.',
+      id: 'aluno',
+      title: 'Aluno',
+      description: 'Cadastro de alunos da unidade.',
       icon: Users,
+    },
+    {
+      id: 'responsavel',
+      title: 'Responsável',
+      description: 'Cadastro de responsáveis financeiros.',
+      icon: UserCheck,
     },
     {
       id: 'fornecedor',
@@ -43,6 +47,12 @@ const Cadastros = () => {
       description: 'Controlar unidades de atendimento.',
       icon: Home,
     },
+    {
+      id: 'turma',
+      title: 'Turma',
+      description: 'Cadastro e organização de turmas.',
+      icon: GraduationCap,
+    },
   ];
 
   const handleSuccess = (message) => {
@@ -55,29 +65,6 @@ const Cadastros = () => {
       description,
       variant: 'destructive',
     });
-  };
-
-  const saveCliente = async () => {
-    const descricao = clienteDescricao.trim();
-    if (!descricao) {
-      handleError('Informe o nome do cliente.');
-      return;
-    }
-
-    setClienteLoading(true);
-    const { error } = await supabase
-      .from('clientes_fornecedores')
-      .insert([{ tipo: 'Cliente', descricao }]);
-
-    setClienteLoading(false);
-
-    if (error) {
-      handleError(error.message || 'Tente novamente.');
-      return;
-    }
-
-    handleSuccess('Cliente cadastrado com sucesso.');
-    setClienteDescricao('');
   };
 
   const saveFornecedor = async () => {
@@ -127,30 +114,27 @@ const Cadastros = () => {
   };
 
   const renderForm = () => {
-    if (activeCard === 'cliente') {
+    if (activeCard === 'aluno') {
       return (
         <Card className="glass-card">
           <CardHeader>
-            <CardTitle className="text-white">Cadastro de Cliente</CardTitle>
+            <CardTitle className="text-white">Cadastro de Aluno</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="cliente-descricao" className="text-gray-300">Nome do cliente</Label>
-              <Input
-                id="cliente-descricao"
-                placeholder="Ex.: Maria Souza"
-                value={clienteDescricao}
-                onChange={(event) => setClienteDescricao(event.target.value)}
-              />
-            </div>
-            <div className="flex justify-end gap-4 pt-4">
-              <Button variant="outline" onClick={() => setClienteDescricao('')} disabled={clienteLoading}>
-                Limpar
-              </Button>
-              <Button onClick={saveCliente} disabled={clienteLoading}>
-                {clienteLoading ? 'Salvando...' : 'Salvar Cliente'}
-              </Button>
-            </div>
+          <CardContent className="space-y-2">
+            <p className="text-gray-300">Cadastro de alunos em desenvolvimento.</p>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    if (activeCard === 'responsavel') {
+      return (
+        <Card className="glass-card">
+          <CardHeader>
+            <CardTitle className="text-white">Cadastro de Responsável</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-gray-300">Cadastro de responsáveis em desenvolvimento.</p>
           </CardContent>
         </Card>
       );
@@ -214,6 +198,19 @@ const Cadastros = () => {
       );
     }
 
+    if (activeCard === 'turma') {
+      return (
+        <Card className="glass-card">
+          <CardHeader>
+            <CardTitle className="text-white">Cadastro de Turma</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-gray-300">Cadastro de turmas em desenvolvimento.</p>
+          </CardContent>
+        </Card>
+      );
+    }
+
     return null;
   };
 
@@ -225,7 +222,7 @@ const Cadastros = () => {
     >
       <Helmet>
         <title>Cadastros - BooK+</title>
-        <meta name="description" content="Central de cadastros de clientes, fornecedores e unidades." />
+        <meta name="description" content="Central de cadastros de alunos, responsaveis, fornecedores, unidades e turmas." />
       </Helmet>
 
       <div className="flex items-center justify-between">
