@@ -2,7 +2,20 @@
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
-import { ArrowLeft, UserPlus, Download, FileText, LayoutDashboard, Settings, ClipboardList, Check, Calendar } from 'lucide-react';
+import {
+  ArrowLeft,
+  UserPlus,
+  Download,
+  FileText,
+  LayoutDashboard,
+  Settings,
+  ClipboardList,
+  Check,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  X,
+} from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +27,8 @@ const Administrativo = () => {
   const { toast } = useToast();
   const [tarefas, setTarefas] = useState([]);
   const [loadingTarefas, setLoadingTarefas] = useState(false);
+  const [tarefaDetalhe, setTarefaDetalhe] = useState(null);
+  const [paginaTarefas, setPaginaTarefas] = useState(0);
   const dateInputRefs = useRef({});
 
   const noteColors = useMemo(
@@ -97,6 +112,25 @@ const Administrativo = () => {
       return;
     }
     input.click();
+  };
+
+  const tarefasPendentes = useMemo(
+    () => tarefas.filter((tarefa) => tarefa.concluida === 'N'),
+    [tarefas],
+  );
+  const tarefasPorPagina = 6;
+  const totalPaginas = Math.max(1, Math.ceil(tarefasPendentes.length / tarefasPorPagina));
+  const inicio = paginaTarefas * tarefasPorPagina;
+  const tarefasPagina = tarefasPendentes.slice(inicio, inicio + tarefasPorPagina);
+
+  useEffect(() => {
+    if (paginaTarefas > totalPaginas - 1) {
+      setPaginaTarefas(Math.max(0, totalPaginas - 1));
+    }
+  }, [paginaTarefas, totalPaginas]);
+
+  const closeDetalhe = () => {
+    setTarefaDetalhe(null);
   };
 
   const navButtons = [
@@ -202,27 +236,55 @@ const Administrativo = () => {
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-gray-400">Post-its das tarefas cadastradas.</p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-              {tarefas.filter((tarefa) => tarefa.concluida === 'N').length === 0 ? (
-                <div className="aspect-square rounded-xl bg-gradient-to-br from-yellow-100 to-yellow-300 p-3 text-yellow-900 shadow-lg shadow-black/20">
-                  <p className="text-xs font-semibold">
-                    {loadingTarefas ? 'Carregando...' : 'Sem tarefas'}
-                  </p>
-                  <p className="text-[10px] opacity-80">Aguardando</p>
-                </div>
-              ) : (
-                tarefas
-                  .filter((tarefa) => tarefa.concluida === 'N')
-                  .slice(0, 12)
-                  .map((tarefa, index) => {
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-10 w-10"
+                onClick={() => setPaginaTarefas((prev) => Math.max(0, prev - 1))}
+                disabled={paginaTarefas === 0}
+                aria-label="Pagina anterior"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
+              <div className="flex-1">
+                {tarefasPendentes.length === 0 ? (
+                  <div className="aspect-square max-w-[160px] rounded-xl bg-gradient-to-br from-yellow-100 to-yellow-300 p-3 text-yellow-900 shadow-lg shadow-black/20">
+                    <p className="text-xs font-semibold">
+                      {loadingTarefas ? 'Carregando...' : 'Sem tarefas'}
+                    </p>
+                    <p className="text-[10px] opacity-80">Aguardando</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-6 gap-3">
+                    {tarefasPagina.map((tarefa, index) => {
                   const color = noteColors[index % noteColors.length];
                   return (
                     <div
                       key={tarefa.id}
-                      className={`aspect-square rounded-xl bg-gradient-to-br ${color} p-3 shadow-lg shadow-black/20`}
+                      className={`h-48 w-48 rounded-xl bg-gradient-to-br ${color} p-3 shadow-lg shadow-black/20`}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <p className="text-xs font-semibold">{tarefa.tarefa}</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (tarefa.tarefa?.length > 80) {
+                              setTarefaDetalhe(tarefa);
+                            }
+                          }}
+                          className={`text-left text-xs font-semibold ${
+                            tarefa.tarefa?.length > 80 ? 'cursor-pointer hover:underline' : 'cursor-default'
+                          }`}
+                          style={{
+                            display: '-webkit-box',
+                            WebkitLineClamp: 8,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                          }}
+                          aria-label={tarefa.tarefa?.length > 80 ? 'Ver tarefa completa' : 'Tarefa'}
+                        >
+                          {tarefa.tarefa}
+                        </button>
                         <div className="flex items-center gap-1">
                           <button
                             type="button"
@@ -259,31 +321,68 @@ const Administrativo = () => {
                           {new Date(tarefa.data).toLocaleDateString('pt-BR')}
                         </p>
                       )}
+                      {tarefa.tarefa?.length > 80 && (
+                        <p className="mt-1 text-[10px] opacity-80">Clique para ver mais</p>
+                      )}
                     </div>
                   );
-                })
-              )}
+                    })}
+                  </div>
+                )}
+              </div>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-10 w-10"
+                onClick={() => setPaginaTarefas((prev) => Math.min(totalPaginas - 1, prev + 1))}
+                disabled={paginaTarefas >= totalPaginas - 1}
+                aria-label="Proxima pagina"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </Button>
             </div>
           </CardContent>
         </Card>
       </motion.div>
+
+      {tarefaDetalhe && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
+          onClick={closeDetalhe}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl bg-white p-6 text-gray-900 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-semibold">Detalhes da tarefa</h3>
+                <p className="text-sm text-gray-500">
+                  {tarefaDetalhe.data
+                    ? new Date(tarefaDetalhe.data).toLocaleDateString('pt-BR')
+                    : 'Sem data'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeDetalhe}
+                className="rounded-full p-2 text-gray-500 hover:bg-gray-100"
+                aria-label="Fechar"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed">{tarefaDetalhe.tarefa}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default Administrativo;
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
