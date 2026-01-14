@@ -2,7 +2,7 @@ import React from 'react';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Building2, GraduationCap, LogOut, Settings, Wallet } from 'lucide-react';
+import { Building2, FileText, GraduationCap, LogOut, Settings, Wallet } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -37,10 +37,18 @@ const AreaSelection = () => {
       status: 'Disponível',
     },
     {
+      title: 'Relatórios',
+      description: 'Central de relatórios e documentos para acompanhamento.',
+      icon: FileText,
+      action: () => navigate('/relatorios'),
+      status: 'Disponível',
+    },
+    {
       title: 'Pedagógico',
       description: 'Recursos pedagógicos e acompanhamento acadêmico.',
       icon: GraduationCap,
-      status: 'Em breve',
+      action: () => navigate('/pedagogico'),
+      status: 'Disponível',
     },
   ];
 

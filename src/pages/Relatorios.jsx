@@ -96,7 +96,7 @@ import { BarChart3, PieChart, TrendingUp, ArrowLeft, FileClock, Printer, Calenda
     
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => navigate('/dashboard')}>
+                        <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => navigate('/')}>
                             <ArrowLeft className="h-5 w-5" />
                             <span className="sr-only">Voltar</span>
                         </Button>
@@ -104,7 +104,7 @@ import { BarChart3, PieChart, TrendingUp, ArrowLeft, FileClock, Printer, Calenda
                     </div>
                 </div>
     
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
                     {reportOptions.map((option, index) => {
                         const Icon = option.icon;
                         return (
@@ -118,15 +118,15 @@ import { BarChart3, PieChart, TrendingUp, ArrowLeft, FileClock, Printer, Calenda
                                     className="glass-card h-full flex flex-col justify-between hover:border-blue-500 transition-colors duration-300 cursor-pointer"
                                     onClick={option.action}
                                 >
-                                    <CardContent className="p-6 flex flex-col items-center text-center">
-                                        <div className="p-4 bg-blue-500/10 rounded-full mb-4">
-                                            <Icon className={`w-12 h-12 ${option.implemented ? 'text-blue-400' : 'text-gray-500'}`} />
+                                    <CardContent className="p-4 flex flex-col items-center text-center">
+                                        <div className="p-3 bg-blue-500/10 rounded-full mb-3">
+                                            <Icon className={`w-9 h-9 ${option.implemented ? 'text-blue-400' : 'text-gray-500'}`} />
                                         </div>
-                                        <h2 className={`text-xl font-semibold mb-2 ${option.implemented ? 'text-white' : 'text-gray-400'}`}>{option.title}</h2>
-                                        <p className="text-gray-400 text-sm flex-grow">{option.description}</p>
+                                        <h2 className={`text-base font-semibold mb-2 ${option.implemented ? 'text-white' : 'text-gray-400'}`}>{option.title}</h2>
+                                        <p className="text-gray-400 text-xs flex-grow">{option.description}</p>
                                     </CardContent>
-                                    <div className="p-4 pt-0">
-                                         <Button className="w-full bg-blue-600 hover:bg-blue-700" disabled={!option.implemented}>
+                                    <div className="p-3 pt-0">
+                                         <Button className="w-full bg-blue-600 hover:bg-blue-700 text-xs py-2" disabled={!option.implemented}>
                                             {option.implemented ? 'Gerar Relatório' : 'Em Breve'}
                                          </Button>
                                     </div>

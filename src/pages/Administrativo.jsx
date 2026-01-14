@@ -4,7 +4,6 @@ import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft,
-  FileText,
   LayoutDashboard,
   ClipboardList,
   Check,
@@ -18,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
+import IndicadoresPedagogico from '@/components/pedagogico/IndicadoresPedagogico';
 
 const Administrativo = () => {
   const navigate = useNavigate();
@@ -133,14 +133,13 @@ const Administrativo = () => {
   const navButtons = [
     { label: 'Dashboard', path: '/administrativo', icon: LayoutDashboard },
     { label: 'Tarefas', path: '/administrativo/tarefas', icon: ClipboardList },
-    { label: 'RelatÛrios', path: '/administrativo/relatorios', icon: FileText },
   ];
 
   return (
     <div className="space-y-8">
       <Helmet>
         <title>Administrativo - BooK+</title>
-        <meta name="description" content="MÛdulo administrativo" />
+        <meta name="description" content="M√≥dulo administrativo" />
       </Helmet>
 
       <motion.div
@@ -154,7 +153,7 @@ const Administrativo = () => {
             <span className="sr-only">Voltar</span>
           </Button>
           <div className="text-left">
-            <h1 className="text-3xl font-bold gradient-text">¡rea Administrativa</h1>
+            <h1 className="text-3xl font-bold gradient-text">√Årea Administrativa</h1>
           </div>
         </div>
       </motion.div>
@@ -193,25 +192,7 @@ const Administrativo = () => {
         transition={{ delay: 0.3 }}
       >
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          <Card className="glass-card">
-            <CardHeader>
-              <CardTitle className="text-white">Quantidade de Alunos</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold text-white">0</p>
-              <p className="text-sm text-gray-400">Total cadastrado</p>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card">
-            <CardHeader>
-              <CardTitle className="text-white">Turmas</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold text-white">0</p>
-              <p className="text-sm text-gray-400">Ativas no momento</p>
-            </CardContent>
-          </Card>
+          <IndicadoresPedagogico />
 
           <Card className="glass-card">
             <CardHeader>

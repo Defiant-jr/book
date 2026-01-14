@@ -19,6 +19,7 @@ import MapaMensal from '@/pages/MapaMensal';
 import EmissaoDuplicata from '@/pages/EmissaoDuplicata';
 import Integracao from '@/pages/Integracao';
 import Operacional from '@/pages/Operacional';
+import Pedagogico from '@/pages/Pedagogico';
 import RelatorioContas from '@/pages/RelatorioContas';
 import RelatorioFechamento from '@/pages/RelatorioFechamento';
 import Relatorios from '@/pages/Relatorios';
@@ -86,6 +87,14 @@ function App() {
 							element={
 								<PrivateRoute>
 									<Operacional />
+								</PrivateRoute>
+							}
+						/>
+						<Route
+							path="/pedagogico"
+							element={
+								<PrivateRoute>
+									<Pedagogico />
 								</PrivateRoute>
 							}
 						/>

@@ -137,7 +137,7 @@ const RelatorioFechamento = () => {
       if (entriesError) throw entriesError;
       if (exitsError) throw exitsError;
 
-      const sanitize = (list) =>
+      const sanitizeBase = (list) =>
         (list || [])
           .filter((item) => item.status !== 'Pago')
           .map((item) => ({
@@ -147,23 +147,37 @@ const RelatorioFechamento = () => {
             desc_pontual: item.desc_pontual != null ? Number(item.desc_pontual) : undefined,
             contato: item.contato || '-',
             aluno: item.aluno || '-',
-          }))
-          .sort((a, b) => {
-            const unidadeA = (a.unidade || '').toLowerCase();
-            const unidadeB = (b.unidade || '').toLowerCase();
-            if (unidadeA !== unidadeB) {
-              return unidadeA.localeCompare(unidadeB, 'pt-BR');
-            }
-            const nameA = (a.cliente_fornecedor || '').toLowerCase();
-            const nameB = (b.cliente_fornecedor || '').toLowerCase();
-            if (nameA !== nameB) {
-              return nameA.localeCompare(nameB, 'pt-BR');
-            }
-            return new Date(`${a.data}T00:00:00`).getTime() - new Date(`${b.data}T00:00:00`).getTime();
-          });
+          }));
 
-      setEntries(sanitize(rawEntries));
-      setExits(sanitize(rawExits));
+      const sanitizeEntries = (list) =>
+        sanitizeBase(list).sort((a, b) => {
+          const unidadeA = (a.unidade || '').toLowerCase();
+          const unidadeB = (b.unidade || '').toLowerCase();
+          if (unidadeA !== unidadeB) {
+            return unidadeA.localeCompare(unidadeB, 'pt-BR');
+          }
+          const nameA = (a.cliente_fornecedor || '').toLowerCase();
+          const nameB = (b.cliente_fornecedor || '').toLowerCase();
+          if (nameA !== nameB) {
+            return nameA.localeCompare(nameB, 'pt-BR');
+          }
+          return new Date(`${a.data}T00:00:00`).getTime() - new Date(`${b.data}T00:00:00`).getTime();
+        });
+
+      const sanitizeExits = (list) =>
+        sanitizeBase(list).sort((a, b) => {
+          const dateA = new Date(`${a.data}T00:00:00`).getTime();
+          const dateB = new Date(`${b.data}T00:00:00`).getTime();
+          if (dateA !== dateB) {
+            return dateA - dateB;
+          }
+          const nameA = (a.cliente_fornecedor || '').toLowerCase();
+          const nameB = (b.cliente_fornecedor || '').toLowerCase();
+          return nameA.localeCompare(nameB, 'pt-BR');
+        });
+
+      setEntries(sanitizeEntries(rawEntries));
+      setExits(sanitizeExits(rawExits));
       setGeneratedAt(new Date());
       setReportGenerated(true);
     } catch (error) {
