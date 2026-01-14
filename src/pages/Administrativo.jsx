@@ -1,14 +1,11 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft,
-  UserPlus,
-  Download,
   FileText,
   LayoutDashboard,
-  Settings,
   ClipboardList,
   Check,
   Calendar,
@@ -136,17 +133,14 @@ const Administrativo = () => {
   const navButtons = [
     { label: 'Dashboard', path: '/administrativo', icon: LayoutDashboard },
     { label: 'Tarefas', path: '/administrativo/tarefas', icon: ClipboardList },
-    { label: 'Cadastro', path: '/cadastros', icon: UserPlus },
-    { label: 'Operações', path: '/lancamentos', icon: Settings },
-    { label: 'Relatórios', path: '/administrativo/relatorios', icon: FileText },
-    { label: 'Integração', path: '/integracao', icon: Download },
+    { label: 'Relat�rios', path: '/administrativo/relatorios', icon: FileText },
   ];
 
   return (
     <div className="space-y-8">
       <Helmet>
         <title>Administrativo - BooK+</title>
-        <meta name="description" content="Módulo administrativo" />
+        <meta name="description" content="M�dulo administrativo" />
       </Helmet>
 
       <motion.div
@@ -160,7 +154,7 @@ const Administrativo = () => {
             <span className="sr-only">Voltar</span>
           </Button>
           <div className="text-left">
-            <h1 className="text-3xl font-bold gradient-text">Área Administrativa</h1>
+            <h1 className="text-3xl font-bold gradient-text">�rea Administrativa</h1>
           </div>
         </div>
       </motion.div>
@@ -383,6 +377,7 @@ const Administrativo = () => {
 };
 
 export default Administrativo;
+
 
 
 

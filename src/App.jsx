@@ -18,6 +18,7 @@ import Login from '@/pages/Login';
 import MapaMensal from '@/pages/MapaMensal';
 import EmissaoDuplicata from '@/pages/EmissaoDuplicata';
 import Integracao from '@/pages/Integracao';
+import Operacional from '@/pages/Operacional';
 import RelatorioContas from '@/pages/RelatorioContas';
 import RelatorioFechamento from '@/pages/RelatorioFechamento';
 import Relatorios from '@/pages/Relatorios';
@@ -77,6 +78,14 @@ function App() {
 							element={
 								<PrivateRoute>
 									<Administrativo />
+								</PrivateRoute>
+							}
+						/>
+						<Route
+							path="/operacional"
+							element={
+								<PrivateRoute>
+									<Operacional />
 								</PrivateRoute>
 							}
 						/>
@@ -217,12 +226,17 @@ function App() {
 							}
 						/>
 						<Route
-							path="/integracao"
+							path="/operacional/integracao"
 							element={
 								<PrivateRoute>
 									<Integracao />
 								</PrivateRoute>
 							}
+						/>
+						<Route path="/integracao" element={<Navigate to="/operacional/integracao" replace />} />
+						<Route
+							path="/administrativo/integracao"
+							element={<Navigate to="/operacional/integracao" replace />}
 						/>
 					</Routes>
 				</main>
@@ -234,3 +248,9 @@ function App() {
 }
 
 export default App;
+
+
+
+
+
+

@@ -46,79 +46,6 @@ const fetchSheetRange = async (sheetId, range, apiKey) => {
   return response.json();
 };
 
-const buildPagamentos = (values, today) => {
-  if (!Array.isArray(values) || values.length <= 1) {
-    return [];
-  }
-
-  const pagamentos = [];
-
-  for (let index = 1; index < values.length; index += 1) {
-    const row = values[index];
-    if (!Array.isArray(row) || row.length < 4) {
-      continue;
-    }
-
-    const valor = parseCurrency(row[3]);
-    if (valor === 0) {
-      continue;
-    }
-
-    const vencimentoDate = parseDate(row[2]);
-    if (!vencimentoDate) {
-      continue;
-    }
-
-    pagamentos.push({
-      id: `pag_${index}`,
-      fornecedor: row[0] ?? '',
-      parcela: row[1] ?? '',
-      vencimento: toIsoDate(vencimentoDate),
-      valor,
-      tipo: 'pagar',
-      status: vencimentoDate < today ? 'vencido' : 'aberto'
-    });
-  }
-
-  return pagamentos;
-};
-
-const buildRecebimentos = (values, today) => {
-  if (!Array.isArray(values) || values.length <= 1) {
-    return [];
-  }
-
-  const recebimentos = [];
-
-  for (let index = 1; index < values.length; index += 1) {
-    const row = values[index];
-    if (!Array.isArray(row) || row.length < 3) {
-      continue;
-    }
-
-    const valor = parseCurrency(row[2]);
-    if (valor === 0) {
-      continue;
-    }
-
-    const vencimentoDate = parseDate(row[1]);
-    if (!vencimentoDate) {
-      continue;
-    }
-
-    recebimentos.push({
-      id: `rec_${index}`,
-      cliente: row[0] ?? '',
-      vencimento: toIsoDate(vencimentoDate),
-      valor,
-      tipo: 'receber',
-      status: vencimentoDate < today ? 'atrasado' : 'aberto'
-    });
-  }
-
-  return recebimentos;
-};
-
 export async function createApp(options = {}) {
   const { withFrontend = true } = options;
   const app = express();
@@ -143,22 +70,16 @@ export async function createApp(options = {}) {
     }
 
     try {
-      const today = new Date();
-      today.setUTCHours(0, 0, 0, 0);
-
       const [pagamentosData, recebimentosData] = await Promise.all([
-        fetchSheetRange(googleSheetsConfig.pagamentosSheetId, 'A:D', googleSheetsConfig.apiKey),
-        fetchSheetRange(googleSheetsConfig.recebimentosSheetId, 'A:C', googleSheetsConfig.apiKey)
+        fetchSheetRange(googleSheetsConfig.pagamentosSheetId, 'A:F', googleSheetsConfig.apiKey),
+        fetchSheetRange(googleSheetsConfig.recebimentosSheetId, 'A:V', googleSheetsConfig.apiKey)
       ]);
-
-      const pagamentos = buildPagamentos(pagamentosData.values, today);
-      const recebimentos = buildRecebimentos(recebimentosData.values, today);
 
       return res.json({
         success: true,
         message: 'Dados importados com sucesso!',
-        pagamentos,
-        recebimentos
+        pagamentos: pagamentosData.values ?? [],
+        recebimentos: recebimentosData.values ?? []
       });
     } catch (error) {
       console.error('[server] Google Sheets import failed', error);
@@ -173,7 +94,7 @@ export async function createApp(options = {}) {
     return { app };
   }
 
-  const isProd = (process.env.NODE_ENV ?? 'production') === 'production';
+  const isProd = process.env.NODE_ENV === 'production';
 
   if (isProd) {
     const distPath = path.join(projectRoot, 'dist');

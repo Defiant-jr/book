@@ -2,7 +2,7 @@ import React from 'react';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Building2, GraduationCap, LogOut, Wallet } from 'lucide-react';
+import { Building2, GraduationCap, LogOut, Settings, Wallet } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,17 +16,24 @@ const AreaSelection = () => {
 
   const modules = [
     {
-      title: 'Financeiro',
-      description: 'Acesse o painel financeiro completo e os principais indicadores.',
-      icon: Wallet,
-      action: () => navigate('/dashboard'),
-      status: 'Disponível',
-    },
-    {
       title: 'Administrativo',
       description: 'Gestão administrativa e Operacional de processos internos.',
       icon: Building2,
       action: () => navigate('/administrativo'),
+      status: 'Disponível',
+    },
+    {
+      title: 'Operacional',
+      description: 'Rotinas operacionais e acompanhamento do dia a dia.',
+      icon: Settings,
+      action: () => navigate('/operacional'),
+      status: 'Disponível',
+    },
+    {
+      title: 'Financeiro',
+      description: 'Acesse o painel financeiro completo e os principais indicadores.',
+      icon: Wallet,
+      action: () => navigate('/dashboard'),
       status: 'Disponível',
     },
     {

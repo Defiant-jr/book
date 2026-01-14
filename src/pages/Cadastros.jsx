@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Users, Building2, Home, UserCheck, GraduationCap } from 'lucide-react';
+import { ArrowLeft, Users, Building2, Home, UserCheck, GraduationCap, PenLine } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import LancamentoForm from '@/components/forms/LancamentoForm';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 
@@ -31,8 +32,8 @@ const Cadastros = () => {
     },
     {
       id: 'responsavel',
-      title: 'Responsável',
-      description: 'Cadastro de responsáveis financeiros.',
+      title: 'Responsavel',
+      description: 'Cadastro de responsaveis financeiros.',
       icon: UserCheck,
     },
     {
@@ -50,8 +51,14 @@ const Cadastros = () => {
     {
       id: 'turma',
       title: 'Turma',
-      description: 'Cadastro e organização de turmas.',
+      description: 'Cadastro e organizacao de turmas.',
       icon: GraduationCap,
+    },
+    {
+      id: 'lancamento',
+      title: 'Lancamento',
+      description: 'Cadastro de lancamentos financeiros.',
+      icon: PenLine,
     },
   ];
 
@@ -131,10 +138,10 @@ const Cadastros = () => {
       return (
         <Card className="glass-card">
           <CardHeader>
-            <CardTitle className="text-white">Cadastro de Responsável</CardTitle>
+            <CardTitle className="text-white">Cadastro de Responsavel</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <p className="text-gray-300">Cadastro de responsáveis em desenvolvimento.</p>
+            <p className="text-gray-300">Cadastro de responsaveis em desenvolvimento.</p>
           </CardContent>
         </Card>
       );
@@ -208,6 +215,16 @@ const Cadastros = () => {
             <p className="text-gray-300">Cadastro de turmas em desenvolvimento.</p>
           </CardContent>
         </Card>
+      );
+    }
+
+    if (activeCard === 'lancamento') {
+      return (
+        <LancamentoForm
+          onCancel={() => navigate(-1)}
+          onSuccess={() => navigate('/operacional')}
+          allowRecurrence
+        />
       );
     }
 
