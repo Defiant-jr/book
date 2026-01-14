@@ -1,4 +1,4 @@
-# Documentacao tecnica completa do sistema BooK+
+# Documentacao de criação completa do sistema BooK+
 
 ## 1. Visao geral
 O BooK+ e uma aplicacao web para gestao financeira e administrativa com integracao a planilhas do Google Sheets e geracao de relatorios em PDF. O sistema centraliza lancamentos (entradas e saidas), fornece visoes gerenciais (DRE, fluxo de caixa, fechamento) e apoia rotinas administrativas (tarefas e cadastros).
