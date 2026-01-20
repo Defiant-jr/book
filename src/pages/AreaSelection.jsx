@@ -20,6 +20,7 @@ const AreaSelection = () => {
       description: 'Gestão administrativa e Operacional de processos internos.',
       icon: Building2,
       action: () => navigate('/administrativo'),
+      sortKey: 'administrativo',
       status: 'Disponível',
     },
     {
@@ -27,6 +28,7 @@ const AreaSelection = () => {
       description: 'Rotinas operacionais e acompanhamento do dia a dia.',
       icon: Settings,
       action: () => navigate('/operacional'),
+      sortKey: 'operacional',
       status: 'Disponível',
     },
     {
@@ -34,6 +36,7 @@ const AreaSelection = () => {
       description: 'Acesse o painel financeiro completo e os principais indicadores.',
       icon: Wallet,
       action: () => navigate('/dashboard'),
+      sortKey: 'financeiro',
       status: 'Disponível',
     },
     {
@@ -41,6 +44,7 @@ const AreaSelection = () => {
       description: 'Central de relatórios e documentos para acompanhamento.',
       icon: FileText,
       action: () => navigate('/relatorios'),
+      sortKey: 'relatorios',
       status: 'Disponível',
     },
     {
@@ -48,9 +52,15 @@ const AreaSelection = () => {
       description: 'Recursos pedagógicos e acompanhamento acadêmico.',
       icon: GraduationCap,
       action: () => navigate('/pedagogico'),
+      sortKey: 'pedagogico',
       status: 'Disponível',
     },
   ];
+
+  const moduleOrder = ['administrativo', 'financeiro', 'pedagogico', 'operacional', 'relatorios'];
+  const orderedModules = [...modules].sort(
+    (a, b) => moduleOrder.indexOf(a.sortKey) - moduleOrder.indexOf(b.sortKey)
+  );
 
   const handleModuleClick = (module) => {
     if (module.action) {
@@ -97,7 +107,7 @@ const AreaSelection = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {modules.map((module, index) => {
+        {orderedModules.map((module, index) => {
           const Icon = module.icon;
           const isAvailable = Boolean(module.action);
 

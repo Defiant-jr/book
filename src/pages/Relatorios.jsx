@@ -3,7 +3,7 @@ import React from 'react';
     import { useNavigate } from 'react-router-dom';
     import { Helmet } from 'react-helmet';
     import { motion } from 'framer-motion';
-import { BarChart3, PieChart, TrendingUp, ArrowLeft, FileClock, Printer, CalendarRange, FileSignature, FolderKanban } from 'lucide-react';
+import { BarChart3, PieChart, TrendingUp, ArrowLeft, FileClock, Printer, CalendarRange, FileSignature, FolderKanban, FileText, DollarSign } from 'lucide-react';
     
     import { Button } from '@/components/ui/button';
     import { Card, CardContent } from '@/components/ui/card';
@@ -80,7 +80,21 @@ import { BarChart3, PieChart, TrendingUp, ArrowLeft, FileClock, Printer, Calenda
                 description: "Resumo das operações e movimentações registradas.",
                 action: () => handleNavigation('/relatorios/operacoes', false),
                 implemented: false,
-            }
+            },
+            {
+                title: "Serasa",
+                icon: FileText,
+                description: "Consulta e acompanhamento de informacoes Serasa.",
+                action: () => handleNavigation('/relatorios/serasa'),
+                implemented: true,
+            },
+            {
+                title: "Custo",
+                icon: DollarSign,
+                description: "Relat¢rio de custos para an lise futura.",
+                action: () => handleNavigation('/relatorios/custo', false),
+                implemented: false,
+            },
         ];
     
         return (

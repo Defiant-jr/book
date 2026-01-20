@@ -22,6 +22,7 @@ import Operacional from '@/pages/Operacional';
 import Pedagogico from '@/pages/Pedagogico';
 import RelatorioContas from '@/pages/RelatorioContas';
 import RelatorioFechamento from '@/pages/RelatorioFechamento';
+import RelatorioSerasa from '@/pages/RelatorioSerasa';
 import Relatorios from '@/pages/Relatorios';
 import SignUp from '@/pages/SignUp';
 import FinanceiroCadastro from '@/pages/FinanceiroCadastro';
@@ -207,6 +208,14 @@ function App() {
 							element={
 								<PrivateRoute>
 									<RelatorioContas />
+								</PrivateRoute>
+							}
+						/>
+						<Route
+							path="/relatorios/serasa"
+							element={
+								<PrivateRoute>
+									<RelatorioSerasa />
 								</PrivateRoute>
 							}
 						/>
