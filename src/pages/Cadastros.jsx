@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Users, Building2, Home, UserCheck, GraduationCap, PenLine } from 'lucide-react';
+import { ArrowLeft, Users, Building2, Home, UserCheck, GraduationCap, PenLine, Percent } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -53,6 +53,12 @@ const Cadastros = () => {
       title: 'Turma',
       description: 'Cadastro e organizacao de turmas.',
       icon: GraduationCap,
+    },
+    {
+      id: 'rateio',
+      title: 'Rateio',
+      description: 'Cadastro e organizacao de rateios.',
+      icon: Percent,
     },
     {
       id: 'lancamento',
@@ -259,11 +265,26 @@ const Cadastros = () => {
         {cardOptions.map((card) => {
           const Icon = card.icon;
           const isActive = activeCard === card.id;
+          const handleCardClick = () => {
+            if (card.id === 'aluno') {
+              navigate('/operacoes/cadastro/aluno');
+              return;
+            }
+            if (card.id === 'turma') {
+              navigate('/operacoes/cadastro/turma');
+              return;
+            }
+            if (card.id === 'rateio') {
+              navigate('/operacoes/cadastro/rateio');
+              return;
+            }
+            setActiveCard(card.id);
+          };
           return (
             <Card
               key={card.id}
               className={`glass-card cursor-pointer transition-all ${isActive ? 'border-blue-500 shadow-lg shadow-blue-500/20' : 'border-transparent hover:border-white/20'}`}
-              onClick={() => setActiveCard(card.id)}
+              onClick={handleCardClick}
             >
               <CardContent className="p-6 space-y-4">
                 <div className="flex items-center gap-3">
