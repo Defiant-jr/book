@@ -2,7 +2,7 @@ import React from 'react';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Building2, FileText, GraduationCap, LogOut, Settings, Wallet } from 'lucide-react';
+import { BarChart3, Building2, FileText, GraduationCap, LogOut, Settings, Wallet } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -48,6 +48,13 @@ const AreaSelection = () => {
       status: 'Disponível',
     },
     {
+      title: 'Estatisticas',
+      description: 'Painel de estatisticas e indicadores para desenvolvimento futuro.',
+      icon: BarChart3,
+      sortKey: 'estatisticas',
+      status: 'Em desenvolvimento',
+    },
+    {
       title: 'Pedagógico',
       description: 'Recursos pedagógicos e acompanhamento acadêmico.',
       icon: GraduationCap,
@@ -57,7 +64,14 @@ const AreaSelection = () => {
     },
   ];
 
-  const moduleOrder = ['administrativo', 'financeiro', 'pedagogico', 'operacional', 'relatorios'];
+  const moduleOrder = [
+    'administrativo',
+    'financeiro',
+    'pedagogico',
+    'operacional',
+    'estatisticas',
+    'relatorios',
+  ];
   const orderedModules = [...modules].sort(
     (a, b) => moduleOrder.indexOf(a.sortKey) - moduleOrder.indexOf(b.sortKey)
   );
