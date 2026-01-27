@@ -20,7 +20,6 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import { startOfMonth, endOfMonth, format, eachDayOfInterval } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { getValorConsiderado } from '@/lib/lancamentoValor';
 import { getLancamentoStatus, normalizeTipo, STATUS } from '@/lib/lancamentoStatus';
 import { useEmCashValue } from '@/hooks/useEmCashValue';
 
@@ -116,12 +115,25 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
             item.statusNorm !== STATUS.PAGO
           );
 
+        const getValorReceber = (item) => {
+          if (item?.tipoNorm !== 'entrada') return 0;
+          const valor = Number(item?.valor) || 0;
+          if (item.statusNorm === STATUS.A_VENCER) {
+            const descPontual = Number(item?.desc_pontual);
+            return Number.isFinite(descPontual) ? descPontual : valor;
+          }
+          if (item.statusNorm === STATUS.ATRASADO) {
+            return valor;
+          }
+          return valor;
+        };
+
         const atrasados = normalizedData.filter((item) => item.dataStr < startStr);
         const atrasadosReceber = atrasados.filter((i) => i.tipoNorm === 'entrada');
         const atrasadosPagar = atrasados.filter((i) => i.tipoNorm === 'saida');
 
         const emCashAmount = Number(emCashValue) || 0;
-        const totalAtrasadoReceber = atrasadosReceber.reduce((acc, i) => acc + (Number(i?.valor) || 0), 0) + emCashAmount;
+        const totalAtrasadoReceber = atrasadosReceber.reduce((acc, i) => acc + getValorReceber(i), 0) + emCashAmount;
         const totalAtrasadoPagar = atrasadosPagar.reduce((acc, i) => acc + (Number(i?.valor) || 0), 0);
 
         const receberDetails = [...atrasadosReceber];
@@ -148,7 +160,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
           const dayIndex = Number(item.dataStr.slice(8, 10)) - 1;
           if (Number.isNaN(dayIndex) || dayIndex < 0 || dayIndex >= fluxo.length) return;
           if (item.tipoNorm === 'entrada') {
-            fluxo[dayIndex].receber += Number(item?.valor) || 0;
+            fluxo[dayIndex].receber += getValorReceber(item);
             fluxo[dayIndex].details.receber.push(item);
           } else {
             fluxo[dayIndex].pagar += Number(item?.valor) || 0;
@@ -300,7 +312,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
                                       {dia.details.receber.length > 0 ? dia.details.receber.map(item => (
                                         <div key={item.id} className="flex justify-between text-sm py-1">
                                           <span>{item.cliente_fornecedor}</span>
-                                          <span className="font-mono">{formatCurrency(Number(item?.valor) || 0)}</span>
+                                          <span className="font-mono">{formatCurrency(item.tipoNorm === 'entrada' ? getValorReceber(item) : (Number(item?.valor) || 0))}</span>
                                         </div>
                                       )) : <p className="text-xs text-slate-400">Nenhuma entrada.</p>}
                                     </div>

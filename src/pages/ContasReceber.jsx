@@ -10,7 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import { format as formatDateFns } from 'date-fns';
-import { getValorConsiderado } from '@/lib/lancamentoValor';
 import { getLancamentoStatus, STATUS, STATUS_LABELS, STATUS_COLORS, STATUS_OPTIONS } from '@/lib/lancamentoStatus';
 
 const STATUS_ABERTO = 'em_aberto';
@@ -68,8 +67,18 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
 
       const formatCurrency = (value) => (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
       const formatDate = (dateString) => new Date(dateString + 'T00:00:00').toLocaleDateString('pt-BR', { timeZone: 'UTC' });
-      const todayStr = new Date().toISOString().split('T')[0];
-      const valorConsiderado = (conta) => getValorConsiderado(conta, todayStr);
+      const valorParaReceber = (conta) => {
+        const status = getStatus(conta);
+        const valor = Number(conta?.valor) || 0;
+        if (status === STATUS.A_VENCER) {
+          const descPontual = Number(conta?.desc_pontual);
+          return Number.isFinite(descPontual) ? descPontual : valor;
+        }
+        if (status === STATUS.ATRASADO) {
+          return valor;
+        }
+        return valor;
+      };
     
       const filteredContas = useMemo(() => {
         let filtered = [...contas];
@@ -106,7 +115,7 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
           const inicioCents = hasInicio ? toCents(filters.valorInicio) : null;
           const fimCents = hasFim ? toCents(filters.valorFim) : null;
           filtered = filtered.filter((conta) => {
-            const contaCents = toCents(valorConsiderado(conta));
+            const contaCents = toCents(valorParaReceber(conta));
             if (hasInicio && hasFim) {
               return contaCents >= inicioCents && contaCents <= fimCents;
             }
@@ -129,7 +138,7 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
         }, {});
       }, [filteredContas]);
     
-      const calculateTotalsByUnit = (contas) => {
+      const calculateTotalsByUnit = (contas, getValor) => {
         const totals = {
           'CNA Angra dos Reis': 0,
           'CNA Mangaratiba': 0,
@@ -137,22 +146,20 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
         };
         contas.forEach(conta => {
           if (totals.hasOwnProperty(conta.unidade)) {
-            totals[conta.unidade] += Number(conta?.valor) || 0;
+            totals[conta.unidade] += getValor(conta);
           }
         });
         return totals;
       };
     
-      const totalGeralBase = filteredContas.reduce((sum, conta) => sum + (Number(conta?.valor) || 0), 0);
       const totalAberto = filteredContas.filter(c => getStatus(c) === STATUS.A_VENCER);
       const totalAtrasado = filteredContas.filter(c => getStatus(c) === STATUS.ATRASADO);
-      const totalAbertoValor = totalAberto.reduce((s, c) => s + (Number(c?.valor) || 0), 0);
-      const totalAtrasadoValorBase = totalAtrasado.reduce((s, c) => s + (Number(c?.valor) || 0), 0);
-      const totalGeral = totalGeralBase;
-      const totalAtrasadoValor = totalAtrasadoValorBase;
+      const totalAbertoValor = totalAberto.reduce((s, c) => s + valorParaReceber(c), 0);
+      const totalAtrasadoValor = totalAtrasado.reduce((s, c) => s + valorParaReceber(c), 0);
+      const totalGeral = filteredContas.reduce((sum, conta) => sum + valorParaReceber(conta), 0);
 
-      const totalAbertoPorUnidade = calculateTotalsByUnit(totalAberto);
-      const totalAtrasadoPorUnidade = calculateTotalsByUnit(totalAtrasado);
+      const totalAbertoPorUnidade = calculateTotalsByUnit(totalAberto, valorParaReceber);
+      const totalAtrasadoPorUnidade = calculateTotalsByUnit(totalAtrasado, valorParaReceber);
       const totalAtrasadoDetalhes = Object.entries(totalAtrasadoPorUnidade);
 
   const handleMarkAsPaid = async (id) => {
@@ -266,7 +273,7 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
             {loading ? <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div></div>
               : Object.entries(groupedContas).map(([date, contasData], index) => (
                 <Card key={date} className="glass-card">
-                  <CardHeader><div className="flex justify-between items-center"><CardTitle className="text-white flex items-center gap-2"><Calendar className="w-5 h-5" />{formatDate(date)}</CardTitle><div className="text-lg font-bold text-green-400">{formatCurrency(contasData.reduce((s, c) => s + valorConsiderado(c), 0))}</div></div></CardHeader>
+                  <CardHeader><div className="flex justify-between items-center"><CardTitle className="text-white flex items-center gap-2"><Calendar className="w-5 h-5" />{formatDate(date)}</CardTitle><div className="text-lg font-bold text-green-400">{formatCurrency(contasData.reduce((s, c) => s + valorParaReceber(c), 0))}</div></div></CardHeader>
                   <CardContent>
                     <div className="space-y-3">
                       {contasData.map((conta) => {
@@ -285,7 +292,7 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
                             </div>
                             <div className="flex items-center gap-4">
                               <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(status)}`}>{getStatusLabel(status)}</span>
-                              <div className="text-lg font-bold text-green-400">{formatCurrency(valorConsiderado(conta))}</div>
+                              <div className="text-lg font-bold text-green-400">{formatCurrency(valorParaReceber(conta))}</div>
                               <button
                                 type="button"
                                 onClick={() => handleEditLancamento(conta)}

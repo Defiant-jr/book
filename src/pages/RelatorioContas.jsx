@@ -12,7 +12,6 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { format } from 'date-fns';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { getValorConsiderado } from '@/lib/lancamentoValor';
 import { getLancamentoStatus, normalizeTipo, STATUS, STATUS_LABELS, STATUS_OPTIONS } from '@/lib/lancamentoStatus';
 
     const RelatorioContas = () => {
@@ -110,7 +109,21 @@ import { getLancamentoStatus, normalizeTipo, STATUS, STATUS_LABELS, STATUS_OPTIO
         };
 
         const formatCurrency = (value) => (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        const valorConta = (conta) => Number(conta?.valor) || 0;
+        const valorConta = (conta) => {
+            const tipoNorm = normalizeTipo(conta?.tipo);
+            const valor = Number(conta?.valor) || 0;
+            if (tipoNorm === 'entrada') {
+                const status = getStatus(conta);
+                if (status === STATUS.A_VENCER) {
+                    const descPontual = Number(conta?.desc_pontual);
+                    return Number.isFinite(descPontual) ? descPontual : valor;
+                }
+                if (status === STATUS.ATRASADO) {
+                    return valor;
+                }
+            }
+            return valor;
+        };
         const formatDate = (dateString) => dateString ? format(new Date(dateString + 'T00:00:00'), 'dd/MM/yyyy') : '-';
         const formatStatusDisplay = (status) => STATUS_LABELS[status] || status;
         const totalGeral = useMemo(() => {

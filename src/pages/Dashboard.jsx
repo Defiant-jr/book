@@ -10,7 +10,6 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { supabase } from '@/lib/customSupabaseClient';
-import { getValorConsiderado } from '@/lib/lancamentoValor';
 import { getLancamentoStatus, normalizeTipo, STATUS } from '@/lib/lancamentoStatus';
 import { useEmCashValue } from '@/hooks/useEmCashValue';
 
@@ -86,26 +85,40 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
           const lancamentos = Array.isArray(financialData?.lancamentos) ? financialData.lancamentos : [];
           const todayStr = new Date().toISOString().split('T')[0];
           const getStatus = (conta) => getLancamentoStatus(conta, todayStr);
+          const getValorReceber = (conta) => {
+            const status = getStatus(conta);
+            const valor = Number(conta?.valor) || 0;
+            if (status === STATUS.A_VENCER) {
+              const descPontual = Number(conta?.desc_pontual);
+              return Number.isFinite(descPontual) ? descPontual : valor;
+            }
+            if (status === STATUS.ATRASADO) {
+              return valor;
+            }
+            return valor;
+          };
           const lancamentosEmAberto = lancamentos.filter((conta) => getStatus(conta) !== STATUS.PAGO);
           const months = [];
           const currentDate = new Date();
           const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
 
-          const sumValores = (lista) => lista.reduce((acc, conta) => acc + (Number(conta?.valor) || 0), 0);
+          const sumValores = (lista, getValor) => lista.reduce((acc, conta) => acc + getValor(conta), 0);
 
           const overdueReceber = sumValores(
             lancamentosEmAberto.filter((conta) => {
               if (normalizeTipo(conta.tipo) !== 'entrada') return false;
               const venc = parseDateSafe(conta.data);
               return venc && venc < startDate;
-            })
+            }),
+            getValorReceber
           );
           const overduePagar = sumValores(
             lancamentosEmAberto.filter((conta) => {
               if (normalizeTipo(conta.tipo) !== 'saida') return false;
               const venc = parseDateSafe(conta.data);
               return venc && venc < startDate;
-            })
+            }),
+            (conta) => Number(conta?.valor) || 0
           );
 
           for (let i = 0; i < span; i++) {
@@ -128,7 +141,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
                 return vencimento && vencimento.getMonth() === date.getMonth() &&
                        vencimento.getFullYear() === date.getFullYear();
               })
-              .reduce((sum, conta) => sum + (Number(conta?.valor) || 0), 0);
+              .reduce((sum, conta) => sum + getValorReceber(conta), 0);
 
             if (i === 0) {
               monthReceber += cashValue + overdueReceber;
@@ -214,6 +227,18 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
       const saidasPeriodo = saidasEmAberto.filter(isInPeriod);
 
       const getValorBase = (lancamento) => Number(lancamento?.valor) || 0;
+      const getValorReceber = (lancamento) => {
+        const status = getStatus(lancamento);
+        const valor = Number(lancamento?.valor) || 0;
+        if (status === STATUS.A_VENCER) {
+          const descPontual = Number(lancamento?.desc_pontual);
+          return Number.isFinite(descPontual) ? descPontual : valor;
+        }
+        if (status === STATUS.ATRASADO) {
+          return valor;
+        }
+        return valor;
+      };
       const getOverdueBeforeCurrentMonth = (conta) => {
         if (getStatus(conta) !== STATUS.ATRASADO) return false;
         const vencimento = parseDateSafe(conta.data);
@@ -222,18 +247,18 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
 
       const receberAtrasadoAnterior = entradasEmAberto
         .filter(getOverdueBeforeCurrentMonth)
-        .reduce((sum, c) => sum + getValorBase(c), 0);
+        .reduce((sum, c) => sum + getValorReceber(c), 0);
       const pagarAtrasadoAnterior = saidasEmAberto
         .filter(getOverdueBeforeCurrentMonth)
         .reduce((sum, c) => sum + getValorBase(c), 0);
 
-      const totalReceber = entradasPeriodo.reduce((sum, c) => sum + getValorBase(c), 0);
+      const totalReceber = entradasPeriodo.reduce((sum, c) => sum + getValorReceber(c), 0);
       const receberAberto = entradasPeriodo
         .filter(c => getStatus(c) === STATUS.A_VENCER)
-        .reduce((sum, c) => sum + getValorBase(c), 0);
+        .reduce((sum, c) => sum + getValorReceber(c), 0);
       const receberAtrasado = entradasPeriodo
         .filter(c => getStatus(c) === STATUS.ATRASADO)
-        .reduce((sum, c) => sum + getValorBase(c), 0) + receberAtrasadoAnterior;
+        .reduce((sum, c) => sum + getValorReceber(c), 0) + receberAtrasadoAnterior;
       const emCashAmount = Number(emCashValue) || 0;
       const totalReceberComCash = totalReceber + emCashAmount;
       const totalReceberPendente = receberAberto + receberAtrasado + emCashAmount;

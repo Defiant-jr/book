@@ -12,7 +12,6 @@ import { startOfMonth, endOfMonth, format, eachDayOfInterval } from 'date-fns';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { cn } from '@/lib/utils';
-import { getValorConsiderado } from '@/lib/lancamentoValor';
 import { getLancamentoStatus, normalizeTipo, STATUS } from '@/lib/lancamentoStatus';
 import { useEmCashValue } from '@/hooks/useEmCashValue';
 
@@ -78,6 +77,20 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
         return (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
       };
       const todayStr = new Date().toISOString().split('T')[0];
+      const getValorReceber = (item) => {
+        if (item?.tipoNorm && item.tipoNorm !== 'entrada') return 0;
+        const status = item?.statusNorm ?? getLancamentoStatus(item, todayStr);
+        const valor = Number(item?.valor) || 0;
+        if (status === STATUS.A_VENCER) {
+          const descPontual = Number(item?.desc_pontual);
+          return Number.isFinite(descPontual) ? descPontual : valor;
+        }
+        if (status === STATUS.ATRASADO) {
+          return valor;
+        }
+        return valor;
+      };
+      const getValorPagar = (item) => Number(item?.valor) || 0;
 
       const monthData = useMemo(() => {
         const firstDayOfMonth = startOfMonth(currentDate);
@@ -123,13 +136,13 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
 
         const atrasadosReceber = atrasadosLancamentos.filter(i => i.tipoNorm === 'entrada');
         const atrasadosPagar = atrasadosLancamentos.filter(i => i.tipoNorm === 'saida');
-        const totalReceberAtrasado = atrasadosReceber.reduce((acc, i) => acc + getValorConsiderado(i, todayStr), 0) + (Number(emCashValue) || 0);
+        const totalReceberAtrasado = atrasadosReceber.reduce((acc, i) => acc + getValorReceber(i), 0) + (Number(emCashValue) || 0);
         const receberDetails = [...atrasadosReceber];
 
         const dia00 = {
           dia: '00',
           receber: totalReceberAtrasado,
-          pagar: atrasadosPagar.reduce((acc, i) => acc + getValorConsiderado(i, todayStr), 0),
+          pagar: atrasadosPagar.reduce((acc, i) => acc + getValorPagar(i), 0),
           details: {
             receber: receberDetails,
             pagar: atrasadosPagar
@@ -144,10 +157,10 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
           const dayIndex = Number(item.dataStr.slice(8, 10)) - 1;
           if (fluxo[dayIndex]) {
             if (item.tipoNorm === 'entrada') {
-              fluxo[dayIndex].receber += getValorConsiderado(item, todayStr);
+              fluxo[dayIndex].receber += getValorReceber(item);
               fluxo[dayIndex].details.receber.push(item);
             } else {
-              fluxo[dayIndex].pagar += getValorConsiderado(item, todayStr);
+              fluxo[dayIndex].pagar += getValorPagar(item);
               fluxo[dayIndex].details.pagar.push(item);
             }
           }
@@ -187,10 +200,10 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
 
           if (viewType === 'analitico' && (item.details.receber.length > 0 || item.details.pagar.length > 0)) {
             item.details.receber.forEach(det => {
-              tableRows.push([{ content: `  ${det.cliente_fornecedor}`, colSpan: 1 }, { content: formatCurrency(getValorConsiderado(det, todayStr)), styles: { halign: 'right' } }, '', '', '']);
+              tableRows.push([{ content: `  ${det.cliente_fornecedor}`, colSpan: 1 }, { content: formatCurrency(getValorReceber(det)), styles: { halign: 'right' } }, '', '', '']);
             });
             item.details.pagar.forEach(det => {
-              tableRows.push([{ content: `  ${det.cliente_fornecedor}`, colSpan: 1 }, '', { content: formatCurrency(getValorConsiderado(det, todayStr)), styles: { halign: 'right' } }, '', '']);
+              tableRows.push([{ content: `  ${det.cliente_fornecedor}`, colSpan: 1 }, '', { content: formatCurrency(getValorPagar(det)), styles: { halign: 'right' } }, '', '']);
             });
           }
         });
@@ -345,7 +358,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
                                         {dia.details.receber.length > 0 ? dia.details.receber.map(item => (
                                           <div key={item.id} className="flex justify-between text-sm py-1">
                                             <span>{item.cliente_fornecedor}</span>
-                                            <span className="font-mono">{formatCurrency(getValorConsiderado(item, todayStr))}</span>
+                                            <span className="font-mono">{formatCurrency(getValorReceber(item))}</span>
                                           </div>
                                         )) : <p className="text-xs text-slate-400">Nenhuma entrada.</p>}
                                       </div>
@@ -354,7 +367,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
                                         {dia.details.pagar.length > 0 ? dia.details.pagar.map(item => (
                                           <div key={item.id} className="flex justify-between text-sm py-1">
                                             <span>{item.cliente_fornecedor}</span>
-                                            <span className="font-mono">{formatCurrency(getValorConsiderado(item, todayStr))}</span>
+                                            <span className="font-mono">{formatCurrency(getValorPagar(item))}</span>
                                           </div>
                                         )) : <p className="text-xs text-slate-400">Nenhuma saída.</p>}
                                       </div>

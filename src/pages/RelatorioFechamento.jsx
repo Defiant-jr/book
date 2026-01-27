@@ -12,7 +12,7 @@ import { endOfMonth, endOfWeek, format } from 'date-fns';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { useEmCashValue } from '@/hooks/useEmCashValue';
-import { getValorConsiderado } from '@/lib/lancamentoValor';
+import { getLancamentoStatus, STATUS } from '@/lib/lancamentoStatus';
 
 const unitOptions = [
   { value: 'todas', label: 'Todas' },
@@ -50,7 +50,19 @@ const RelatorioFechamento = () => {
     return amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   };
   const todayStr = new Date().toISOString().split('T')[0];
-  const valorLancamento = (item) => getValorConsiderado(item, todayStr);
+  const valorReceber = (item) => {
+    const status = getLancamentoStatus(item, todayStr);
+    const valor = Number(item?.valor) || 0;
+    if (status === STATUS.A_VENCER) {
+      const descPontual = Number(item?.desc_pontual);
+      return Number.isFinite(descPontual) ? descPontual : valor;
+    }
+    if (status === STATUS.ATRASADO) {
+      return valor;
+    }
+    return valor;
+  };
+  const valorPagar = (item) => Number(item?.valor) || 0;
 
   const formatDate = (value) => {
     if (!value) return '-';
@@ -86,12 +98,12 @@ const RelatorioFechamento = () => {
   };
 
   const totalEntries = useMemo(
-    () => entries.reduce((sum, item) => sum + valorLancamento(item), 0),
+    () => entries.reduce((sum, item) => sum + valorReceber(item), 0),
     [entries]
   );
 
   const totalExits = useMemo(
-    () => exits.reduce((sum, item) => sum + valorLancamento(item), 0),
+    () => exits.reduce((sum, item) => sum + valorPagar(item), 0),
     [exits]
   );
 
@@ -210,7 +222,7 @@ const RelatorioFechamento = () => {
     cursorY += 14;
     doc.text(`Periodo: ${periodLabel}`, marginLeft, cursorY);
 
-    const buildTable = (title, items, options = {}) => {
+    const buildTable = (title, items, getValor, options = {}) => {
       const { fontSize = 8, cellPadding = 3 } = options;
       cursorY += 24;
       doc.setFontSize(13);
@@ -227,7 +239,7 @@ const RelatorioFechamento = () => {
           item.aluno || '-',
           formatDate(item.data),
           item.unidade || '-',
-          formatCurrency(valorLancamento(item)),
+          formatCurrency(getValor(item)),
         ]),
         theme: 'grid',
         styles: { fontSize, cellPadding },
@@ -241,7 +253,7 @@ const RelatorioFechamento = () => {
     };
 
     if (entries.length) {
-      buildTable('Entradas em aberto e a vencer', entries, { fontSize: 8, cellPadding: 3 });
+      buildTable('Entradas em aberto e a vencer', entries, valorReceber, { fontSize: 8, cellPadding: 3 });
       cursorY += 18;
       doc.text(`Total de entradas: ${formatCurrency(totalEntries)}`, marginLeft, cursorY);
     } else {
@@ -251,7 +263,7 @@ const RelatorioFechamento = () => {
 
     if (exits.length) {
       cursorY += 32;
-      buildTable('Saidas em atraso e em aberto', exits, { fontSize: 8, cellPadding: 3 });
+      buildTable('Saidas em atraso e em aberto', exits, valorPagar, { fontSize: 8, cellPadding: 3 });
       cursorY += 18;
       doc.text(`Total de saidas: ${formatCurrency(totalExits)}`, marginLeft, cursorY);
     } else {
@@ -418,7 +430,7 @@ const RelatorioFechamento = () => {
                             <td className="px-4 py-3">{item.aluno || '-'}</td>
                             <td className="px-4 py-3">{formatDate(item.data)}</td>
                             <td className="px-4 py-3">{item.unidade || '-'}</td>
-                            <td className="px-4 py-3 text-right font-medium text-green-300">{formatCurrency(valorLancamento(item))}</td>
+                            <td className="px-4 py-3 text-right font-medium text-green-300">{formatCurrency(valorReceber(item))}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -463,7 +475,7 @@ const RelatorioFechamento = () => {
                             <td className="px-4 py-3">{item.aluno || '-'}</td>
                             <td className="px-4 py-3">{formatDate(item.data)}</td>
                             <td className="px-4 py-3">{item.unidade || '-'}</td>
-                            <td className="px-4 py-3 text-right font-medium text-red-300">{formatCurrency(valorLancamento(item))}</td>
+                            <td className="px-4 py-3 text-right font-medium text-red-300">{formatCurrency(valorPagar(item))}</td>
                           </tr>
                         ))}
                       </tbody>

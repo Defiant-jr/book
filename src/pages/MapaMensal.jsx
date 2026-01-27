@@ -18,7 +18,6 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { startOfMonth, endOfMonth, eachDayOfInterval, format, getDay } from 'date-fns';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { getValorConsiderado } from '@/lib/lancamentoValor';
 import { getLancamentoStatus, STATUS } from '@/lib/lancamentoStatus';
 
 const weekdayLabels = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
@@ -66,7 +65,19 @@ const MapaMensal = () => {
   const formatCurrency = (value) =>
     (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const todayStr = new Date().toISOString().split('T')[0];
-  const valorLancamento = (item) => getValorConsiderado(item, todayStr);
+  const valorReceber = (item) => {
+    const status = getLancamentoStatus(item, todayStr);
+    const valor = Number(item?.valor) || 0;
+    if (status === STATUS.A_VENCER) {
+      const descPontual = Number(item?.desc_pontual);
+      return Number.isFinite(descPontual) ? descPontual : valor;
+    }
+    if (status === STATUS.ATRASADO) {
+      return valor;
+    }
+    return valor;
+  };
+  const valorPagar = (item) => Number(item?.valor) || 0;
   const isPago = (item) => getLancamentoStatus(item, todayStr) === STATUS.PAGO;
 
 const calendarCells = useMemo(() => {
@@ -80,10 +91,10 @@ const calendarCells = useMemo(() => {
       const dayItems = allData.filter((item) => item.data === dayIso && !isPago(item));
       const entradasTotal = dayItems
         .filter((d) => d.tipo === 'Entrada')
-        .reduce((acc, d) => acc + valorLancamento(d), 0);
+        .reduce((acc, d) => acc + valorReceber(d), 0);
       const saidasTotal = dayItems
         .filter((d) => d.tipo === 'Saida')
-        .reduce((acc, d) => acc + valorLancamento(d), 0);
+        .reduce((acc, d) => acc + valorPagar(d), 0);
 
       return {
         date: day,
@@ -113,8 +124,8 @@ const calendarCells = useMemo(() => {
       (acc, item) => {
         const dateObj = new Date(`${item.data}T00:00:00`);
         if (dateObj >= start || isPago(item)) return acc;
-        if (item.tipo === 'Entrada') acc.entradas += valorLancamento(item);
-        if (item.tipo === 'Saida') acc.saidas += valorLancamento(item);
+        if (item.tipo === 'Entrada') acc.entradas += valorReceber(item);
+        if (item.tipo === 'Saida') acc.saidas += valorPagar(item);
         return acc;
       },
       { entradas: 0, saidas: 0 },
@@ -243,7 +254,7 @@ const calendarCells = useMemo(() => {
           if (cursorY > listMaxY) return;
           const name = despesa.cliente_fornecedor || despesa.descricao || 'Despesa';
           const nameLine = doc.splitTextToSize(name, nameWidth)[0] || name;
-          const valueText = formatCurrency(valorLancamento(despesa));
+          const valueText = formatCurrency(valorPagar(despesa));
 
           doc.setTextColor(headerColor.r, headerColor.g, headerColor.b);
           doc.text(nameLine, x + padding, cursorY);
@@ -417,7 +428,7 @@ const calendarCells = useMemo(() => {
                         <div key={despesa.id} className="text-xs flex justify-between gap-1">
                           <span className="truncate max-w-[70%]">{despesa.cliente_fornecedor || despesa.descricao || 'Despesa'}</span>
                           <span className="text-red-300 font-mono">
-                            {formatCurrency(valorLancamento(despesa))}
+                            {formatCurrency(valorPagar(despesa))}
                           </span>
                         </div>
                       ))
