@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
 import { ArrowLeft, BarChart3 } from 'lucide-react';
@@ -108,6 +108,16 @@ const getNextTwoMonthRange = () => {
 
 const formatCurrency = (value) =>
   (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+const formatRatio = (numerator, denominator) => {
+  if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator <= 0) {
+    return '—';
+  }
+  return (numerator / denominator).toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+};
 
 const safeDivide = (value, divisor) => {
   if (!Number.isFinite(value) || !Number.isFinite(divisor) || divisor <= 0) return null;
@@ -666,8 +676,8 @@ const CustoAluno = () => {
       className="space-y-8"
     >
       <Helmet>
-        <title>Custo Aluno - BooK+</title>
-        <meta name="description" content="Indicadores de custo aluno e recebiveis." />
+        <title>Visão ADM/FIN - BooK+</title>
+        <meta name="description" content="Indicadores de Visão ADM/FIN e recebiveis." />
       </Helmet>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -678,7 +688,7 @@ const CustoAluno = () => {
           </Button>
           <div className="flex flex-col">
             <span className="text-[10px] uppercase tracking-[0.3em] text-gray-400">Painel</span>
-            <h1 className="text-3xl font-bold gradient-text">Custo Aluno</h1>
+            <h1 className="text-3xl font-bold gradient-text">Visão ADM/FIN</h1>
             <span className="text-sm text-gray-300">Indicadores consolidados da operacao.</span>
           </div>
         </div>
@@ -709,15 +719,21 @@ const CustoAluno = () => {
                   <div className="grid w-full gap-1 md:grid-cols-3">
                     <div className="min-h-[56px] rounded-2xl border border-white/10 bg-slate-900/60 p-1.5">
                       <p className="text-[10px] uppercase tracking-[0.3em] text-gray-400">Total geral</p>
-                      <p className="mt-0.5 text-2xl font-normal text-white">{totalAlunos}</p>
+                      <p className="mt-0.5 text-2xl font-normal text-white">
+                        {`${totalAlunos} / ${formatRatio(totalAlunos, totalTurmas)}`}
+                      </p>
                     </div>
                     <div className="min-h-[56px] rounded-2xl border border-white/10 bg-slate-900/60 p-1.5">
                       <p className="text-[10px] uppercase tracking-[0.3em] text-gray-400">Mangaratiba</p>
-                      <p className="mt-0.5 text-xl font-normal text-blue-200">{totalMangaratiba}</p>
+                      <p className="mt-0.5 text-xl font-normal text-blue-200">
+                        {`${totalMangaratiba} / ${formatRatio(totalMangaratiba, turmasMangaratiba)}`}
+                      </p>
                     </div>
                     <div className="min-h-[56px] rounded-2xl border border-white/10 bg-slate-900/60 p-1.5">
                       <p className="text-[10px] uppercase tracking-[0.3em] text-gray-400">Angra Dos Reis</p>
-                      <p className="mt-0.5 text-xl font-normal text-blue-200">{totalAngra}</p>
+                      <p className="mt-0.5 text-xl font-normal text-blue-200">
+                        {`${totalAngra} / ${formatRatio(totalAngra, turmasAngra)}`}
+                      </p>
                     </div>
                   </div>
 
@@ -1027,3 +1043,4 @@ const CustoAluno = () => {
 };
 
 export default CustoAluno;
+

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
-import { ArrowLeft, BarChart3 } from 'lucide-react';
+import { ArrowLeft, BarChart3, FileText, GraduationCap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import { Button } from '@/components/ui/button';
@@ -12,9 +12,19 @@ const Estatisticas = () => {
 
   const navButtons = [
     {
-      label: 'Custo Aluno',
+      label: 'Visão ADM/FIN',
       path: '/estatisticas/custo-aluno',
       icon: BarChart3,
+    },
+    {
+      label: 'Custo Turma',
+      path: '/estatisticas/custo-turma',
+      icon: GraduationCap,
+    },
+    {
+      label: 'Ficha de Custos',
+      path: '/estatisticas/ficha-custos',
+      icon: FileText,
     },
   ];
 
