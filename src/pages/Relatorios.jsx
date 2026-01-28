@@ -1,4 +1,4 @@
-
+﻿
 import React from 'react';
     import { useNavigate } from 'react-router-dom';
     import { Helmet } from 'react-helmet';
@@ -104,7 +104,7 @@ import { BarChart3, PieChart, TrendingUp, ArrowLeft, FileClock, Printer, Calenda
                 className="space-y-8"
             >
                 <Helmet>
-                    <title>Central de Relatórios - BooK+</title>
+                    <title>Relatórios - BooK+</title>
                     <meta name="description" content="Gere relatórios financeiros detalhados." />
                 </Helmet>
     
@@ -114,7 +114,7 @@ import { BarChart3, PieChart, TrendingUp, ArrowLeft, FileClock, Printer, Calenda
                             <ArrowLeft className="h-5 w-5" />
                             <span className="sr-only">Voltar</span>
                         </Button>
-                        <h1 className="text-3xl font-bold gradient-text">Central de Relatórios</h1>
+                        <h1 className="text-3xl font-bold gradient-text">Relatórios</h1>
                     </div>
                 </div>
     
@@ -154,3 +154,4 @@ import { BarChart3, PieChart, TrendingUp, ArrowLeft, FileClock, Printer, Calenda
     };
     
     export default Relatorios;
+

@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
 import { ArrowLeft, LayoutDashboard, School, Users } from 'lucide-react';
@@ -23,8 +23,8 @@ const Pedagogico = () => {
       className="space-y-8"
     >
       <Helmet>
-        <title>Pedagogico - BooK+</title>
-        <meta name="description" content="Indicadores pedagogicos e acompanhamento academico." />
+        <title>Pedagógico - BooK+</title>
+        <meta name="description" content="Indicadores pedagógicos e acompanhamento acadêmico." />
       </Helmet>
 
       <motion.div
@@ -39,7 +39,7 @@ const Pedagogico = () => {
             <span className="sr-only">Voltar</span>
           </Button>
           <div className="text-left">
-            <h1 className="text-3xl font-bold gradient-text">Pedagogico</h1>
+            <h1 className="text-3xl font-bold gradient-text">Pedagógico</h1>
           </div>
         </div>
       </motion.div>

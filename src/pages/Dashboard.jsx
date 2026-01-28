@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
     import { motion } from 'framer-motion';
     import { useNavigate } from 'react-router-dom';
     import { Helmet } from 'react-helmet';
@@ -326,8 +326,8 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
       return (
         <div className="space-y-8">
           <Helmet>
-            <title>Área Financeira - BooK+</title>
-            <meta name="description" content="Área financeira com visão geral das finanças" />
+            <title>Financeiro - BooK+</title>
+            <meta name="description" content="Financeiro com visão geral das finanças" />
           </Helmet>
     
           <motion.div
@@ -341,7 +341,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
                 <span className="sr-only">Voltar</span>
               </Button>
               <div className="text-left">
-                <h1 className="text-3xl font-bold gradient-text">Área Financeira</h1>
+                <h1 className="text-3xl font-bold gradient-text">Financeiro</h1>
               </div>
             </div>
           </motion.div>
@@ -517,4 +517,5 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
     };
     
     export default Dashboard;
+
 

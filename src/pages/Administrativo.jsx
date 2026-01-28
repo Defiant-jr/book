@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
@@ -153,7 +153,7 @@ const Administrativo = () => {
             <span className="sr-only">Voltar</span>
           </Button>
           <div className="text-left">
-            <h1 className="text-3xl font-bold gradient-text">Área Administrativa</h1>
+            <h1 className="text-3xl font-bold gradient-text">Administrativo</h1>
           </div>
         </div>
       </motion.div>
@@ -358,6 +358,8 @@ const Administrativo = () => {
 };
 
 export default Administrativo;
+
+
 
 
 

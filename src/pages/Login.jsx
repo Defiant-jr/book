@@ -13,6 +13,8 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showResend, setShowResend] = useState(false);
+  const [quickPrimed, setQuickPrimed] = useState(false);
+  const passwordRef = React.useRef(null);
   const { signIn, signInLocal } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -53,8 +55,17 @@ const Login = () => {
 
   const handleQuickLogin = async () => {
     const quickEmail = 'book@caedcj.com.br';
+    if (!quickPrimed) {
+      setEmail(quickEmail);
+      setPassword('');
+      setQuickPrimed(true);
+      requestAnimationFrame(() => {
+        passwordRef.current?.focus();
+      });
+      return;
+    }
+
     const isValid = password === 'cna';
-    setEmail(quickEmail);
     if (!isValid) {
       toast({
         variant: 'destructive',
@@ -134,6 +145,7 @@ const Login = () => {
               onChange={(e) => setPassword(e.target.value)}
               required
               className="bg-slate-800/50 border-slate-700"
+              ref={passwordRef}
             />
           </div>
           <Button type="submit" className="w-full" disabled={loading}>

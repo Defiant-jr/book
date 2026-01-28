@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
@@ -40,7 +40,7 @@ const FinanceiroCadastro = () => {
           </Button>
           <div className="flex flex-col">
             <h1 className="text-3xl font-bold gradient-text">Cadastro</h1>
-            <span className="text-sm text-gray-300">Área Financeira</span>
+            <span className="text-sm text-gray-300">Financeiro</span>
           </div>
         </div>
       </div>
@@ -83,3 +83,4 @@ const FinanceiroCadastro = () => {
 };
 
 export default FinanceiroCadastro;
+
