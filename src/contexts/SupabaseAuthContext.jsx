@@ -4,6 +4,25 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 
 const AuthContext = createContext(undefined);
 
+const LOCAL_AUTH_KEY = 'book_local_auth';
+
+const getLocalAuth = () => {
+	try {
+		const raw = localStorage.getItem(LOCAL_AUTH_KEY);
+		return raw ? JSON.parse(raw) : null;
+	} catch {
+		return null;
+	}
+};
+
+const setLocalAuth = (payload) => {
+	if (!payload) {
+		localStorage.removeItem(LOCAL_AUTH_KEY);
+		return;
+	}
+	localStorage.setItem(LOCAL_AUTH_KEY, JSON.stringify(payload));
+};
+
 export const AuthProvider = ({ children }) => {
 	const { toast } = useToast();
 
@@ -19,6 +38,19 @@ export const AuthProvider = ({ children }) => {
 
 	useEffect(() => {
 		const loadSession = async () => {
+			const localAuth = getLocalAuth();
+			if (localAuth?.email) {
+				const localUser = {
+					email: localAuth.email,
+					app_metadata: { role: localAuth.role || 'admin', provider: 'local' },
+					user_metadata: {},
+				};
+				setSession({ user: localUser });
+				setUser(localUser);
+				setLoading(false);
+				return;
+			}
+
 			const {
 				data: { session: currentSession },
 			} = await supabase.auth.getSession();
@@ -30,6 +62,10 @@ export const AuthProvider = ({ children }) => {
 		const {
 			data: { subscription },
 		} = supabase.auth.onAuthStateChange((_event, newSession) => {
+			const localAuth = getLocalAuth();
+			if (localAuth?.email) {
+				return;
+			}
 			handleSession(newSession);
 		});
 
@@ -55,6 +91,7 @@ export const AuthProvider = ({ children }) => {
 	}, [toast]);
 
 	const signIn = useCallback(async (email, password) => {
+		setLocalAuth(null);
 		const { error } = await supabase.auth.signInWithPassword({
 			email,
 			password,
@@ -71,7 +108,29 @@ export const AuthProvider = ({ children }) => {
 		return { error };
 	}, [toast]);
 
+	const signInLocal = useCallback((email, role = 'admin') => {
+		const localUser = {
+			email,
+			app_metadata: { role, provider: 'local' },
+			user_metadata: {},
+		};
+		setLocalAuth({ email, role });
+		setSession({ user: localUser });
+		setUser(localUser);
+		setLoading(false);
+		return { error: null };
+	}, []);
+
 	const signOut = useCallback(async () => {
+		const localAuth = getLocalAuth();
+		if (localAuth?.email) {
+			setLocalAuth(null);
+			setSession(null);
+			setUser(null);
+			setLoading(false);
+			return { error: null };
+		}
+
 		const { error } = await supabase.auth.signOut();
 
 		if (error) {
@@ -92,9 +151,10 @@ export const AuthProvider = ({ children }) => {
 			loading,
 			signUp,
 			signIn,
+			signInLocal,
 			signOut,
 		}),
-		[user, session, loading, signUp, signIn, signOut],
+		[user, session, loading, signUp, signIn, signInLocal, signOut],
 	);
 
 	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

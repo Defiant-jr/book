@@ -51,8 +51,9 @@ const AreaSelection = () => {
       title: 'Estatisticas',
       description: 'Painel de estatisticas e indicadores para desenvolvimento futuro.',
       icon: BarChart3,
+      action: () => navigate('/estatisticas'),
       sortKey: 'estatisticas',
-      status: 'Em desenvolvimento',
+      status: 'Disponivel',
     },
     {
       title: 'Pedagógico',

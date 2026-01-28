@@ -29,6 +29,8 @@ import RelatorioSerasa from '@/pages/RelatorioSerasa';
 import Relatorios from '@/pages/Relatorios';
 import SignUp from '@/pages/SignUp';
 import FinanceiroCadastro from '@/pages/FinanceiroCadastro';
+import Estatisticas from '@/pages/Estatisticas';
+import CustoAluno from '@/pages/CustoAluno';
 import { Helmet } from 'react-helmet';
 import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom';
 
@@ -179,6 +181,22 @@ function App() {
 							element={
 								<PrivateRoute>
 									<Cadastros />
+								</PrivateRoute>
+							}
+						/>
+						<Route
+							path="/estatisticas"
+							element={
+								<PrivateRoute>
+									<Estatisticas />
+								</PrivateRoute>
+							}
+						/>
+						<Route
+							path="/estatisticas/custo-aluno"
+							element={
+								<PrivateRoute>
+									<CustoAluno />
 								</PrivateRoute>
 							}
 						/>
