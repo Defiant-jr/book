@@ -2,7 +2,7 @@ import React from 'react';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { BarChart3, Building2, FileText, GraduationCap, LogOut, Settings, Wallet } from 'lucide-react';
+import { BarChart3, Briefcase, Building2, FileText, GraduationCap, LogOut, Settings, Sliders, Users, Wallet } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,6 +40,13 @@ const AreaSelection = () => {
       status: 'Disponível',
     },
     {
+      title: 'Comercial',
+      description: 'Gestão comercial e acompanhamento de oportunidades para implementação futura.',
+      icon: Briefcase,
+      sortKey: 'comercial',
+      status: 'Em breve',
+    },
+    {
       title: 'Relatórios',
       description: 'Central de relatórios e documentos para acompanhamento.',
       icon: FileText,
@@ -63,15 +70,32 @@ const AreaSelection = () => {
       sortKey: 'pedagogico',
       status: 'Disponível',
     },
+    {
+      title: 'CRM',
+      description: 'Relacionamento com clientes e gestão comercial para implementação futura.',
+      icon: Users,
+      sortKey: 'crm',
+      status: 'Em breve',
+    },
+    {
+      title: 'Parametros',
+      description: 'Configurações e parâmetros do sistema para implementação futura.',
+      icon: Sliders,
+      sortKey: 'parametros',
+      status: 'Em breve',
+    },
   ];
 
   const moduleOrder = [
     'administrativo',
     'financeiro',
+    'comercial',
     'pedagogico',
+    'crm',
     'operacional',
     'estatisticas',
     'relatorios',
+    'parametros',
   ];
   const orderedModules = [...modules].sort(
     (a, b) => moduleOrder.indexOf(a.sortKey) - moduleOrder.indexOf(b.sortKey)
