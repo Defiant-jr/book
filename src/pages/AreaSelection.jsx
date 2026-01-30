@@ -134,9 +134,7 @@ const AreaSelection = () => {
             />
           </div>
           <p className="text-sm text-gray-400">Bem-vindo{user?.email ? `, ${user.email}` : ''}</p>
-          <h1 className="text-3xl font-bold gradient-text">Escolha uma área para continuar</h1>
           <p className="text-gray-300">
-            Selecione o módulo desejado. Novas áreas serão liberadas em breve.
           </p>
         </div>
         <Button variant="outline" onClick={signOut} className="flex items-center gap-2 self-start">
