@@ -18,13 +18,46 @@ const parseCurrencyPtBr = (value) => {
 };
 
 const parseDatePtBr = (value) => {
-  const text = normalizeText(value);
+  if (value == null) return null;
+
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    // Google Sheets serial date (days since 1899-12-30)
+    const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+    const date = new Date(excelEpoch.getTime() + value * 86400000);
+    if (!Number.isNaN(date.getTime())) {
+      const year = String(date.getUTCFullYear());
+      const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(date.getUTCDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+  }
+
+  let text = normalizeText(value);
   if (!text) return null;
 
-  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(text);
+  // Normalize separators and remove stray chars (e.g. non‑breaking spaces)
+  text = text.replace(/[.\-]/g, '/').replace(/[^\d/]/g, '');
+  if (!text) return null;
+
+  // Handle numeric strings that are Google Sheets serial dates
+  if (/^\d+$/.test(text)) {
+    const numeric = Number.parseInt(text, 10);
+    if (Number.isFinite(numeric)) {
+      return parseDatePtBr(numeric);
+    }
+  }
+
+  const match = /(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(text);
   if (!match) return null;
 
-  const [, day, month, year] = match;
+  const dayNum = Number.parseInt(match[1], 10);
+  const monthNum = Number.parseInt(match[2], 10);
+  const year = match[3];
+  if (!Number.isFinite(dayNum) || !Number.isFinite(monthNum)) return null;
+  if (dayNum < 1 || dayNum > 31 || monthNum < 1 || monthNum > 12) return null;
+
+  const day = String(dayNum).padStart(2, '0');
+  const month = String(monthNum).padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
 
