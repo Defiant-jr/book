@@ -88,12 +88,22 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
           const getValorReceber = (conta) => {
             const status = getStatus(conta);
             const valor = Number(conta?.valor) || 0;
+            const valorAberto = Number.isFinite(conta?.valor_aberto) ? Number(conta?.valor_aberto) : valor;
             if (status === STATUS.A_VENCER) {
               const descPontual = Number(conta?.desc_pontual);
               return Number.isFinite(descPontual) ? descPontual : valor;
             }
             if (status === STATUS.ATRASADO) {
-              return valor;
+              return valorAberto;
+            }
+            return valor;
+          };
+          const getValorPagar = (conta) => {
+            const status = getStatus(conta);
+            const valor = Number(conta?.valor) || 0;
+            const valorAberto = Number.isFinite(conta?.valor_aberto) ? Number(conta?.valor_aberto) : valor;
+            if (status === STATUS.ATRASADO) {
+              return valorAberto;
             }
             return valor;
           };
@@ -118,7 +128,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
               const venc = parseDateSafe(conta.data);
               return venc && venc < startDate;
             }),
-            (conta) => Number(conta?.valor) || 0
+            getValorPagar
           );
 
           for (let i = 0; i < span; i++) {
@@ -132,7 +142,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
                 return vencimento && vencimento.getMonth() === date.getMonth() &&
                        vencimento.getFullYear() === date.getFullYear();
               })
-              .reduce((sum, conta) => sum + (Number(conta?.valor) || 0), 0);
+              .reduce((sum, conta) => sum + getValorPagar(conta), 0);
             
             let monthReceber = lancamentosEmAberto
               .filter(conta => {
@@ -230,12 +240,22 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
       const getValorReceber = (lancamento) => {
         const status = getStatus(lancamento);
         const valor = Number(lancamento?.valor) || 0;
+        const valorAberto = Number.isFinite(lancamento?.valor_aberto) ? Number(lancamento?.valor_aberto) : valor;
         if (status === STATUS.A_VENCER) {
           const descPontual = Number(lancamento?.desc_pontual);
           return Number.isFinite(descPontual) ? descPontual : valor;
         }
         if (status === STATUS.ATRASADO) {
-          return valor;
+          return valorAberto;
+        }
+        return valor;
+      };
+      const getValorPagar = (lancamento) => {
+        const status = getStatus(lancamento);
+        const valor = Number(lancamento?.valor) || 0;
+        const valorAberto = Number.isFinite(lancamento?.valor_aberto) ? Number(lancamento?.valor_aberto) : valor;
+        if (status === STATUS.ATRASADO) {
+          return valorAberto;
         }
         return valor;
       };
@@ -250,7 +270,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
         .reduce((sum, c) => sum + getValorReceber(c), 0);
       const pagarAtrasadoAnterior = saidasEmAberto
         .filter(getOverdueBeforeCurrentMonth)
-        .reduce((sum, c) => sum + getValorBase(c), 0);
+        .reduce((sum, c) => sum + getValorPagar(c), 0);
 
       const totalReceber = entradasPeriodo.reduce((sum, c) => sum + getValorReceber(c), 0);
       const receberAberto = entradasPeriodo
@@ -263,13 +283,13 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
       const totalReceberComCash = totalReceber + emCashAmount;
       const totalReceberPendente = receberAberto + receberAtrasado + emCashAmount;
 
-      const totalPagar = saidasPeriodo.reduce((sum, c) => sum + getValorBase(c), 0);
+      const totalPagar = saidasPeriodo.reduce((sum, c) => sum + getValorPagar(c), 0);
       const pagarAberto = saidasPeriodo
         .filter(c => getStatus(c) === STATUS.A_VENCER)
-        .reduce((sum, c) => sum + getValorBase(c), 0);
+        .reduce((sum, c) => sum + getValorPagar(c), 0);
       const pagarAtrasado = saidasPeriodo
         .filter(c => getStatus(c) === STATUS.ATRASADO)
-        .reduce((sum, c) => sum + getValorBase(c), 0) + pagarAtrasadoAnterior;
+        .reduce((sum, c) => sum + getValorPagar(c), 0) + pagarAtrasadoAnterior;
       const totalPagarPendente = pagarAberto + pagarAtrasado;
 
       const resultadoOperacional = totalReceberPendente - totalPagar;

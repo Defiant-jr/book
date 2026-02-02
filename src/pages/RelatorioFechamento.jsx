@@ -53,16 +53,25 @@ const RelatorioFechamento = () => {
   const valorReceber = (item) => {
     const status = getLancamentoStatus(item, todayStr);
     const valor = Number(item?.valor) || 0;
+    const valorAberto = Number.isFinite(item?.valor_aberto) ? Number(item?.valor_aberto) : valor;
     if (status === STATUS.A_VENCER) {
       const descPontual = Number(item?.desc_pontual);
       return Number.isFinite(descPontual) ? descPontual : valor;
     }
     if (status === STATUS.ATRASADO) {
-      return valor;
+      return valorAberto;
     }
     return valor;
   };
-  const valorPagar = (item) => Number(item?.valor) || 0;
+  const valorPagar = (item) => {
+    const status = getLancamentoStatus(item, todayStr);
+    const valor = Number(item?.valor) || 0;
+    const valorAberto = Number.isFinite(item?.valor_aberto) ? Number(item?.valor_aberto) : valor;
+    if (status === STATUS.ATRASADO) {
+      return valorAberto;
+    }
+    return valor;
+  };
 
   const formatDate = (value) => {
     if (!value) return '-';

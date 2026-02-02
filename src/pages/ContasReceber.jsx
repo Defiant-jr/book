@@ -70,12 +70,13 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
       const valorParaReceber = (conta) => {
         const status = getStatus(conta);
         const valor = Number(conta?.valor) || 0;
+        const valorAberto = Number.isFinite(conta?.valor_aberto) ? Number(conta?.valor_aberto) : valor;
         if (status === STATUS.A_VENCER) {
           const descPontual = Number(conta?.desc_pontual);
           return Number.isFinite(descPontual) ? descPontual : valor;
         }
         if (status === STATUS.ATRASADO) {
-          return valor;
+          return valorAberto;
         }
         return valor;
       };
