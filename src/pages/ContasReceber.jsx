@@ -14,6 +14,7 @@ import { getLancamentoStatus, STATUS, STATUS_LABELS, STATUS_COLORS, STATUS_OPTIO
 
 const STATUS_ABERTO = 'em_aberto';
 const STATUS_ABERTO_LABEL = 'Em Aberto';
+const CONTAS_RECEBER_REF = 21000;
 
     const ContasReceber = () => {
       const navigate = useNavigate();
@@ -192,6 +193,9 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
                 <h1 className="text-3xl font-bold gradient-text">Contas a Receber</h1>
                 <p className="text-gray-400 mt-2">Gerencie seus recebimentos</p>
               </div>
+            </div>
+            <div className="text-[10px] font-medium text-gray-400 lg:text-xs">
+              {CONTAS_RECEBER_REF}
             </div>
           </motion.div>
     

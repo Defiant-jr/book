@@ -13,6 +13,8 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { getLancamentoStatus, normalizeTipo, STATUS } from '@/lib/lancamentoStatus';
 import { useEmCashValue } from '@/hooks/useEmCashValue';
 
+const FINANCEIRO_DASHBOARD_REF = 20000;
+
     const Dashboard = () => {
       const navigate = useNavigate();
       const { toast } = useToast();
@@ -363,6 +365,9 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
               <div className="text-left">
                 <h1 className="text-3xl font-bold gradient-text">Financeiro</h1>
               </div>
+            </div>
+            <div className="text-[10px] font-medium text-gray-400 lg:text-xs">
+              {FINANCEIRO_DASHBOARD_REF}
             </div>
           </motion.div>
           

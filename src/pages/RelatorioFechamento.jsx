@@ -79,6 +79,8 @@ const RelatorioFechamento = () => {
     return Number.isNaN(parsed.getTime()) ? '-' : format(parsed, 'dd/MM/yyyy');
   };
 
+  const isAtrasado = (item) => getLancamentoStatus(item, todayStr) === STATUS.ATRASADO;
+
   const unitLabel = unitOptions.find((option) => option.value === selectedUnit)?.label ?? 'Todas';
   const periodLabel = periodOptions.find((option) => option.value === selectedPeriod)?.label ?? 'Mensal';
 
@@ -255,6 +257,14 @@ const RelatorioFechamento = () => {
         headStyles: { fillColor: [37, 99, 235], fontSize: fontSize + 1 },
         columnStyles: {
           3: { halign: 'right' },
+        },
+        didParseCell: (data) => {
+          if (data.section !== 'body') return;
+          const rowItem = items[data.row.index];
+          if (!rowItem) return;
+          if (isAtrasado(rowItem)) {
+            data.cell.styles.fillColor = [230, 230, 230];
+          }
         },
       });
 
@@ -433,7 +443,10 @@ const RelatorioFechamento = () => {
                       </thead>
                       <tbody>
                         {entries.map((item) => (
-                          <tr key={item.id} className="border-b border-white/10 last:border-0">
+                          <tr
+                            key={item.id}
+                            className={`border-b border-white/10 last:border-0 ${isAtrasado(item) ? 'bg-gray-200/10' : ''}`}
+                          >
                             <td className="px-4 py-3">{item.cliente_fornecedor || '-'}</td>
                             <td className="px-4 py-3">{item.contato || '-'}</td>
                             <td className="px-4 py-3">{item.aluno || '-'}</td>
@@ -478,7 +491,10 @@ const RelatorioFechamento = () => {
                       </thead>
                       <tbody>
                         {exits.map((item) => (
-                          <tr key={item.id} className="border-b border-white/10 last:border-0">
+                          <tr
+                            key={item.id}
+                            className={`border-b border-white/10 last:border-0 ${isAtrasado(item) ? 'bg-gray-200/10' : ''}`}
+                          >
                             <td className="px-4 py-3">{item.cliente_fornecedor || '-'}</td>
                             <td className="px-4 py-3">{item.contato || '-'}</td>
                             <td className="px-4 py-3">{item.aluno || '-'}</td>

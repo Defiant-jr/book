@@ -8,6 +8,8 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import IndicadoresPedagogico from '@/components/pedagogico/IndicadoresPedagogico';
 
+const PEDAGOGICO_DASHBOARD_REF = 40000;
+
 const Pedagogico = () => {
   const navigate = useNavigate();
   const navButtons = [
@@ -41,6 +43,9 @@ const Pedagogico = () => {
           <div className="text-left">
             <h1 className="text-3xl font-bold gradient-text">Pedagógico</h1>
           </div>
+        </div>
+        <div className="text-[10px] font-medium text-gray-400 lg:text-xs">
+          {PEDAGOGICO_DASHBOARD_REF}
         </div>
       </motion.div>
 

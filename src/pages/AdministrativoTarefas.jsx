@@ -11,6 +11,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 
+const ADMINISTRATIVO_TAREFAS_REF = 11000;
+
 const AdministrativoTarefas = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -151,6 +153,9 @@ const AdministrativoTarefas = () => {
             <h1 className="text-3xl font-bold gradient-text">Tarefas</h1>
             <span className="text-sm text-gray-300">Cadastre e acompanhe as tarefas.</span>
           </div>
+        </div>
+        <div className="text-[10px] font-medium text-gray-400 lg:text-xs">
+          {ADMINISTRATIVO_TAREFAS_REF}
         </div>
       </div>
 

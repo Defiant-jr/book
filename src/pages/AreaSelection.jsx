@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 
+const AREA_SELECTION_REF = '00000';
+
 const AreaSelection = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -137,10 +139,15 @@ const AreaSelection = () => {
           <p className="text-gray-300">
           </p>
         </div>
-        <Button variant="outline" onClick={signOut} className="flex items-center gap-2 self-start">
-          <LogOut className="w-4 h-4" />
-          Sair
-        </Button>
+        <div className="flex flex-col items-end gap-2 self-start">
+          <div className="text-[10px] font-medium text-gray-400 lg:text-xs">
+            {AREA_SELECTION_REF}
+          </div>
+          <Button variant="outline" onClick={signOut} className="flex items-center gap-2">
+            <LogOut className="w-4 h-4" />
+            Sair
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

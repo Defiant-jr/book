@@ -16,6 +16,7 @@ import { getLancamentoStatus, STATUS, STATUS_LABELS, STATUS_COLORS, STATUS_OPTIO
     
 const STATUS_ABERTO = 'em_aberto';
 const STATUS_ABERTO_LABEL = 'Em Aberto';
+const CONTAS_PAGAR_REF = 22000;
 const ContasPagar = () => {
       const navigate = useNavigate();
       const { toast } = useToast();
@@ -152,6 +153,9 @@ const ContasPagar = () => {
                 <h1 className="text-3xl font-bold gradient-text">Contas a Pagar</h1>
                 <p className="text-gray-400 mt-2">Controle seus pagamentos</p>
               </div>
+            </div>
+            <div className="text-[10px] font-medium text-gray-400 lg:text-xs">
+              {CONTAS_PAGAR_REF}
             </div>
           </motion.div>
     

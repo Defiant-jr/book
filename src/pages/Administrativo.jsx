@@ -19,6 +19,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import IndicadoresPedagogico from '@/components/pedagogico/IndicadoresPedagogico';
 
+const ADMINISTRATIVO_DASHBOARD_REF = 10000;
+
 const Administrativo = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -155,6 +157,9 @@ const Administrativo = () => {
           <div className="text-left">
             <h1 className="text-3xl font-bold gradient-text">Administrativo</h1>
           </div>
+        </div>
+        <div className="text-[10px] font-medium text-gray-400 lg:text-xs">
+          {ADMINISTRATIVO_DASHBOARD_REF}
         </div>
       </motion.div>
 

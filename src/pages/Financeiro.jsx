@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 
+const FINANCEIRO_REF = 24000;
+
 const Financeiro = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -54,6 +56,9 @@ const Financeiro = () => {
             <span className="sr-only">Voltar</span>
           </Button>
           <h1 className="text-3xl font-bold gradient-text">Financeiro</h1>
+        </div>
+        <div className="text-[10px] font-medium text-gray-400 lg:text-xs">
+          {FINANCEIRO_REF}
         </div>
       </div>
 
