@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 
 const Operacional = () => {
+  const OPERACIONAL_DASHBOARD_REF = 60000;
   const navigate = useNavigate();
 
   const navButtons = [
@@ -36,6 +37,9 @@ const Operacional = () => {
           <div className="text-left">
             <h1 className="text-3xl font-bold gradient-text">Operacional</h1>
           </div>
+        </div>
+        <div className="text-[10px] font-medium text-gray-400 lg:text-xs">
+          {OPERACIONAL_DASHBOARD_REF}
         </div>
       </motion.div>
 

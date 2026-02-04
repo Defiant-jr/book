@@ -9,9 +9,8 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 
-const AREA_SELECTION_REF = '00000';
-
 const AreaSelection = () => {
+  const AREA_SELECTION_REF = '00000';
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, signOut } = useAuth();

@@ -23,6 +23,7 @@ import { getLancamentoStatus, STATUS } from '@/lib/lancamentoStatus';
 const weekdayLabels = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 
 const MapaMensal = () => {
+  const RELATORIOS_MAPA_MENSAL_REF = 86000;
   const navigate = useNavigate();
   const { toast } = useToast();
   const [allData, setAllData] = useState([]);
@@ -311,14 +312,19 @@ const calendarCells = useMemo(() => {
               <p className="text-sm text-gray-300">Calendário das despesas diárias e entradas por dia.</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => handleMonthStep(-1)}>
-              <ChevronLeft className="h-5 w-5 text-white" />
-            </Button>
-            <div className="text-lg font-semibold text-white capitalize w-36 text-center">{monthLabel}</div>
-            <Button variant="ghost" size="icon" onClick={() => handleMonthStep(1)}>
-              <ChevronRight className="h-5 w-5 text-white" />
-            </Button>
+          <div className="flex flex-col items-end gap-2">
+            <div className="text-[10px] font-medium text-gray-400 lg:text-xs">
+              {RELATORIOS_MAPA_MENSAL_REF}
+            </div>
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="icon" onClick={() => handleMonthStep(-1)}>
+                <ChevronLeft className="h-5 w-5 text-white" />
+              </Button>
+              <div className="text-lg font-semibold text-white capitalize w-36 text-center">{monthLabel}</div>
+              <Button variant="ghost" size="icon" onClick={() => handleMonthStep(1)}>
+                <ChevronRight className="h-5 w-5 text-white" />
+              </Button>
+            </div>
           </div>
         </div>
 

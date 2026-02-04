@@ -14,9 +14,9 @@ import { getLancamentoStatus, STATUS, STATUS_LABELS, STATUS_COLORS, STATUS_OPTIO
 
 const STATUS_ABERTO = 'em_aberto';
 const STATUS_ABERTO_LABEL = 'Em Aberto';
-const CONTAS_RECEBER_REF = 21000;
 
     const ContasReceber = () => {
+      const CONTAS_RECEBER_REF = 21000;
       const navigate = useNavigate();
       const { toast } = useToast();
       const [contas, setContas] = useState([]);

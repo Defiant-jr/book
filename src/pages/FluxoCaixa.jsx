@@ -23,10 +23,9 @@ import { cn } from '@/lib/utils';
 import { getLancamentoStatus, normalizeTipo, STATUS } from '@/lib/lancamentoStatus';
 import { useEmCashValue } from '@/hooks/useEmCashValue';
 
-const FLUXO_CAIXA_REF = 23000;
-
-    const FluxoCaixa = () => {
-      const navigate = useNavigate();
+const FluxoCaixa = () => {
+  const FLUXO_CAIXA_REF = 23000;
+  const navigate = useNavigate();
       const { toast } = useToast();
       const [allData, setAllData] = useState([]);
       const [currentDate, setCurrentDate] = useState(new Date());

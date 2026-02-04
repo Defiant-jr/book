@@ -15,6 +15,7 @@ import 'jspdf-autotable';
 import { getLancamentoStatus, normalizeTipo, STATUS, STATUS_LABELS, STATUS_OPTIONS } from '@/lib/lancamentoStatus';
 
     const RelatorioContas = () => {
+        const RELATORIOS_CONTAS_REF = 83000;
         const navigate = useNavigate();
         const { toast } = useToast();
         const [contas, setContas] = useState([]);
@@ -168,6 +169,9 @@ import { getLancamentoStatus, normalizeTipo, STATUS, STATUS_LABELS, STATUS_OPTIO
                     <div className="flex items-center gap-4">
                         <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => navigate('/relatorios')}><ArrowLeft className="h-5 w-5" /><span className="sr-only">Voltar</span></Button>
                         <h1 className="text-3xl font-bold gradient-text">Relatório de Contas</h1>
+                    </div>
+                    <div className="text-[10px] font-medium text-gray-400 lg:text-xs">
+                        {RELATORIOS_CONTAS_REF}
                     </div>
                 </div>
                 <Card className="glass-card">

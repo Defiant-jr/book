@@ -135,6 +135,7 @@ const findField = (rows, candidates) =>
   candidates.find((key) => rows.some((row) => row?.[key] != null && row?.[key] !== ''));
 
 const CustoAluno = () => {
+  const ESTATISTICAS_ADM_FIN_REF = 71000;
   const navigate = useNavigate();
   const { toast } = useToast();
   const [turmas, setTurmas] = useState([]);
@@ -691,6 +692,9 @@ const CustoAluno = () => {
             <h1 className="text-3xl font-bold gradient-text">Visão ADM/FIN</h1>
             <span className="text-sm text-gray-300">Indicadores consolidados da operacao.</span>
           </div>
+        </div>
+        <div className="text-[10px] font-medium text-gray-400 lg:text-xs">
+          {ESTATISTICAS_ADM_FIN_REF}
         </div>
       </div>
 

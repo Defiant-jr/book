@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 
 const Estatisticas = () => {
+  const ESTATISTICAS_REF = 70000;
   const navigate = useNavigate();
 
   const navButtons = [
@@ -48,6 +49,9 @@ const Estatisticas = () => {
           <div className="text-left">
             <h1 className="text-3xl font-bold gradient-text">Estatisticas</h1>
           </div>
+        </div>
+        <div className="text-[10px] font-medium text-gray-400 lg:text-xs">
+          {ESTATISTICAS_REF}
         </div>
       </motion.div>
 

@@ -11,9 +11,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 
-const ADMINISTRATIVO_TAREFAS_REF = 11000;
-
 const AdministrativoTarefas = () => {
+  const ADMINISTRATIVO_TAREFAS_REF = 11000;
   const navigate = useNavigate();
   const { toast } = useToast();
   const [tarefas, setTarefas] = useState([]);

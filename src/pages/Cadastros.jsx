@@ -8,11 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import LancamentoForm from '@/components/forms/LancamentoForm';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 
 const Cadastros = () => {
+  const CADASTROS_REF = 61000;
   const navigate = useNavigate();
   const { toast } = useToast();
   const [activeCard, setActiveCard] = useState('aluno');
@@ -224,16 +224,6 @@ const Cadastros = () => {
       );
     }
 
-    if (activeCard === 'lancamento') {
-      return (
-        <LancamentoForm
-          onCancel={() => navigate(-1)}
-          onSuccess={() => navigate('/operacional')}
-          allowRecurrence
-        />
-      );
-    }
-
     return null;
   };
 
@@ -259,6 +249,9 @@ const Cadastros = () => {
             <span className="text-sm text-gray-300">Escolha o tipo de cadastro para continuar.</span>
           </div>
         </div>
+        <div className="text-[10px] font-medium text-gray-400 lg:text-xs">
+          {CADASTROS_REF}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -276,6 +269,10 @@ const Cadastros = () => {
             }
             if (card.id === 'rateio') {
               navigate('/operacoes/cadastro/rateio');
+              return;
+            }
+            if (card.id === 'lancamento') {
+              navigate('/lancamentos');
               return;
             }
             setActiveCard(card.id);
@@ -302,7 +299,6 @@ const Cadastros = () => {
         })}
       </div>
 
-      {renderForm()}
     </motion.div>
   );
 };

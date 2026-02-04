@@ -8,9 +8,8 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import IndicadoresPedagogico from '@/components/pedagogico/IndicadoresPedagogico';
 
-const PEDAGOGICO_DASHBOARD_REF = 40000;
-
 const Pedagogico = () => {
+  const PEDAGOGICO_DASHBOARD_REF = 40000;
   const navigate = useNavigate();
   const navButtons = [
     { label: 'Dashboard', path: '/pedagogico', icon: LayoutDashboard },

@@ -34,6 +34,7 @@ const unitFilterMap = {
 };
 
 const RelatorioFechamento = () => {
+  const RELATORIOS_FECHAMENTO_REF = 84000;
   const navigate = useNavigate();
   const { toast } = useToast();
   const [selectedUnit, setSelectedUnit] = useState('todas');
@@ -320,6 +321,9 @@ const RelatorioFechamento = () => {
             <span className="sr-only">Voltar</span>
           </Button>
           <h1 className="text-3xl font-bold text-white">Relatorio de Fechamento</h1>
+        </div>
+        <div className="text-[10px] font-medium text-gray-400 lg:text-xs">
+          {RELATORIOS_FECHAMENTO_REF}
         </div>
       </div>
 

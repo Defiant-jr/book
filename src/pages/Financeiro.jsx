@@ -8,9 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 
-const FINANCEIRO_REF = 24000;
-
 const Financeiro = () => {
+  const FINANCEIRO_REF = 24000;
   const navigate = useNavigate();
   const { toast } = useToast();
 

@@ -18,6 +18,7 @@ import { getLancamentoStatus, STATUS_LABELS, STATUS_OPTIONS } from '@/lib/lancam
 const columns = ['Data', 'Unidade', 'Cliente/Fornecedor', 'Descrição', 'Valor', 'Status', 'Parcela', 'Observações', 'Data Pag.'];
 
 const EmissaoDuplicata = () => {
+  const RELATORIOS_EMISSAO_DUPLICATA_REF = 87000;
   const navigate = useNavigate();
   const { toast } = useToast();
   const [lancamentos, setLancamentos] = useState([]);
@@ -248,7 +249,10 @@ const EmissaoDuplicata = () => {
             <p className="text-gray-400">Baseada nos lançamentos de Contas a Receber</p>
           </div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-col items-end gap-3">
+          <div className="text-[10px] font-medium text-gray-400 lg:text-xs">
+            {RELATORIOS_EMISSAO_DUPLICATA_REF}
+          </div>
           <Button onClick={handleGenerateReport} disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white">
             {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             {loading ? 'Gerando...' : 'Gerar Relatório'}

@@ -16,6 +16,7 @@ import { getLancamentoStatus, normalizeTipo, STATUS } from '@/lib/lancamentoStat
 import { useEmCashValue } from '@/hooks/useEmCashValue';
 
     const FluxoCaixaDetalhado = () => {
+      const RELATORIOS_FLUXO_CAIXA_REF = 81000;
       const navigate = useNavigate();
       const { toast } = useToast();
       const [allData, setAllData] = useState([]);
@@ -243,14 +244,19 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
                     <h1 className="text-3xl font-bold text-white">Relatório de Fluxo de Caixa</h1>
                   </div>
                 </div>
-                <div className="flex items-center gap-4 bg-slate-800/50 p-2 rounded-lg">
-                    <Button variant="ghost" size="icon" onClick={handlePrevMonth}>
-                        <ChevronLeft className="h-6 w-6 text-white" />
-                    </Button>
-                    <div className="text-xl font-semibold text-white w-48 text-center capitalize">{`${monthName} ${year}`}</div>
-                    <Button variant="ghost" size="icon" onClick={handleNextMonth}>
-                        <ChevronRight className="h-6 w-6 text-white" />
-                    </Button>
+                <div className="flex flex-col items-end gap-2">
+                    <div className="text-[10px] font-medium text-gray-400 lg:text-xs">
+                      {RELATORIOS_FLUXO_CAIXA_REF}
+                    </div>
+                    <div className="flex items-center gap-4 bg-slate-800/50 p-2 rounded-lg">
+                        <Button variant="ghost" size="icon" onClick={handlePrevMonth}>
+                            <ChevronLeft className="h-6 w-6 text-white" />
+                        </Button>
+                        <div className="text-xl font-semibold text-white w-48 text-center capitalize">{`${monthName} ${year}`}</div>
+                        <Button variant="ghost" size="icon" onClick={handleNextMonth}>
+                            <ChevronRight className="h-6 w-6 text-white" />
+                        </Button>
+                    </div>
                 </div>
             </div>
 

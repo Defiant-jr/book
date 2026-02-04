@@ -20,6 +20,7 @@ const formatLabel = (value) =>
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 
 const OperacoesCadastroRateio = () => {
+  const CADASTRO_RATEIO_REF = 61600;
   const navigate = useNavigate();
   const { toast } = useToast();
   const [rateios, setRateios] = useState([]);
@@ -159,25 +160,30 @@ const OperacoesCadastroRateio = () => {
             <span className="text-sm text-gray-300">Edicao direta na tabela Rateio.</span>
           </div>
         </div>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-          <div className="flex flex-col gap-1">
-            <span className="text-xs uppercase tracking-wide text-gray-400">Ordenar por</span>
-            <Select value={ordenacao} onValueChange={setOrdenacao} disabled={!columns.length}>
-              <SelectTrigger className="w-full bg-white/10 border-white/20 text-white sm:w-40" aria-label="Ordenar listagem">
-                <SelectValue placeholder="Ordenacao" />
-              </SelectTrigger>
-              <SelectContent>
-                {columns.map((column) => (
-                  <SelectItem key={column} value={column}>
-                    {formatLabel(column)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        <div className="flex flex-col items-end gap-3">
+          <div className="text-[10px] font-medium text-gray-400 lg:text-xs">
+            {CADASTRO_RATEIO_REF}
           </div>
-          <Button onClick={handleSave} disabled={saving || loading} className="self-start sm:self-auto">
-            {saving ? 'Salvando...' : 'Salvar'}
-          </Button>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="flex flex-col gap-1">
+              <span className="text-xs uppercase tracking-wide text-gray-400">Ordenar por</span>
+              <Select value={ordenacao} onValueChange={setOrdenacao} disabled={!columns.length}>
+                <SelectTrigger className="w-full bg-white/10 border-white/20 text-white sm:w-40" aria-label="Ordenar listagem">
+                  <SelectValue placeholder="Ordenacao" />
+                </SelectTrigger>
+                <SelectContent>
+                  {columns.map((column) => (
+                    <SelectItem key={column} value={column}>
+                      {formatLabel(column)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={handleSave} disabled={saving || loading} className="self-start sm:self-auto">
+              {saving ? 'Salvando...' : 'Salvar'}
+            </Button>
+          </div>
         </div>
       </div>
 

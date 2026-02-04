@@ -15,6 +15,7 @@ import html2canvas from 'html2canvas';
 import { getValorConsiderado } from '@/lib/lancamentoValor';
 
     const DreGerencial = () => {
+        const RELATORIOS_DRE_REF = 82000;
         const navigate = useNavigate();
         const { toast } = useToast();
         const [competencias, setCompetencias] = useState([]);
@@ -122,6 +123,9 @@ import { getValorConsiderado } from '@/lib/lancamentoValor';
                     <div className="flex items-center gap-4">
                         <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => navigate('/relatorios')}><ArrowLeft className="h-5 w-5" /><span className="sr-only">Voltar</span></Button>
                         <h1 className="text-3xl font-bold gradient-text">DRE Gerencial</h1>
+                    </div>
+                    <div className="text-[10px] font-medium text-gray-400 lg:text-xs">
+                        {RELATORIOS_DRE_REF}
                     </div>
                 </div>
                 <Card className="glass-card">

@@ -11,8 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 
-const PEDAGOGICO_TURMAS_REF = 42000;
-
 const READONLY_COLUMNS = new Set(['id', 'created_at', 'updated_at']);
 
 const formatLabel = (value) =>
@@ -22,6 +20,7 @@ const formatLabel = (value) =>
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 
 const OperacoesCadastroTurma = () => {
+  const PEDAGOGICO_TURMAS_REF = 42000;
   const navigate = useNavigate();
   const { toast } = useToast();
   const [turmas, setTurmas] = useState([]);

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import LancamentoForm from '@/components/forms/LancamentoForm';
 
 const Lancamentos = () => {
+  const CADASTRO_LANCAMENTOS_REF = 61700;
   const navigate = useNavigate();
   const location = useLocation();
   const editingLancamento = location.state?.lancamento || null;
@@ -39,6 +40,9 @@ const Lancamentos = () => {
             <span className="sr-only">Voltar</span>
           </Button>
           <h1 className="text-3xl font-bold gradient-text">{isEditing ? 'Editar Lançamento' : 'Novo Lançamento'}</h1>
+        </div>
+        <div className="text-[10px] font-medium text-gray-400 lg:text-xs">
+          {CADASTRO_LANCAMENTOS_REF}
         </div>
       </div>
 

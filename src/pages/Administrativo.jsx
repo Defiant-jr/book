@@ -19,9 +19,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import IndicadoresPedagogico from '@/components/pedagogico/IndicadoresPedagogico';
 
-const ADMINISTRATIVO_DASHBOARD_REF = 10000;
-
 const Administrativo = () => {
+  const ADMINISTRATIVO_DASHBOARD_REF = 10000;
   const navigate = useNavigate();
   const { toast } = useToast();
   const [tarefas, setTarefas] = useState([]);

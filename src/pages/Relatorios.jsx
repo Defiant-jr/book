@@ -10,6 +10,7 @@ import { BarChart3, PieChart, TrendingUp, ArrowLeft, FileClock, Printer, Calenda
     import { useToast } from '@/components/ui/use-toast';
     
     const Relatorios = () => {
+        const RELATORIOS_REF = 80000;
         const navigate = useNavigate();
         const { toast } = useToast();
     
@@ -115,6 +116,9 @@ import { BarChart3, PieChart, TrendingUp, ArrowLeft, FileClock, Printer, Calenda
                             <span className="sr-only">Voltar</span>
                         </Button>
                         <h1 className="text-3xl font-bold gradient-text">Relatórios</h1>
+                    </div>
+                    <div className="text-[10px] font-medium text-gray-400 lg:text-xs">
+                        {RELATORIOS_REF}
                     </div>
                 </div>
     

@@ -13,9 +13,8 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { getLancamentoStatus, normalizeTipo, STATUS } from '@/lib/lancamentoStatus';
 import { useEmCashValue } from '@/hooks/useEmCashValue';
 
-const FINANCEIRO_DASHBOARD_REF = 20000;
-
     const Dashboard = () => {
+      const FINANCEIRO_DASHBOARD_REF = 20000;
       const navigate = useNavigate();
       const { toast } = useToast();
       const [data, setData] = useState({ lancamentos: [] });

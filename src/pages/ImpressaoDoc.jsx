@@ -32,6 +32,7 @@ const columns = [
 ];
 
 const ImpressaoDoc = () => {
+  const RELATORIOS_IMPRESSAO_DOC_REF = 85000;
   const { toast } = useToast();
   const navigate = useNavigate();
   const [lancamentos, setLancamentos] = useState([]);
@@ -351,7 +352,10 @@ const ImpressaoDoc = () => {
             <p className="text-gray-400">Visualize e imprima todos os lançamentos</p>
           </div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-col items-end gap-3">
+          <div className="text-[10px] font-medium text-gray-400 lg:text-xs">
+            {RELATORIOS_IMPRESSAO_DOC_REF}
+          </div>
           <Button onClick={handleGenerateReport} disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white">
             {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             {loading ? 'Gerando...' : 'Gerar Relatório'}

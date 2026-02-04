@@ -15,6 +15,7 @@ import 'jspdf-autotable';
 import { normalizeTipo } from '@/lib/lancamentoStatus';
 
 const RelatorioSerasa = () => {
+  const RELATORIOS_SERASA_REF = 89000;
   const navigate = useNavigate();
   const { toast } = useToast();
   const [contas, setContas] = useState([]);
@@ -153,6 +154,9 @@ const RelatorioSerasa = () => {
             <span className="sr-only">Voltar</span>
           </Button>
           <h1 className="text-3xl font-bold gradient-text">Relatório Serasa</h1>
+        </div>
+        <div className="text-[10px] font-medium text-gray-400 lg:text-xs">
+          {RELATORIOS_SERASA_REF}
         </div>
       </div>
       <Card className="glass-card">

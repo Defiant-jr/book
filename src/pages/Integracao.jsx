@@ -10,6 +10,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 
 const Integracao = () => {
+  const INTEGRACAO_REF = 62000;
   const navigate = useNavigate();
   const { toast } = useToast();
   const [importLoading, setImportLoading] = useState(false);
@@ -59,6 +60,7 @@ const Integracao = () => {
       action: handleImportData,
       loading: importLoading,
       loadingLabel: 'Integrando...',
+      ref: 621000,
     },
     {
       title: 'Operacoes',
@@ -90,6 +92,9 @@ const Integracao = () => {
             <span className="text-sm text-gray-300">Escolha a integração que deseja executar.</span>
           </div>
         </div>
+        <div className="text-[10px] font-medium text-gray-400 lg:text-xs">
+          {INTEGRACAO_REF}
+        </div>
       </div>
 
       <Card className="glass-card">
@@ -104,16 +109,21 @@ const Integracao = () => {
               const isLoading = option.loading;
               return (
                 <Card key={option.title} className="bg-white/5 border-white/10">
-                  <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-white/10">
-                        <Icon className="w-5 h-5 text-white" />
-                      </div>
-                      <CardTitle className="text-base text-white">{option.title}</CardTitle>
+                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-white/10">
+                      <Icon className="w-5 h-5 text-white" />
                     </div>
-                    {option.disabled && (
-                      <span className="text-xs text-gray-300 bg-white/10 px-2 py-1 rounded-full">Em breve</span>
-                    )}
+                    <CardTitle className="text-base text-white">{option.title}</CardTitle>
+                  </div>
+                  {option.ref && (
+                    <span className="text-[10px] font-medium text-gray-400 lg:text-xs">
+                      {option.ref}
+                    </span>
+                  )}
+                  {option.disabled && (
+                    <span className="text-xs text-gray-300 bg-white/10 px-2 py-1 rounded-full">Em breve</span>
+                  )}
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <p className="text-sm text-gray-400">{option.description}</p>
