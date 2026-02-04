@@ -30,6 +30,7 @@ import Relatorios from '@/pages/Relatorios';
 import SignUp from '@/pages/SignUp';
 import FinanceiroCadastro from '@/pages/FinanceiroCadastro';
 import Estatisticas from '@/pages/Estatisticas';
+import FichaCustos from '@/pages/FichaCustos';
 import CustoAluno from '@/pages/CustoAluno';
 import { Helmet } from 'react-helmet';
 import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom';
@@ -197,6 +198,14 @@ function App() {
 							element={
 								<PrivateRoute>
 									<CustoAluno />
+								</PrivateRoute>
+							}
+						/>
+						<Route
+							path="/estatisticas/ficha-custos"
+							element={
+								<PrivateRoute>
+									<FichaCustos />
 								</PrivateRoute>
 							}
 						/>
