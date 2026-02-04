@@ -96,6 +96,7 @@ const FichaCustos = () => {
   const [rateios, setRateios] = useState([]);
   const [turmas, setTurmas] = useState([]);
   const [lancamentos, setLancamentos] = useState([]);
+  const [parametros, setParametros] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedUnit, setSelectedUnit] = useState('CNA Angra dos Reis');
   const contentRef = useRef(null);
@@ -103,9 +104,10 @@ const FichaCustos = () => {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      const [rateioResult, turmasResult] = await Promise.all([
+      const [rateioResult, turmasResult, parametrosResult] = await Promise.all([
         supabase.from('rateio').select('*').order('id', { ascending: true }),
         supabase.from('turmas').select('*').order('id', { ascending: true }),
+        supabase.from('parametros').select('*').limit(1).maybeSingle(),
       ]);
 
       const pageSize = 1000;
@@ -149,6 +151,16 @@ const FichaCustos = () => {
         setTurmas(turmasResult.data || []);
       }
 
+      if (parametrosResult.error) {
+        toast({
+          title: 'Erro ao carregar parametros',
+          description: parametrosResult.error.message || 'Nao foi possivel buscar os parametros.',
+          variant: 'destructive',
+        });
+      } else {
+        setParametros(parametrosResult.data || null);
+      }
+
       if (lancamentosError) {
         toast({
           title: 'Erro ao carregar lancamentos',
@@ -176,14 +188,19 @@ const FichaCustos = () => {
 
   const rateioTotals = useMemo(() => {
     const overall = rateios.reduce((sum, row) => sum + toNumber(row?.valor), 0);
-    return { overall };
-  }, [rateios]);
+    const byUnit = rateios.reduce((sum, row) => {
+      if (row?.unidade && !matchesUnit(row.unidade, selectedUnit)) return sum;
+      return sum + toNumber(row?.valor);
+    }, 0);
+    return { overall, byUnit };
+  }, [rateios, selectedUnit]);
 
   const totalAlunos = useMemo(() => {
     if (!alunosField) return 0;
     return turmas.reduce((acc, row) => acc + toNumber(row?.[alunosField]), 0);
   }, [turmas, alunosField]);
   const totalRateio = rateioTotals.overall || 0;
+  const totalRateioUnit = rateioTotals.byUnit || 0;
   const totalReceita = useMemo(() => {
     if (!receitaField) return null;
     return turmas.reduce((acc, row) => acc + toNumber(row?.[receitaField]), 0);
@@ -241,9 +258,28 @@ const FichaCustos = () => {
   }, [turmasByUnit, alunosField]);
 
   const totalTurmasUnit = turmasByUnit.length;
+  const horaAulaClt = parametros ? toNumber(parametros.hora_aula_clt) : null;
+  const horaAulaCnt = parametros ? toNumber(parametros.hora_aula_cnt) : null;
+  const cargaHr = parametros ? toNumber(parametros.carga_hr) : null;
+  const hrAulaMes = useMemo(() => {
+    if (!cargaHr || !totalTurmasUnit) return null;
+    if (selectedUnit === 'CNA Angra dos Reis') {
+      if (!horaAulaCnt) return null;
+      return (cargaHr * totalTurmasUnit * horaAulaCnt) / 6;
+    }
+    if (selectedUnit === 'CNA Mangaratiba') {
+      if (!horaAulaClt) return null;
+      return (cargaHr * totalTurmasUnit * horaAulaClt) / 6;
+    }
+    return null;
+  }, [cargaHr, totalTurmasUnit, horaAulaCnt, horaAulaClt, selectedUnit]);
   const ticketMes = fatMes != null && totalAlunosUnit ? fatMes / totalAlunosUnit : null;
-  const custoPorTurma = totalTurmasUnit ? totalRateio / totalTurmasUnit : null;
+  const custoPorTurma =
+    totalTurmasUnit && hrAulaMes != null
+      ? (hrAulaMes + totalRateioUnit) / totalTurmasUnit
+      : null;
   const custoPorAluno = totalAlunosUnit ? totalRateio / totalAlunosUnit : null;
+
 
   const handleGeneratePdf = () => {
     const pdf = new jsPDF('landscape', 'mm', 'a4');
@@ -339,7 +375,10 @@ const FichaCustos = () => {
     drawSmallBox('Alunos', totalAlunosUnit || '--', boxX + smallBoxW + 3, boxY, [243, 244, 246]);
     boxY += 16;
     drawSmallBox('Cst Tur Mês', formatCurrency(custoPorTurma), boxX, boxY, [254, 243, 199]);
-    drawSmallBox('Cst Aluno Mês', formatCurrency(custoPorAluno), boxX + smallBoxW + 3, boxY, [254, 243, 199]);
+    drawSmallBox('Hr/Aula Mês', formatCurrency(hrAulaMes), boxX + smallBoxW + 3, boxY, [254, 243, 199]);
+    boxY += 16;
+    drawSmallBox('Hr/Aula CLT', formatCurrency(horaAulaClt), boxX, boxY, [255, 241, 242]);
+    drawSmallBox('Hr/Aula Cnt', formatCurrency(horaAulaCnt), boxX + smallBoxW + 3, boxY, [255, 241, 242]);
 
     setText(7, [100, 116, 139], 'normal');
     pdf.text(
@@ -352,22 +391,39 @@ const FichaCustos = () => {
     let tableY = panelY + 14;
     setText(7, [100, 116, 139], 'bold');
     pdf.text('TURMA', rightX + 3, tableY);
-    pdf.text('ALUNOS', rightX + colWidth - 3, tableY, { align: 'right' });
+    pdf.text('ALUNOS', rightX + colWidth * 0.4, tableY, { align: 'right' });
+    pdf.text('RECEITA', rightX + colWidth * 0.65, tableY, { align: 'right' });
+    pdf.text('CUSTO', rightX + colWidth * 0.82, tableY, { align: 'right' });
+    pdf.text('LUCRAT.', rightX + colWidth - 3, tableY, { align: 'right' });
     tableY += 5;
     setText(8, [15, 23, 42], 'normal');
     turmasByUnit.forEach((row) => {
       if (tableY > panelY + panelHeight - 10) return;
       const turma = row?.turma ? formatLabel(row.turma) : '--';
       const alunos = alunosField ? toNumber(row?.[alunosField]) : '--';
+      const receita = alunosField ? toNumber(row?.[alunosField]) * (ticketMes || 0) : 0;
+      const custo = custoPorTurma || 0;
+      const lucro = receita - custo;
       pdf.text(turma, rightX + 3, tableY);
-      pdf.text(String(alunos), rightX + colWidth - 3, tableY, { align: 'right' });
+      pdf.text(String(alunos), rightX + colWidth * 0.4, tableY, { align: 'right' });
+      pdf.text(formatCurrency(receita), rightX + colWidth * 0.65, tableY, { align: 'right' });
+      pdf.text(formatCurrency(custo), rightX + colWidth * 0.82, tableY, { align: 'right' });
+      pdf.text(formatCurrency(lucro), rightX + colWidth - 3, tableY, { align: 'right' });
       tableY += 5;
     });
     pdf.setDrawColor(229, 231, 235);
     pdf.line(rightX + 3, panelY + panelHeight - 10, rightX + colWidth - 3, panelY + panelHeight - 10);
     setText(8, [15, 23, 42], 'bold');
-    pdf.text('Total alunos:', rightX + 3, panelY + panelHeight - 4);
-    pdf.text(String(totalAlunosUnit || '--'), rightX + colWidth - 3, panelY + panelHeight - 4, { align: 'right' });
+    const totalLucro = turmasByUnit.reduce((acc, row) => {
+      const alunos = alunosField ? toNumber(row?.[alunosField]) : 0;
+      const receita = alunos * (ticketMes || 0);
+      const custo = custoPorTurma || 0;
+      return acc + (receita - custo);
+    }, 0);
+    pdf.text('Total alunos:', rightX + 3, panelY + panelHeight - 6);
+    pdf.text(String(totalAlunosUnit || '--'), rightX + colWidth - 3, panelY + panelHeight - 6, { align: 'right' });
+    pdf.text('Total lucro:', rightX + 3, panelY + panelHeight - 2);
+    pdf.text(formatCurrency(totalLucro), rightX + colWidth - 3, panelY + panelHeight - 2, { align: 'right' });
 
     pdf.save('ficha_custos.pdf');
   };
@@ -416,7 +472,7 @@ const FichaCustos = () => {
         </div>
       </motion.div>
 
-      <div ref={contentRef} className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div ref={contentRef} className="grid grid-cols-1 gap-6 lg:grid-cols-[0.65fr_0.9fr_1.45fr]">
         <Card className="glass-card">
           <CardHeader>
             <CardTitle className="text-white pdf-text">Rateio</CardTitle>
@@ -456,7 +512,7 @@ const FichaCustos = () => {
             <div className="text-xs uppercase tracking-[0.3em] text-gray-400 pdf-muted">Ticket Mês</div>
             <div className="text-lg font-semibold text-white pdf-text">{formatCurrency(ticketMes)}</div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3">
             <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3 pdf-box">
               <div className="text-[10px] uppercase tracking-[0.3em] text-gray-400 pdf-muted">Turmas</div>
               <div className="text-lg font-semibold text-white pdf-text">{totalTurmasUnit}</div>
@@ -469,11 +525,19 @@ const FichaCustos = () => {
               <div className="text-[10px] uppercase tracking-[0.3em] text-gray-400 pdf-muted">Cst Tur Mês</div>
               <div className="text-lg font-semibold text-white pdf-text">{formatCurrency(custoPorTurma)}</div>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3 pdf-box">
-              <div className="text-[10px] uppercase tracking-[0.3em] text-gray-400 pdf-muted">Cst Aluno Mês</div>
-              <div className="text-lg font-semibold text-white pdf-text">{formatCurrency(custoPorAluno)}</div>
+              <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3 pdf-box">
+                <div className="text-[10px] uppercase tracking-[0.3em] text-gray-400 pdf-muted">Hr/Aula Mês</div>
+                <div className="text-lg font-semibold text-white pdf-text">{formatCurrency(hrAulaMes)}</div>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3 pdf-box">
+                <div className="text-[10px] uppercase tracking-[0.3em] text-gray-400 pdf-muted">Hr/Aula CLT</div>
+                <div className="text-lg font-semibold text-white pdf-text">{formatCurrency(horaAulaClt)}</div>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3 pdf-box">
+                <div className="text-[10px] uppercase tracking-[0.3em] text-gray-400 pdf-muted">Hr/Aula Cnt</div>
+                <div className="text-lg font-semibold text-white pdf-text">{formatCurrency(horaAulaCnt)}</div>
+              </div>
             </div>
-          </div>
           <p className="text-xs text-gray-400 pdf-muted">
             Alguns indicadores dependem dos campos disponíveis nas tabelas. Ajustaremos as fórmulas conforme os dados.
           </p>
@@ -496,6 +560,9 @@ const FichaCustos = () => {
                     <tr>
                       <th className="py-2 pr-2">Turma</th>
                       <th className="py-2 text-right">Alunos</th>
+                      <th className="py-2 pr-2 text-right">Receita</th>
+                      <th className="py-2 pr-2 text-right">Custo</th>
+                      <th className="py-2 text-right">Lucratividade</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -503,6 +570,15 @@ const FichaCustos = () => {
                       <tr key={row.id ?? row.turma} className="border-t border-white/5">
                         <td className="py-2 pr-2 text-white pdf-text">{row?.turma ? formatLabel(row.turma) : '--'}</td>
                         <td className="py-2 text-right pdf-text">{alunosField ? toNumber(row?.[alunosField]) : '--'}</td>
+                        <td className="py-2 pr-2 text-right pdf-text">
+                          {alunosField ? formatCurrency(toNumber(row?.[alunosField]) * (ticketMes || 0)) : '--'}
+                        </td>
+                        <td className="py-2 pr-2 text-right pdf-text">{formatCurrency(custoPorTurma)}</td>
+                        <td className="py-2 text-right pdf-text">
+                          {alunosField
+                            ? formatCurrency(toNumber(row?.[alunosField]) * (ticketMes || 0) - (custoPorTurma || 0))
+                            : '--'}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -510,9 +586,24 @@ const FichaCustos = () => {
               </div>
             )}
             {!loading && turmasByUnit.length > 0 && (
-              <div className="flex justify-end border-t border-white/10 pt-2 text-xs text-gray-300">
-                <span className="text-white font-semibold">Total alunos: </span>
-                <span className="ml-2">{totalAlunosUnit || '--'}</span>
+              <div className="flex justify-between border-t border-white/10 pt-2 text-xs text-gray-300">
+                <div>
+                  <span className="text-white font-semibold">Total alunos: </span>
+                  <span className="ml-2">{totalAlunosUnit || '--'}</span>
+                </div>
+                <div>
+                  <span className="text-white font-semibold">Total lucratividade: </span>
+                  <span className="ml-2">
+                    {formatCurrency(
+                      turmasByUnit.reduce((acc, row) => {
+                        const alunos = alunosField ? toNumber(row?.[alunosField]) : 0;
+                        const receita = alunos * (ticketMes || 0);
+                        const custo = custoPorTurma || 0;
+                        return acc + (receita - custo);
+                      }, 0),
+                    )}
+                  </span>
+                </div>
               </div>
             )}
           </CardContent>
