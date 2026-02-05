@@ -195,6 +195,13 @@ const FichaCustos = () => {
     return { overall, byUnit };
   }, [rateios, selectedUnit]);
 
+  const rateiosByUnit = useMemo(() => {
+    return rateios.filter((row) => {
+      if (!row?.unidade) return false;
+      return matchesUnit(row.unidade, selectedUnit);
+    });
+  }, [rateios, selectedUnit]);
+
   const totalAlunos = useMemo(() => {
     if (!alunosField) return 0;
     return turmas.reduce((acc, row) => acc + toNumber(row?.[alunosField]), 0);
@@ -219,7 +226,7 @@ const FichaCustos = () => {
     const todayStr = today.toISOString().split('T')[0];
     const total = lancamentos.reduce((acc, item) => {
       if (normalizeTipo(item?.tipo) !== 'entrada') return acc;
-      if (!matchesUnit(item?.unidade, 'CNA Angra dos Reis')) return acc;
+      if (!matchesUnit(item?.unidade, selectedUnit)) return acc;
       const vencimento = parseDateSafe(item?.data);
       if (!vencimento || vencimento < start || vencimento > end) return acc;
       const status = getLancamentoStatus(item, todayStr);
@@ -237,7 +244,7 @@ const FichaCustos = () => {
     }, 0);
 
     return total / mesesRestantesSemestre;
-  }, [lancamentos, mesesRestantesSemestre]);
+  }, [lancamentos, mesesRestantesSemestre, selectedUnit]);
 
   const availableUnits = useMemo(() => {
     const set = new Set();
@@ -287,7 +294,14 @@ const FichaCustos = () => {
     const pageHeight = pdf.internal.pageSize.getHeight();
     const margin = 10;
     const gap = 6;
-    const colWidth = (pageWidth - margin * 2 - gap * 2) / 3;
+    const totalWidth = pageWidth - margin * 2 - gap * 2;
+    const leftWeight = 0.75;
+    const midWeight = 0.85;
+    const rightWeight = 1.4;
+    const weightSum = leftWeight + midWeight + rightWeight;
+    const colWidthLeft = (totalWidth * leftWeight) / weightSum;
+    const colWidthMid = (totalWidth * midWeight) / weightSum;
+    const colWidthRight = (totalWidth * rightWeight) / weightSum;
     const headerHeight = 12;
     const panelHeight = pageHeight - margin * 2 - headerHeight;
 
@@ -320,33 +334,33 @@ const FichaCustos = () => {
 
     const panelY = margin + headerHeight;
     const leftX = margin;
-    const midX = margin + colWidth + gap;
-    const rightX = margin + (colWidth + gap) * 2;
+    const midX = leftX + colWidthLeft + gap;
+    const rightX = midX + colWidthMid + gap;
 
-    drawPanel(leftX, panelY, colWidth, panelHeight, 'Rateio');
-    drawPanel(midX, panelY, colWidth, panelHeight, `Indicadores - ${selectedUnit}`);
-    drawPanel(rightX, panelY, colWidth, panelHeight, 'Turmas');
+    drawPanel(leftX, panelY, colWidthLeft, panelHeight, 'Rateio');
+    drawPanel(midX, panelY, colWidthMid, panelHeight, `Indicadores - ${selectedUnit}`);
+    drawPanel(rightX, panelY, colWidthRight, panelHeight, 'Turmas');
 
     // Left panel content
     let cursorY = panelY + 14;
     setText(8, [15, 23, 42], 'bold');
-    rateios.forEach((row) => {
+    rateiosByUnit.forEach((row) => {
       if (cursorY > panelY + panelHeight - 6) return;
       const name = row?.nome ? formatLabel(row.nome) : '--';
       const value = formatCurrency(toNumber(row?.valor));
       pdf.text(name, leftX + 3, cursorY);
-      pdf.text(value, leftX + colWidth - 3, cursorY, { align: 'right' });
+      pdf.text(value, leftX + colWidthLeft - 3, cursorY, { align: 'right' });
       cursorY += 5;
     });
     pdf.setDrawColor(229, 231, 235);
-    pdf.line(leftX + 3, panelY + panelHeight - 10, leftX + colWidth - 3, panelY + panelHeight - 10);
+    pdf.line(leftX + 3, panelY + panelHeight - 10, leftX + colWidthLeft - 3, panelY + panelHeight - 10);
     setText(9, [15, 23, 42], 'bold');
     pdf.text('Total', leftX + 3, panelY + panelHeight - 4);
-    pdf.text(formatCurrency(rateioTotals.overall || 0), leftX + colWidth - 3, panelY + panelHeight - 4, { align: 'right' });
+    pdf.text(formatCurrency(rateioTotals.byUnit || 0), leftX + colWidthLeft - 3, panelY + panelHeight - 4, { align: 'right' });
 
     // Middle panel content
     const boxX = midX + 3;
-    const boxW = colWidth - 6;
+    const boxW = colWidthMid - 6;
     let boxY = panelY + 14;
     const drawInfoBox = (label, value, fill = [248, 250, 252]) => {
       pdf.setDrawColor(214, 225, 245);
@@ -391,10 +405,10 @@ const FichaCustos = () => {
     let tableY = panelY + 14;
     setText(7, [100, 116, 139], 'bold');
     pdf.text('TURMA', rightX + 3, tableY);
-    pdf.text('ALUNOS', rightX + colWidth * 0.4, tableY, { align: 'right' });
-    pdf.text('RECEITA', rightX + colWidth * 0.65, tableY, { align: 'right' });
-    pdf.text('CUSTO', rightX + colWidth * 0.82, tableY, { align: 'right' });
-    pdf.text('LUCRAT.', rightX + colWidth - 3, tableY, { align: 'right' });
+    pdf.text('ALUNOS', rightX + colWidthRight * 0.4, tableY, { align: 'right' });
+    pdf.text('RECEITA', rightX + colWidthRight * 0.65, tableY, { align: 'right' });
+    pdf.text('CUSTO', rightX + colWidthRight * 0.82, tableY, { align: 'right' });
+    pdf.text('LUCRAT.', rightX + colWidthRight - 3, tableY, { align: 'right' });
     tableY += 5;
     setText(8, [15, 23, 42], 'normal');
     turmasByUnit.forEach((row) => {
@@ -405,14 +419,14 @@ const FichaCustos = () => {
       const custo = custoPorTurma || 0;
       const lucro = receita - custo;
       pdf.text(turma, rightX + 3, tableY);
-      pdf.text(String(alunos), rightX + colWidth * 0.4, tableY, { align: 'right' });
-      pdf.text(formatCurrency(receita), rightX + colWidth * 0.65, tableY, { align: 'right' });
-      pdf.text(formatCurrency(custo), rightX + colWidth * 0.82, tableY, { align: 'right' });
-      pdf.text(formatCurrency(lucro), rightX + colWidth - 3, tableY, { align: 'right' });
+      pdf.text(String(alunos), rightX + colWidthRight * 0.4, tableY, { align: 'right' });
+      pdf.text(formatCurrency(receita), rightX + colWidthRight * 0.65, tableY, { align: 'right' });
+      pdf.text(formatCurrency(custo), rightX + colWidthRight * 0.82, tableY, { align: 'right' });
+      pdf.text(formatCurrency(lucro), rightX + colWidthRight - 3, tableY, { align: 'right' });
       tableY += 5;
     });
     pdf.setDrawColor(229, 231, 235);
-    pdf.line(rightX + 3, panelY + panelHeight - 10, rightX + colWidth - 3, panelY + panelHeight - 10);
+    pdf.line(rightX + 3, panelY + panelHeight - 10, rightX + colWidthRight - 3, panelY + panelHeight - 10);
     setText(8, [15, 23, 42], 'bold');
     const totalLucro = turmasByUnit.reduce((acc, row) => {
       const alunos = alunosField ? toNumber(row?.[alunosField]) : 0;
@@ -421,9 +435,9 @@ const FichaCustos = () => {
       return acc + (receita - custo);
     }, 0);
     pdf.text('Total alunos:', rightX + 3, panelY + panelHeight - 6);
-    pdf.text(String(totalAlunosUnit || '--'), rightX + colWidth - 3, panelY + panelHeight - 6, { align: 'right' });
+    pdf.text(String(totalAlunosUnit || '--'), rightX + colWidthRight - 3, panelY + panelHeight - 6, { align: 'right' });
     pdf.text('Total lucro:', rightX + 3, panelY + panelHeight - 2);
-    pdf.text(formatCurrency(totalLucro), rightX + colWidth - 3, panelY + panelHeight - 2, { align: 'right' });
+    pdf.text(formatCurrency(totalLucro), rightX + colWidthRight - 3, panelY + panelHeight - 2, { align: 'right' });
 
     pdf.save('ficha_custos.pdf');
   };
@@ -479,12 +493,12 @@ const FichaCustos = () => {
           </CardHeader>
           <CardContent className="space-y-6">
             {loading && <p className="text-sm text-gray-400">Carregando rateio...</p>}
-            {!loading && rateios.length === 0 && (
+            {!loading && rateiosByUnit.length === 0 && (
               <p className="text-sm text-gray-400">Nenhum rateio encontrado.</p>
             )}
-            {!loading && rateios.length > 0 && (
+            {!loading && rateiosByUnit.length > 0 && (
               <div className="space-y-2">
-                {rateios.map((row) => (
+                {rateiosByUnit.map((row) => (
                   <div key={row.id ?? row.nome} className="flex justify-between text-sm">
                     <span className="text-gray-300 pdf-text">{row?.nome ? formatLabel(row.nome) : '--'}</span>
                     <span className="text-white pdf-text">{formatCurrency(toNumber(row?.valor))}</span>
@@ -492,7 +506,7 @@ const FichaCustos = () => {
                 ))}
                 <div className="flex justify-between border-t border-white/10 pt-2 text-sm font-semibold text-white">
                   <span>Total</span>
-                  <span>{formatCurrency(rateioTotals.overall || 0)}</span>
+                  <span>{formatCurrency(rateioTotals.byUnit || 0)}</span>
                 </div>
               </div>
             )}

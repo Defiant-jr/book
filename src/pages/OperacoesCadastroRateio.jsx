@@ -25,6 +25,7 @@ const OperacoesCadastroRateio = () => {
   const { toast } = useToast();
   const [rateios, setRateios] = useState([]);
   const [ordenacao, setOrdenacao] = useState('');
+  const [filtroUnidade, setFiltroUnidade] = useState('todas');
   const [dirtyIds, setDirtyIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -59,6 +60,23 @@ const OperacoesCadastroRateio = () => {
     });
   }, [rateios, ordenacao]);
 
+  const unidadesDisponiveis = useMemo(() => {
+    const values = rateios
+      .map((row) => row?.unidade)
+      .filter((value) => value !== null && value !== undefined && String(value).trim() !== '')
+      .map((value) => String(value).trim());
+    return Array.from(new Set(values)).sort((a, b) =>
+      a.localeCompare(b, 'pt-BR', { numeric: true, sensitivity: 'base' }),
+    );
+  }, [rateios]);
+
+  const rateiosFiltrados = useMemo(() => {
+    if (filtroUnidade === 'todas') return rateiosOrdenados;
+    return rateiosOrdenados.filter(
+      (row) => String(row?.unidade ?? '').trim() === filtroUnidade,
+    );
+  }, [rateiosOrdenados, filtroUnidade]);
+
   const fetchRateios = async () => {
     setLoading(true);
     const { data, error } = await supabase.from('rateio').select('*').order('id', { ascending: true });
@@ -80,6 +98,13 @@ const OperacoesCadastroRateio = () => {
   useEffect(() => {
     fetchRateios();
   }, []);
+
+  useEffect(() => {
+    if (filtroUnidade === 'todas') return;
+    if (!unidadesDisponiveis.includes(filtroUnidade)) {
+      setFiltroUnidade('todas');
+    }
+  }, [filtroUnidade, unidadesDisponiveis]);
 
   const markDirty = (id) => {
     setDirtyIds((prev) => {
@@ -166,6 +191,22 @@ const OperacoesCadastroRateio = () => {
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div className="flex flex-col gap-1">
+              <span className="text-xs uppercase tracking-wide text-gray-400">Unidade</span>
+              <Select value={filtroUnidade} onValueChange={setFiltroUnidade}>
+                <SelectTrigger className="w-full bg-white/10 border-white/20 text-white sm:w-40" aria-label="Filtrar por unidade">
+                  <SelectValue placeholder="Unidade" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todas">Todas</SelectItem>
+                  {unidadesDisponiveis.map((unidade) => (
+                    <SelectItem key={unidade} value={unidade}>
+                      {unidade}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-1">
               <span className="text-xs uppercase tracking-wide text-gray-400">Ordenar por</span>
               <Select value={ordenacao} onValueChange={setOrdenacao} disabled={!columns.length}>
                 <SelectTrigger className="w-full bg-white/10 border-white/20 text-white sm:w-40" aria-label="Ordenar listagem">
@@ -197,7 +238,7 @@ const OperacoesCadastroRateio = () => {
         )}
 
         {!loading &&
-          rateiosOrdenados.map((row, index) => (
+          rateiosFiltrados.map((row, index) => (
             <div key={row.id ?? index} className="space-y-2">
               {row.id != null && (
                 <div className="text-xs uppercase tracking-[0.2em] text-gray-500">ID {row.id}</div>
