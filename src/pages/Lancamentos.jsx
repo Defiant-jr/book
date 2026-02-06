@@ -13,13 +13,10 @@ const Lancamentos = () => {
   const location = useLocation();
   const editingLancamento = location.state?.lancamento || null;
   const isEditing = Boolean(editingLancamento);
+  const returnTo = location.state?.from || '/cadastros';
 
   const handleSuccess = () => {
-    if (isEditing) {
-      navigate(-1);
-    } else {
-      navigate('/dashboard');
-    }
+    navigate(returnTo);
   };
 
   return (
@@ -48,8 +45,9 @@ const Lancamentos = () => {
 
       <LancamentoForm
         initialData={editingLancamento}
-        onCancel={() => navigate(-1)}
+        onCancel={() => navigate(returnTo)}
         onSuccess={handleSuccess}
+        allowRecurrence
       />
     </motion.div>
   );

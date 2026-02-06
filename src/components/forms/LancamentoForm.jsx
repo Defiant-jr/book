@@ -113,18 +113,20 @@ const LancamentoForm = ({
 
     setLoading(true);
 
+    const parsedValor = parseFloat(valor);
     const newEntry = {
       data: format(date, 'yyyy-MM-dd'),
       tipo,
       unidade,
       cliente_fornecedor: clienteFornecedor,
       descricao,
-      valor: parseFloat(valor),
+      valor: parsedValor,
       status: 'A Vencer',
       obs,
       aluno: aluno.trim() || null,
       parcela: parcela.trim() || null,
       desc_pontual: parsedDescPontual,
+      ...(tipo === 'Saida' ? { valor_aberto: parsedValor } : {}),
     };
 
     let error;

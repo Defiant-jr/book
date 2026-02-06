@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Users, Building2, Home, UserCheck, GraduationCap, PenLine, Percent } from 'lucide-react';
@@ -14,6 +14,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 const Cadastros = () => {
   const CADASTROS_REF = 61000;
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [activeCard, setActiveCard] = useState('aluno');
 
@@ -240,7 +241,7 @@ const Cadastros = () => {
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => navigate(-1)}>
+          <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => navigate('/operacional')}>
             <ArrowLeft className="h-5 w-5" />
             <span className="sr-only">Voltar</span>
           </Button>
@@ -272,7 +273,7 @@ const Cadastros = () => {
               return;
             }
             if (card.id === 'lancamento') {
-              navigate('/lancamentos');
+              navigate('/lancamentos', { state: { from: location.pathname } });
               return;
             }
             setActiveCard(card.id);

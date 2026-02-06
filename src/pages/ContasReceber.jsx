@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
     import { motion } from 'framer-motion';
     import { Helmet } from 'react-helmet';
-    import { useNavigate } from 'react-router-dom';
+    import { useLocation, useNavigate } from 'react-router-dom';
 import { Calendar, Filter, User, DollarSign, AlertTriangle, ArrowLeft, CheckCircle, Settings } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
     const ContasReceber = () => {
       const CONTAS_RECEBER_REF = 21000;
       const navigate = useNavigate();
+      const location = useLocation();
       const { toast } = useToast();
       const [contas, setContas] = useState([]);
       const [loading, setLoading] = useState(false);
@@ -176,7 +177,7 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
   };
 
   const handleEditLancamento = (lancamento) => {
-    navigate('/lancamentos', { state: { lancamento } });
+    navigate('/lancamentos', { state: { lancamento, from: location.pathname } });
   };
     
       return (
