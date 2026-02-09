@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, MinusSquare, PlusSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,45 @@ const RECEITA_FIELD_CANDIDATES = [
   'valor_mensal',
   'mensalidade',
   'valor',
+];
+const TURMA_CODE_FIELD_CANDIDATES = [
+  'codigo_turma',
+  'cod_turma',
+  'turma_codigo',
+  'codigo',
+  'cod',
+  'turma',
+];
+const ALUNO_TURMA_CODE_FIELD_CANDIDATES = [
+  'codigo_turma',
+  'cod_turma',
+  'turma_codigo',
+  'turma',
+  'codigo',
+];
+const ALUNO_NOME_FIELD_CANDIDATES = [
+  'aluno',
+  'nome',
+  'nome_aluno',
+  'aluno_nome',
+];
+const ALUNO_RESP_FIELD_CANDIDATES = [
+  'responsavel',
+  'responsavel_nome',
+  'nome_responsavel',
+];
+const LANCAMENTO_ALUNO_FIELD_CANDIDATES = [
+  'aluno',
+  'aluno_nome',
+  'nome_aluno',
+  'cliente_fornecedor',
+  'cliente',
+];
+const UNIDADE_FIELD_CANDIDATES = [
+  'unidade',
+  'unidade_nome',
+  'nome_unidade',
+  'unidade_id',
 ];
 
 const formatLabel = (value) =>
@@ -95,18 +134,21 @@ const FichaCustos = () => {
   const { toast } = useToast();
   const [rateios, setRateios] = useState([]);
   const [turmas, setTurmas] = useState([]);
+  const [alunos, setAlunos] = useState([]);
   const [lancamentos, setLancamentos] = useState([]);
   const [parametros, setParametros] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedUnit, setSelectedUnit] = useState('CNA Angra dos Reis');
+  const [expandedRows, setExpandedRows] = useState({});
   const contentRef = useRef(null);
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      const [rateioResult, turmasResult, parametrosResult] = await Promise.all([
+      const [rateioResult, turmasResult, alunosResult, parametrosResult] = await Promise.all([
         supabase.from('rateio').select('*').order('id', { ascending: true }),
         supabase.from('turmas').select('*').order('id', { ascending: true }),
+        supabase.from('alunos').select('*').order('id', { ascending: true }),
         supabase.from('parametros').select('*').limit(1).maybeSingle(),
       ]);
 
@@ -151,6 +193,16 @@ const FichaCustos = () => {
         setTurmas(turmasResult.data || []);
       }
 
+      if (alunosResult.error) {
+        toast({
+          title: 'Erro ao carregar alunos',
+          description: alunosResult.error.message || 'Nao foi possivel buscar os alunos.',
+          variant: 'destructive',
+        });
+      } else {
+        setAlunos(alunosResult.data || []);
+      }
+
       if (parametrosResult.error) {
         toast({
           title: 'Erro ao carregar parametros',
@@ -185,6 +237,72 @@ const FichaCustos = () => {
     () => findField(turmas, RECEITA_FIELD_CANDIDATES),
     [turmas],
   );
+  const turmaCodeField = useMemo(
+    () => findField(turmas, TURMA_CODE_FIELD_CANDIDATES),
+    [turmas],
+  );
+  const alunoTurmaCodeField = useMemo(
+    () => findField(alunos, ALUNO_TURMA_CODE_FIELD_CANDIDATES),
+    [alunos],
+  );
+  const alunoNomeField = useMemo(
+    () => findField(alunos, ALUNO_NOME_FIELD_CANDIDATES),
+    [alunos],
+  );
+  const alunoRespField = useMemo(
+    () => findField(alunos, ALUNO_RESP_FIELD_CANDIDATES),
+    [alunos],
+  );
+  const lancamentoAlunoField = useMemo(
+    () => findField(lancamentos, LANCAMENTO_ALUNO_FIELD_CANDIDATES),
+    [lancamentos],
+  );
+  const turmaUnitField = useMemo(
+    () => findField(turmas, UNIDADE_FIELD_CANDIDATES),
+    [turmas],
+  );
+  const alunoUnitField = useMemo(
+    () => findField(alunos, UNIDADE_FIELD_CANDIDATES),
+    [alunos],
+  );
+
+  const alunosByTurmaCode = useMemo(() => {
+    if (!alunoTurmaCodeField) return new Map();
+    const map = new Map();
+    alunos.forEach((row) => {
+      if (alunoUnitField && !matchesUnit(row?.[alunoUnitField], selectedUnit)) return;
+      const code = String(row?.[alunoTurmaCodeField] ?? '').trim();
+      if (!code) return;
+      const list = map.get(code) || [];
+      list.push(row);
+      map.set(code, list);
+    });
+    return map;
+  }, [alunos, alunoTurmaCodeField, alunoUnitField, selectedUnit]);
+
+  const mediaPagamentoByAluno = useMemo(() => {
+    if (!lancamentoAlunoField) return new Map();
+    const map = new Map();
+    lancamentos.forEach((item) => {
+      if (normalizeTipo(item?.tipo) !== 'entrada') return;
+      if (!matchesUnit(item?.unidade, selectedUnit)) return;
+      const nome = String(item?.[lancamentoAlunoField] ?? '').trim();
+      if (!nome) return;
+      const valor = toNumber(item?.desc_pontual);
+      if (!Number.isFinite(valor)) return;
+      const key = normalizeText(nome);
+      const entry = map.get(key) || { sum: 0, count: 0 };
+      entry.sum += valor;
+      entry.count += 1;
+      map.set(key, entry);
+    });
+    return map;
+  }, [lancamentos, lancamentoAlunoField, selectedUnit]);
+
+  const toggleRow = (code) => {
+    if (!code) return;
+    setExpandedRows((prev) => ({ ...prev, [code]: !prev[code] }));
+  };
 
   const rateioTotals = useMemo(() => {
     const overall = rateios.reduce((sum, row) => sum + toNumber(row?.valor), 0);
@@ -572,6 +690,7 @@ const FichaCustos = () => {
                 <table className="w-full text-xs text-left text-gray-300 pdf-text">
                   <thead className="text-[10px] uppercase tracking-[0.2em] text-gray-400 pdf-muted">
                     <tr>
+                      <th className="py-2 pr-2"></th>
                       <th className="py-2 pr-2">Turma</th>
                       <th className="py-2 text-right">Alunos</th>
                       <th className="py-2 pr-2 text-right">Receita</th>
@@ -580,21 +699,93 @@ const FichaCustos = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {turmasByUnit.map((row) => (
-                      <tr key={row.id ?? row.turma} className="border-t border-white/5">
-                        <td className="py-2 pr-2 text-white pdf-text">{row?.turma ? formatLabel(row.turma) : '--'}</td>
-                        <td className="py-2 text-right pdf-text">{alunosField ? toNumber(row?.[alunosField]) : '--'}</td>
-                        <td className="py-2 pr-2 text-right pdf-text">
-                          {alunosField ? formatCurrency(toNumber(row?.[alunosField]) * (ticketMes || 0)) : '--'}
-                        </td>
-                        <td className="py-2 pr-2 text-right pdf-text">{formatCurrency(custoPorTurma)}</td>
-                        <td className="py-2 text-right pdf-text">
-                          {alunosField
-                            ? formatCurrency(toNumber(row?.[alunosField]) * (ticketMes || 0) - (custoPorTurma || 0))
-                            : '--'}
-                        </td>
-                      </tr>
-                    ))}
+                    {turmasByUnit.map((row, index) => {
+                      const turmaCode = turmaCodeField ? String(row?.[turmaCodeField] ?? '').trim() : '';
+                      const alunosList = turmaCode ? alunosByTurmaCode.get(turmaCode) || [] : [];
+                      const receitaMensalTurma = alunosList.reduce((acc, aluno) => {
+                        const nome = alunoNomeField ? aluno?.[alunoNomeField] : null;
+                        const keyName = nome || 'Aluno';
+                        const mediaInfo = mediaPagamentoByAluno.get(normalizeText(keyName));
+                        if (!mediaInfo || !mediaInfo.count) return acc;
+                        return acc + mediaInfo.sum / mediaInfo.count;
+                      }, 0);
+                      const canExpand = Boolean(turmaCode && alunoTurmaCodeField);
+                      const rowKey = row.id ?? turmaCode ?? row.turma ?? index;
+
+                      const rows = [
+                        <tr key={`${rowKey}-main`} className="border-t border-white/5">
+                            <td className="py-2 pr-2">
+                              {canExpand && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => toggleRow(turmaCode)}
+                                  className="h-7 w-7"
+                                  aria-label={expandedRows[turmaCode] ? 'Ocultar alunos' : 'Exibir alunos'}
+                                >
+                                  {expandedRows[turmaCode] ? (
+                                    <MinusSquare className="h-4 w-4" />
+                                  ) : (
+                                    <PlusSquare className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              )}
+                            </td>
+                            <td className="py-2 pr-2 text-white pdf-text">{row?.turma ? formatLabel(row.turma) : '--'}</td>
+                            <td className="py-2 text-right pdf-text">{alunosField ? toNumber(row?.[alunosField]) : '--'}</td>
+                            <td className="py-2 pr-2 text-right pdf-text">{formatCurrency(receitaMensalTurma)}</td>
+                            <td className="py-2 pr-2 text-right pdf-text">{formatCurrency(custoPorTurma)}</td>
+                            <td className="py-2 text-right pdf-text">
+                              {formatCurrency(receitaMensalTurma - (custoPorTurma || 0))}
+                            </td>
+                        </tr>,
+                      ];
+
+                      if (canExpand && expandedRows[turmaCode]) {
+                        rows.push(
+                          <tr key={`${rowKey}-details`} className="bg-slate-900/50">
+                            <td colSpan={6} className="p-0">
+                              <div className="p-4">
+                                <div className="text-[10px] uppercase tracking-[0.2em] text-gray-400">Alunos</div>
+                                {alunosList.length > 0 ? (
+                                  <div className="mt-2 grid grid-cols-1 gap-2 text-sm text-gray-200 sm:grid-cols-2 lg:grid-cols-3">
+                                    {alunosList.map((aluno, index) => {
+                                      const nome = alunoNomeField ? aluno?.[alunoNomeField] : null;
+                                      const responsavel = alunoRespField ? aluno?.[alunoRespField] : null;
+                                      const alunoKeyName = nome || 'Aluno';
+                                      const mediaInfo = mediaPagamentoByAluno.get(normalizeText(alunoKeyName));
+                                      const mediaPagamento =
+                                        mediaInfo && mediaInfo.count
+                                          ? mediaInfo.sum / mediaInfo.count
+                                          : null;
+                                      const alunoKey = aluno.id ?? nome ?? index;
+                                      return (
+                                        <div
+                                          key={alunoKey}
+                                          className="rounded-lg border border-white/10 bg-slate-900/60 px-3 py-2"
+                                        >
+                                          <div className="text-white">{alunoKeyName}</div>
+                                          {responsavel && (
+                                            <div className="text-xs text-gray-400">Resp: {responsavel}</div>
+                                          )}
+                                          <div className="text-xs text-gray-400">
+                                            Mens.: {formatCurrency(mediaPagamento)}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                ) : (
+                                  <p className="mt-2 text-xs text-gray-400">Nenhum aluno encontrado para esta turma.</p>
+                                )}
+                              </div>
+                            </td>
+                          </tr>,
+                        );
+                      }
+
+                      return rows;
+                    })}
                   </tbody>
                 </table>
               </div>
