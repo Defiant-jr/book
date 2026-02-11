@@ -32,6 +32,13 @@ const ContasPagar = () => {
         valorInicio: '',
         valorFim: ''
       });
+
+      useEffect(() => {
+        const statusParam = new URLSearchParams(location.search).get('status');
+        if (statusParam === STATUS.PAGO) {
+          setFilters((prev) => ({ ...prev, status: STATUS.PAGO }));
+        }
+      }, [location.search]);
     
       useEffect(() => {
         loadData();
@@ -70,6 +77,7 @@ const ContasPagar = () => {
             filtered = filtered.filter(c => getStatus(c) === filters.status);
           }
         }
+        filtered = filtered.filter(c => getStatus(c) !== STATUS.PAGO);
         if (filters.unidade !== 'todas') {
           filtered = filtered.filter(c => c.unidade === filters.unidade);
         }
@@ -179,7 +187,7 @@ const ContasPagar = () => {
                       <SelectContent>
                         <SelectItem value="todos">Todos</SelectItem>
                         <SelectItem value={STATUS_ABERTO}>{STATUS_ABERTO_LABEL}</SelectItem>
-                        {STATUS_OPTIONS.map((option) => (
+                        {STATUS_OPTIONS.filter((option) => option.value !== STATUS.PAGO).map((option) => (
                           <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                         ))}
                       </SelectContent>

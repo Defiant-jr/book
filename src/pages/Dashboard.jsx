@@ -341,6 +341,8 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
         { label: "A Receber", path: "/contas-receber", icon: ArrowRight },
         { label: "A Pagar", path: "/contas-pagar", icon: ArrowLeft },
         { label: "Fluxo de Caixa", path: "/fluxo-caixa", icon: Wallet },
+        { label: "Recebidos", path: "/contas-receber?status=pago", icon: TrendingUp },
+        { label: "Pagos", path: "/contas-pagos", icon: TrendingDown },
         { label: "Financeiro", path: "/financeiro", icon: PlusCircle },
       ];
 

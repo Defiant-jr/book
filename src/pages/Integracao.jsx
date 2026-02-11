@@ -60,13 +60,14 @@ const Integracao = () => {
       action: handleImportData,
       loading: importLoading,
       loadingLabel: 'Integrando...',
-      ref: 621000,
+      ref: 62100,
     },
     {
-      title: 'Operacoes',
-      description: 'Integracao futura para operacoes.',
+      title: 'Operações',
+      description: 'Importa operações a partir de uma planilha Excel.',
       icon: RefreshCcw,
-      disabled: true,
+      action: () => navigate('/operacional/integracao/operacoes'),
+      ref: 62200,
     },
   ];
 

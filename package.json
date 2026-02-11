@@ -45,7 +45,8 @@
     "recharts": "^2.8.0",
     "serve-static": "^1.15.0",
     "tailwind-merge": "^1.14.0",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@babel/generator": "^7.27.0",

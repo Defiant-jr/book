@@ -1,0 +1,246 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { motion } from 'framer-motion';
+import { Helmet } from 'react-helmet';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Calendar, Filter, Building, DollarSign, AlertTriangle, ArrowLeft, CheckCircle, Settings } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { supabase } from '@/lib/customSupabaseClient';
+import { useToast } from '@/components/ui/use-toast';
+import { format as formatDateFns } from 'date-fns';
+import { getValorConsiderado } from '@/lib/lancamentoValor';
+import { getLancamentoStatus, STATUS, STATUS_LABELS, STATUS_COLORS, STATUS_OPTIONS } from '@/lib/lancamentoStatus';
+
+const STATUS_ABERTO = 'em_aberto';
+const STATUS_ABERTO_LABEL = 'Em Aberto';
+
+const ContasPagas = () => {
+  const CONTAS_PAGAS_REF = 26000;
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { toast } = useToast();
+  const [contas, setContas] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [filters, setFilters] = useState({
+    fornecedor: '',
+    status: STATUS.PAGO,
+    unidade: 'todas',
+    dataInicio: '',
+    dataFim: '',
+    valorInicio: '',
+    valorFim: ''
+  });
+
+  useEffect(() => {
+    const statusParam = new URLSearchParams(location.search).get('status');
+    if (statusParam === STATUS.PAGO) {
+      setFilters((prev) => ({ ...prev, status: STATUS.PAGO }));
+    }
+  }, [location.search]);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    const { data, error } = await supabase.from('lancamentos').select('*').eq('tipo', 'Saida');
+    if (error) {
+      toast({ title: 'Erro ao carregar dados', description: error.message, variant: 'destructive' });
+    } else {
+      setContas(data ?? []);
+    }
+    setLoading(false);
+  };
+
+  const getStatus = (conta) => getLancamentoStatus(conta);
+
+  const formatCurrency = (value) => (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const formatDate = (dateString) => new Date(dateString + 'T00:00:00').toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  const filteredContas = useMemo(() => {
+    let filtered = [...contas];
+    const toCents = (value) => Math.round((Number(value) || 0) * 100);
+    if (filters.fornecedor) {
+      filtered = filtered.filter(c => c.cliente_fornecedor?.toLowerCase().includes(filters.fornecedor.toLowerCase()));
+    }
+    filtered = filtered.filter(c => getStatus(c) === STATUS.PAGO);
+    if (filters.unidade !== 'todas') {
+      filtered = filtered.filter(c => c.unidade === filters.unidade);
+    }
+    if (filters.dataInicio) {
+      const startDate = new Date(filters.dataInicio + 'T00:00:00');
+      filtered = filtered.filter(c => c.datapag && new Date(c.datapag + 'T00:00:00') >= startDate);
+    }
+    if (filters.dataFim) {
+      const endDate = new Date(filters.dataFim + 'T00:00:00');
+      filtered = filtered.filter(c => c.datapag && new Date(c.datapag + 'T00:00:00') <= endDate);
+    }
+    if (filters.valorInicio || filters.valorFim) {
+      const hasInicio = filters.valorInicio !== '';
+      const hasFim = filters.valorFim !== '';
+      const inicioCents = hasInicio ? toCents(filters.valorInicio) : null;
+      const fimCents = hasFim ? toCents(filters.valorFim) : null;
+      filtered = filtered.filter((conta) => {
+        const contaCents = toCents(getValorConsiderado(conta, todayStr));
+        if (hasInicio && hasFim) {
+          return contaCents >= inicioCents && contaCents <= fimCents;
+        }
+        if (hasInicio) {
+          return contaCents === inicioCents;
+        }
+        return contaCents <= fimCents;
+      });
+    }
+    return filtered.sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
+  }, [contas, filters]);
+
+  const getStatusColor = (status) => STATUS_COLORS[status] || 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+  const getStatusLabel = (status) => STATUS_LABELS[status] || status;
+
+  const groupedContas = useMemo(() => {
+    return filteredContas.reduce((acc, conta) => {
+      const groupKey = conta.datapag || conta.data;
+      if (!groupKey) return acc;
+      (acc[groupKey] = acc[groupKey] || []).push(conta);
+      return acc;
+    }, {});
+  }, [filteredContas]);
+
+  const calculateTotalsByUnit = (itens) => {
+    return itens.reduce((acc, conta) => {
+      const unit = conta.unidade || 'N/A';
+      acc[unit] = (acc[unit] || 0) + getValorConsiderado(conta, todayStr);
+      return acc;
+    }, {});
+  };
+
+  const totalGeral = filteredContas.reduce((sum, c) => sum + getValorConsiderado(c, todayStr), 0);
+  const handleMarkAsPaid = async (id) => {
+    const today = formatDateFns(new Date(), 'yyyy-MM-dd');
+    const { error } = await supabase.from('lancamentos').update({ status: 'Pago', datapag: today }).eq('id', id);
+    if (error) {
+      toast({ title: 'Erro', description: 'Não foi possível atualizar o status.', variant: 'destructive' });
+    } else {
+      toast({ title: 'Sucesso!', description: 'Lançamento marcado como pago.' });
+      loadData();
+    }
+  };
+
+  const handleEditLancamento = (lancamento) => {
+    navigate('/lancamentos', { state: { lancamento, from: location.pathname } });
+  };
+
+  return (
+    <div className="space-y-8">
+      <Helmet>
+        <title>Contas Pagas - BooK+</title>
+        <meta name="description" content="Gerencie seus pagamentos com filtros e totalizadores" />
+      </Helmet>
+
+      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')} className="text-white hover:bg-white/10"><ArrowLeft className="w-6 h-6" /></Button>
+          <div>
+            <h1 className="text-3xl font-bold gradient-text">Contas Pagas</h1>
+            <p className="text-gray-400 mt-2">Controle seus pagamentos</p>
+          </div>
+        </div>
+        <div className="text-[10px] font-medium text-gray-400 lg:text-xs">
+          {CONTAS_PAGAS_REF}
+        </div>
+      </motion.div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="glass-card"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-gray-300">Total Filtrado</CardTitle><DollarSign className="w-4 h-4 text-blue-400" /></CardHeader><CardContent><div className="text-2xl font-bold text-blue-400">{formatCurrency(totalGeral)}</div></CardContent></Card>
+      </div>
+
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+        <Card className="glass-card">
+          <CardHeader><CardTitle className="text-white flex items-center gap-2"><Filter className="w-5 h-5" />Filtros</CardTitle></CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
+              <div><label className="text-sm text-gray-300 mb-2 block">Fornecedor</label><Input placeholder="Buscar fornecedor..." value={filters.fornecedor} onChange={(e) => setFilters({ ...filters, fornecedor: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
+              <div>
+                <label className="text-sm text-gray-300 mb-2 block">Status</label>
+                <Select value={STATUS.PAGO} onValueChange={(value) => setFilters({ ...filters, status: value })} disabled>
+                  <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={STATUS.PAGO}>Pago</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div><label className="text-sm text-gray-300 mb-2 block">Unidade</label><Select value={filters.unidade} onValueChange={(value) => setFilters({ ...filters, unidade: value })}><SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="todas">Todas</SelectItem><SelectItem value="CNA Angra dos Reis">CNA Angra dos Reis</SelectItem><SelectItem value="CNA Mangaratiba">CNA Mangaratiba</SelectItem><SelectItem value="Casa">Casa</SelectItem></SelectContent></Select></div>
+              <div><label className="text-sm text-gray-300 mb-2 block">Data Início</label><Input type="date" value={filters.dataInicio} onChange={(e) => setFilters({ ...filters, dataInicio: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
+              <div><label className="text-sm text-gray-300 mb-2 block">Data Fim</label><Input type="date" value={filters.dataFim} onChange={(e) => setFilters({ ...filters, dataFim: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
+              <div><label className="text-sm text-gray-300 mb-2 block">Valor Inicial</label><Input type="number" min="0" step="0.01" placeholder="0,00" value={filters.valorInicio} onChange={(e) => setFilters({ ...filters, valorInicio: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
+              <div><label className="text-sm text-gray-300 mb-2 block">Valor Final</label><Input type="number" min="0" step="0.01" placeholder="0,00" value={filters.valorFim} onChange={(e) => setFilters({ ...filters, valorFim: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="space-y-6">
+        {loading ? <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div></div>
+          : Object.entries(groupedContas).map(([date, contasData], index) => (
+            <Card key={date} className="glass-card">
+              <CardHeader><div className="flex justify-between items-center"><CardTitle className="text-white flex items-center gap-2"><Calendar className="w-5 h-5" />{formatDate(date)}</CardTitle><div className="text-lg font-bold text-red-400">{formatCurrency(contasData.reduce((s, c) => s + getValorConsiderado(c, todayStr), 0))}</div></div></CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {contasData.map((conta) => {
+                    const status = getStatus(conta);
+                    return (
+                      <motion.div key={conta.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.1 }} className="flex flex-col md:flex-row justify-between items-start md:items-center p-4 rounded-lg bg-white/5 border border-white/10">
+                        <div className="flex items-center gap-3 mb-2 md:mb-0">
+                          <div className="p-2 rounded-lg bg-red-500/20">
+                            <Building className="w-4 h-4 text-red-400" />
+                          </div>
+                          <div>
+                            <h3 className="font-medium text-white">{conta.cliente_fornecedor}</h3>
+                            <p className="text-sm text-gray-400">{conta.descricao}</p>
+                            <p className="text-xs text-gray-500">Unidade: {conta.unidade || 'Nao informado'}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(status)}`}>{getStatusLabel(status)}</span>
+                          <div className="text-lg font-bold text-red-400">{formatCurrency(getValorConsiderado(conta, todayStr))}</div>
+                          <button
+                            type="button"
+                            onClick={() => handleEditLancamento(conta)}
+                            className="p-2 rounded-lg bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+                            aria-label="Editar lançamento"
+                          >
+                            <Settings className="w-4 h-4" />
+                          </button>
+                          {status !== 'pago' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-green-400 border-green-400 hover:bg-green-400 hover:text-black"
+                              onClick={() => handleMarkAsPaid(conta.id)}
+                            >
+                              <CheckCircle className="w-4 h-4 mr-2" />
+                              Pagar
+                            </Button>
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+      </motion.div>
+
+      {!loading && filteredContas.length === 0 && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-12"><div className="text-gray-400 text-lg">Nenhuma conta encontrada</div><p className="text-gray-500 mt-2">Ajuste os filtros ou importe novos dados.</p></motion.div>}
+    </div>
+  );
+};
+
+export default ContasPagas;

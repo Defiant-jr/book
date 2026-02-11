@@ -76,11 +76,11 @@ import { BarChart3, PieChart, TrendingUp, ArrowLeft, FileClock, Printer, Calenda
                 implemented: true,
             },
             {
-                title: "Operações",
+                title: "Contas Pagas/Recebidas",
                 icon: FolderKanban,
-                description: "Resumo das operações e movimentações registradas.",
-                action: () => handleNavigation('/relatorios/operacoes', false),
-                implemented: false,
+                description: "Relatório de contas pagas (saídas) e recebidas (entradas).",
+                action: () => handleNavigation('/relatorios/operacoes'),
+                implemented: true,
             },
             {
                 title: "Serasa",

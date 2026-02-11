@@ -2,6 +2,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import Cadastros from '@/pages/Cadastros';
 import ContasPagar from '@/pages/ContasPagar';
+import ContasPagas from '@/pages/ContasPagas';
 import ContasReceber from '@/pages/ContasReceber';
 import Dashboard from '@/pages/Dashboard';
 import DreGerencial from '@/pages/DreGerencial';
@@ -18,12 +19,14 @@ import Login from '@/pages/Login';
 import MapaMensal from '@/pages/MapaMensal';
 import EmissaoDuplicata from '@/pages/EmissaoDuplicata';
 import Integracao from '@/pages/Integracao';
+import IntegracaoOperacoes from '@/pages/IntegracaoOperacoes';
 import Operacional from '@/pages/Operacional';
 import OperacoesCadastroAluno from '@/pages/OperacoesCadastroAluno';
 import OperacoesCadastroRateio from '@/pages/OperacoesCadastroRateio';
 import OperacoesCadastroTurma from '@/pages/OperacoesCadastroTurma';
 import Pedagogico from '@/pages/Pedagogico';
 import RelatorioContas from '@/pages/RelatorioContas';
+import RelatorioPagosRecebidos from '@/pages/RelatorioPagosRecebidos';
 import RelatorioFechamento from '@/pages/RelatorioFechamento';
 import RelatorioSerasa from '@/pages/RelatorioSerasa';
 import Relatorios from '@/pages/Relatorios';
@@ -135,6 +138,14 @@ function App() {
 							element={
 								<PrivateRoute>
 									<ContasPagar />
+								</PrivateRoute>
+							}
+						/>
+						<Route
+							path="/contas-pagos"
+							element={
+								<PrivateRoute>
+									<ContasPagas />
 								</PrivateRoute>
 							}
 						/>
@@ -251,6 +262,14 @@ function App() {
 							}
 						/>
 						<Route
+							path="/relatorios/operacoes"
+							element={
+								<PrivateRoute>
+									<RelatorioPagosRecebidos />
+								</PrivateRoute>
+							}
+						/>
+						<Route
 							path="/relatorios/serasa"
 							element={
 								<PrivateRoute>
@@ -287,6 +306,14 @@ function App() {
 							element={
 								<PrivateRoute>
 									<Integracao />
+								</PrivateRoute>
+							}
+						/>
+						<Route
+							path="/operacional/integracao/operacoes"
+							element={
+								<PrivateRoute>
+									<IntegracaoOperacoes />
 								</PrivateRoute>
 							}
 						/>

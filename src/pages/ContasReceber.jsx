@@ -17,6 +17,7 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
 
     const ContasReceber = () => {
       const CONTAS_RECEBER_REF = 21000;
+      const CONTAS_RECEBIDAS_REF = 25000;
       const navigate = useNavigate();
       const location = useLocation();
       const { toast } = useToast();
@@ -31,11 +32,45 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
         valorInicio: '',
         valorFim: ''
       });
+
+      const isRecebidos = new URLSearchParams(location.search).get('status') === STATUS.PAGO;
+      const headerTitle = isRecebidos ? 'Contas Recebidas' : 'Contas a Receber';
+      const headerRef = isRecebidos ? CONTAS_RECEBIDAS_REF : CONTAS_RECEBER_REF;
+    
+      useEffect(() => {
+        const statusParam = new URLSearchParams(location.search).get('status');
+        if (statusParam === STATUS.PAGO) {
+          setFilters((prev) => ({ ...prev, status: STATUS.PAGO }));
+        } else {
+          setFilters((prev) => ({ ...prev, status: 'todos' }));
+        }
+      }, [location.search]);
     
       useEffect(() => {
         loadData();
-      }, []);
+      }, [isRecebidos]);
     
+      const mapOperacoesToLancamentos = (items) => (items || []).map((item) => {
+        const valorPago = Number.isFinite(Number(item?.valor_pago)) ? Number(item.valor_pago) : null;
+        const valorOriginal = Number.isFinite(Number(item?.valor)) ? Number(item.valor) : 0;
+        const isPago = Boolean(item?.data_pago || valorPago != null);
+
+        return {
+          id: item.id,
+          data: normalizeDateOnly(item?.data_venc),
+          datapag: normalizeDateOnly(item?.data_pago),
+          status: isPago ? 'Pago' : null,
+          tipo: 'Entrada',
+          cliente_fornecedor: item?.responsavel || item?.aluno || 'Nao informado',
+          descricao: item?.aluno || item?.responsavel || '',
+          valor: valorPago != null ? valorPago : valorOriginal,
+          valor_aberto: null,
+          desc_pontual: null,
+          unidade: item?.unidade || null,
+          pago_por: item?.pago_por || null,
+        };
+      });
+
       const loadData = async () => {
         setLoading(true);
         try {
@@ -44,17 +79,16 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
           const allContas = [];
           while (true) {
             const to = from + pageSize - 1;
-            const { data, error } = await supabase
-              .from('lancamentos')
-              .select('*')
-              .eq('tipo', 'Entrada')
-              .range(from, to);
+            const query = isRecebidos
+              ? supabase.from('operacoes').select('*').range(from, to)
+              : supabase.from('lancamentos').select('*').eq('tipo', 'Entrada').range(from, to);
+            const { data, error } = await query;
             if (error) {
               toast({ title: 'Erro ao carregar dados', description: error.message, variant: 'destructive' });
               return;
             }
             if (data?.length) {
-              allContas.push(...data);
+              allContas.push(...(isRecebidos ? mapOperacoesToLancamentos(data) : data));
             }
             if (!data || data.length < pageSize) break;
             from += pageSize;
@@ -68,7 +102,24 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
       const getStatus = (conta) => getLancamentoStatus(conta);
 
       const formatCurrency = (value) => (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-      const formatDate = (dateString) => new Date(dateString + 'T00:00:00').toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+      const normalizeDateOnly = (value) => {
+        if (!value) return null;
+        if (value instanceof Date && !Number.isNaN(value.getTime())) {
+          return value.toISOString().slice(0, 10);
+        }
+        const raw = String(value).trim();
+        if (!raw) return null;
+        if (raw.includes('T')) return raw.slice(0, 10);
+        return raw;
+      };
+
+      const formatDate = (dateString) => {
+        const normalized = normalizeDateOnly(dateString);
+        if (!normalized) return '-';
+        const date = new Date(`${normalized}T00:00:00`);
+        if (Number.isNaN(date.getTime())) return '-';
+        return date.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+      };
       const valorParaReceber = (conta) => {
         const status = getStatus(conta);
         const valor = Number(conta?.valor) || 0;
@@ -91,7 +142,9 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
             conta.cliente_fornecedor?.toLowerCase().includes(filters.cliente.toLowerCase())
           );
         }
-        if (filters.status !== 'todos') {
+        if (isRecebidos) {
+          filtered = filtered.filter(conta => getStatus(conta) === STATUS.PAGO);
+        } else if (filters.status !== 'todos') {
           if (filters.status === STATUS_ABERTO) {
             filtered = filtered.filter((conta) => {
               const status = getStatus(conta);
@@ -106,11 +159,17 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
         }
         if (filters.dataInicio) {
           const startDate = new Date(filters.dataInicio + 'T00:00:00');
-          filtered = filtered.filter(conta => new Date(conta.data + 'T00:00:00') >= startDate);
+          filtered = filtered.filter(conta => {
+            const rawDate = normalizeDateOnly(isRecebidos ? conta.datapag : conta.data);
+            return rawDate && new Date(rawDate + 'T00:00:00') >= startDate;
+          });
         }
         if (filters.dataFim) {
           const endDate = new Date(filters.dataFim + 'T00:00:00');
-          filtered = filtered.filter(conta => new Date(conta.data + 'T00:00:00') <= endDate);
+          filtered = filtered.filter(conta => {
+            const rawDate = normalizeDateOnly(isRecebidos ? conta.datapag : conta.data);
+            return rawDate && new Date(rawDate + 'T00:00:00') <= endDate;
+          });
         }
         if (filters.valorInicio || filters.valorFim) {
           const hasInicio = filters.valorInicio !== '';
@@ -128,18 +187,24 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
             return contaCents <= fimCents;
           });
         }
-        return filtered.sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
-      }, [contas, filters]);
+        return filtered.sort((a, b) => {
+          const aDate = normalizeDateOnly(isRecebidos ? a.datapag : a.data);
+          const bDate = normalizeDateOnly(isRecebidos ? b.datapag : b.data);
+          return new Date(`${aDate}T00:00:00`).getTime() - new Date(`${bDate}T00:00:00`).getTime();
+        });
+      }, [contas, filters, isRecebidos]);
     
       const getStatusColor = (status) => STATUS_COLORS[status] || 'bg-gray-500/20 text-gray-400 border-gray-500/30';
       const getStatusLabel = (status) => STATUS_LABELS[status] || status;
     
       const groupedContas = useMemo(() => {
         return filteredContas.reduce((acc, conta) => {
-          (acc[conta.data] = acc[conta.data] || []).push(conta);
+          const groupKey = normalizeDateOnly(isRecebidos ? conta.datapag : conta.data);
+          if (!groupKey) return acc;
+          (acc[groupKey] = acc[groupKey] || []).push(conta);
           return acc;
         }, {});
-      }, [filteredContas]);
+      }, [filteredContas, isRecebidos]);
     
       const calculateTotalsByUnit = (contas, getValor) => {
         const totals = {
@@ -183,7 +248,7 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
       return (
         <div className="space-y-8">
           <Helmet>
-            <title>Contas a Receber - BooK+</title>
+            <title>{headerTitle} - BooK+</title>
             <meta name="description" content="Gerencie suas contas a receber com filtros e totalizadores" />
           </Helmet>
     
@@ -191,12 +256,12 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')} className="text-white hover:bg-white/10"><ArrowLeft className="w-6 h-6" /></Button>
               <div>
-                <h1 className="text-3xl font-bold gradient-text">Contas a Receber</h1>
+                <h1 className="text-3xl font-bold gradient-text">{headerTitle}</h1>
                 <p className="text-gray-400 mt-2">Gerencie seus recebimentos</p>
               </div>
             </div>
             <div className="text-[10px] font-medium text-gray-400 lg:text-xs">
-              {CONTAS_RECEBER_REF}
+              {headerRef}
             </div>
           </motion.div>
     
@@ -210,40 +275,44 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
                 <div className="text-2xl font-bold text-blue-400">{formatCurrency(totalGeral)}</div>
               </CardContent>
             </Card>
-            <Card className="glass-card">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-300">A Vencer</CardTitle>
-                <Calendar className="w-4 h-4 text-blue-300" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-blue-300">{formatCurrency(totalAbertoValor)}</div>
-                <div className="mt-2 space-y-1 text-xs text-gray-400">
-                  {Object.entries(totalAbertoPorUnidade).map(([unit, val]) => (
-                    <div key={unit} className="flex justify-between">
-                      <span>{unit}:</span>
-                      <span className="font-semibold">{formatCurrency(val)}</span>
+            {!isRecebidos && (
+              <>
+                <Card className="glass-card">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-300">A Vencer</CardTitle>
+                    <Calendar className="w-4 h-4 text-blue-300" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-blue-300">{formatCurrency(totalAbertoValor)}</div>
+                    <div className="mt-2 space-y-1 text-xs text-gray-400">
+                      {Object.entries(totalAbertoPorUnidade).map(([unit, val]) => (
+                        <div key={unit} className="flex justify-between">
+                          <span>{unit}:</span>
+                          <span className="font-semibold">{formatCurrency(val)}</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="glass-card">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-300">Atrasado</CardTitle>
-                <AlertTriangle className="w-4 h-4 text-red-400" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-red-400">{formatCurrency(totalAtrasadoValor)}</div>
-                <div className="mt-2 space-y-1 text-xs text-gray-400">
-                  {totalAtrasadoDetalhes.map(([unit, val]) => (
-                    <div key={unit} className="flex justify-between">
-                      <span>{unit}:</span>
-                      <span className="font-semibold">{formatCurrency(val)}</span>
+                  </CardContent>
+                </Card>
+                <Card className="glass-card">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-300">Atrasado</CardTitle>
+                    <AlertTriangle className="w-4 h-4 text-red-400" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-red-400">{formatCurrency(totalAtrasadoValor)}</div>
+                    <div className="mt-2 space-y-1 text-xs text-gray-400">
+                      {totalAtrasadoDetalhes.map(([unit, val]) => (
+                        <div key={unit} className="flex justify-between">
+                          <span>{unit}:</span>
+                          <span className="font-semibold">{formatCurrency(val)}</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </Card>
+              </>
+            )}
           </div>
     
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
@@ -254,14 +323,24 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
                   <div><label className="text-sm text-gray-300 mb-2 block">Cliente</label><Input placeholder="Buscar cliente..." value={filters.cliente} onChange={(e) => setFilters({ ...filters, cliente: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
                   <div>
                     <label className="text-sm text-gray-300 mb-2 block">Status</label>
-                    <Select value={filters.status} onValueChange={(value) => setFilters({ ...filters, status: value })}>
+                    <Select
+                      value={isRecebidos ? STATUS.PAGO : filters.status}
+                      onValueChange={(value) => setFilters({ ...filters, status: value })}
+                      disabled={isRecebidos}
+                    >
                       <SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="todos">Todos</SelectItem>
-                        <SelectItem value={STATUS_ABERTO}>{STATUS_ABERTO_LABEL}</SelectItem>
-                        {STATUS_OPTIONS.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                        ))}
+                        {isRecebidos ? (
+                          <SelectItem value={STATUS.PAGO}>Pago</SelectItem>
+                        ) : (
+                          <>
+                            <SelectItem value="todos">Todos</SelectItem>
+                            <SelectItem value={STATUS_ABERTO}>{STATUS_ABERTO_LABEL}</SelectItem>
+                            {STATUS_OPTIONS.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                            ))}
+                          </>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
@@ -294,20 +373,27 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
                                 <h3 className="font-medium text-white">{conta.cliente_fornecedor}</h3>
                                 <p className="text-sm text-gray-400">{conta.descricao}</p>
                                 <p className="text-xs text-gray-500">Unidade: {conta.unidade || 'Nao informado'}</p>
+                                {conta.pago_por && (
+                                  <p className="text-xs text-gray-500">Pago por: {conta.pago_por}</p>
+                                )}
                               </div>
                             </div>
                             <div className="flex items-center gap-4">
-                              <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(status)}`}>{getStatusLabel(status)}</span>
+                              {!isRecebidos && (
+                                <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(status)}`}>{getStatusLabel(status)}</span>
+                              )}
                               <div className="text-lg font-bold text-green-400">{formatCurrency(valorParaReceber(conta))}</div>
-                              <button
-                                type="button"
-                                onClick={() => handleEditLancamento(conta)}
-                                className="p-2 rounded-lg bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
-                                aria-label="Editar lançamento"
-                              >
-                                <Settings className="w-4 h-4" />
-                              </button>
-                              {status !== 'pago' && (
+                              {!isRecebidos && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleEditLancamento(conta)}
+                                  className="p-2 rounded-lg bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+                                  aria-label="Editar lançamento"
+                                >
+                                  <Settings className="w-4 h-4" />
+                                </button>
+                              )}
+                              {!isRecebidos && status !== 'pago' && (
                                 <Button
                                   size="sm"
                                   variant="outline"
