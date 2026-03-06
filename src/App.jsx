@@ -20,6 +20,7 @@ import MapaMensal from '@/pages/MapaMensal';
 import EmissaoDuplicata from '@/pages/EmissaoDuplicata';
 import Integracao from '@/pages/Integracao';
 import IntegracaoOperacoes from '@/pages/IntegracaoOperacoes';
+import IntegracaoReceberXlsx from '@/pages/IntegracaoReceberXlsx';
 import Operacional from '@/pages/Operacional';
 import OperacoesCadastroAluno from '@/pages/OperacoesCadastroAluno';
 import OperacoesCadastroRateio from '@/pages/OperacoesCadastroRateio';
@@ -314,6 +315,14 @@ function App() {
 							element={
 								<PrivateRoute>
 									<IntegracaoOperacoes />
+								</PrivateRoute>
+							}
+						/>
+						<Route
+							path="/operacional/integracao/a-receber-xlsx"
+							element={
+								<PrivateRoute>
+									<IntegracaoReceberXlsx />
 								</PrivateRoute>
 							}
 						/>

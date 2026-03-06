@@ -54,13 +54,20 @@ const Integracao = () => {
 
   const integrationCards = [
     {
-      title: 'A Receber',
+      title: 'A Receber (sheets)',
       description: 'Sincroniza lançamentos a receber com as planilhas externas.',
       icon: Download,
       action: handleImportData,
       loading: importLoading,
       loadingLabel: 'Integrando...',
       ref: 62100,
+    },
+    {
+      title: 'A Receber (xlsx)',
+      description: 'Importa lançamentos a receber a partir de planilha Excel.',
+      icon: RefreshCcw,
+      action: () => navigate('/operacional/integracao/a-receber-xlsx'),
+      ref: 62300,
     },
     {
       title: 'Operações',
@@ -149,5 +156,4 @@ const Integracao = () => {
 };
 
 export default Integracao;
-
 
