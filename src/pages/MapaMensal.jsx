@@ -15,17 +15,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
+import { useEmCashValue } from '@/hooks/useEmCashValue';
 import { startOfMonth, endOfMonth, eachDayOfInterval, format, getDay } from 'date-fns';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { getLancamentoStatus, STATUS } from '@/lib/lancamentoStatus';
+import { getLancamentoStatus, normalizeTipo, STATUS } from '@/lib/lancamentoStatus';
 
-const weekdayLabels = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+const weekdayLabels = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'SÃ¡b', 'Dom'];
 
 const MapaMensal = () => {
   const RELATORIOS_MAPA_MENSAL_REF = 86000;
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [emCashValue] = useEmCashValue();
   const [allData, setAllData] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState(() => format(new Date(), 'yyyy-MM'));
   const [loading, setLoading] = useState(false);
@@ -37,24 +39,55 @@ const MapaMensal = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const toDateStr = (value) => {
+    if (!value) return '';
+    if (typeof value === 'string') return value.slice(0, 10);
+    try {
+      return format(value, 'yyyy-MM-dd');
+    } catch {
+      return '';
+    }
+  };
+
   const handleGenerateReport = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from('lancamentos').select('*');
-    setLoading(false);
+    const pageSize = 1000;
+    let from = 0;
+    const allLancamentos = [];
 
-    if (error) {
-      toast({
-        title: 'Erro ao carregar dados',
-        description: error.message,
-        variant: 'destructive',
-      });
-      return;
+    while (true) {
+      const to = from + pageSize - 1;
+      const { data, error } = await supabase
+        .from('lancamentos')
+        .select('*')
+        .range(from, to);
+
+      if (error) {
+        setLoading(false);
+        toast({
+          title: 'Erro ao carregar dados',
+          description: error.message,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      if (data?.length) allLancamentos.push(...data);
+      if (!data || data.length < pageSize) break;
+      from += pageSize;
     }
 
-    setAllData(data || []);
+    setLoading(false);
+    const normalized = allLancamentos.map((item) => ({
+      ...item,
+      dataStr: toDateStr(item.data),
+      tipoNorm: normalizeTipo(item.tipo),
+    }));
+
+    setAllData(normalized);
     setReportGenerated(true);
     setGeneratedAt(new Date());
-    toast({ title: 'Relatório gerado', description: 'Dados carregados com sucesso.' });
+    toast({ title: 'Relatorio gerado', description: 'Dados carregados com sucesso.' });
   };
 
   const handleMonthStep = (step) => {
@@ -69,16 +102,25 @@ const MapaMensal = () => {
   const valorReceber = (item) => {
     const status = getLancamentoStatus(item, todayStr);
     const valor = Number(item?.valor) || 0;
+    const valorAberto = Number.isFinite(item?.valor_aberto) ? Number(item?.valor_aberto) : valor;
     if (status === STATUS.A_VENCER) {
       const descPontual = Number(item?.desc_pontual);
       return Number.isFinite(descPontual) ? descPontual : valor;
     }
     if (status === STATUS.ATRASADO) {
-      return valor;
+      return valorAberto;
     }
     return valor;
   };
-  const valorPagar = (item) => Number(item?.valor) || 0;
+  const valorPagar = (item) => {
+    const status = getLancamentoStatus(item, todayStr);
+    const valor = Number(item?.valor) || 0;
+    const valorAberto = Number.isFinite(item?.valor_aberto) ? Number(item?.valor_aberto) : valor;
+    if (status === STATUS.ATRASADO) {
+      return valorAberto;
+    }
+    return valor;
+  };
   const isPago = (item) => getLancamentoStatus(item, todayStr) === STATUS.PAGO;
 
 const calendarCells = useMemo(() => {
@@ -89,22 +131,25 @@ const calendarCells = useMemo(() => {
 
     return days.map((day) => {
       const dayIso = format(day, 'yyyy-MM-dd');
-      const dayItems = allData.filter((item) => item.data === dayIso && !isPago(item));
-      const entradasTotal = dayItems
-        .filter((d) => d.tipo === 'Entrada')
-        .reduce((acc, d) => acc + valorReceber(d), 0);
+      const dayItems = allData.filter((item) => item.dataStr === dayIso && !isPago(item));
+      const diaNaoVencido = dayIso >= todayStr;
+      const entradasTotal = diaNaoVencido
+        ? dayItems
+            .filter((d) => d.tipoNorm === 'entrada')
+            .reduce((acc, d) => acc + valorReceber(d), 0)
+        : 0;
       const saidasTotal = dayItems
-        .filter((d) => d.tipo === 'Saida')
+        .filter((d) => d.tipoNorm === 'saida')
         .reduce((acc, d) => acc + valorPagar(d), 0);
 
       return {
         date: day,
         entradasTotal,
         saidasTotal,
-        despesas: dayItems.filter((d) => d.tipo === 'Saida'),
+        despesas: dayItems.filter((d) => d.tipoNorm === 'saida'),
       };
     });
-  }, [allData, selectedMonth]);
+  }, [allData, selectedMonth, todayStr]);
 
   const monthTotals = useMemo(() => {
     return calendarCells.reduce(
@@ -123,21 +168,42 @@ const calendarCells = useMemo(() => {
 
     return allData.reduce(
       (acc, item) => {
-        const dateObj = new Date(`${item.data}T00:00:00`);
+        if (!item.dataStr) return acc;
+        const dateObj = new Date(`${item.dataStr}T00:00:00`);
         if (dateObj >= start || isPago(item)) return acc;
-        if (item.tipo === 'Entrada') acc.entradas += valorReceber(item);
-        if (item.tipo === 'Saida') acc.saidas += valorPagar(item);
+        if (item.tipoNorm === 'entrada') acc.entradas += valorReceber(item);
+        if (item.tipoNorm === 'saida') acc.saidas += valorPagar(item);
         return acc;
       },
       { entradas: 0, saidas: 0 },
     );
-  }, [allData, selectedMonth]);
+  }, [allData, selectedMonth, todayStr]);
 
   const totalsWithAdjustments = useMemo(() => {
     const entradas = monthTotals.entradas + overdueTotals.entradas;
     const saidas = monthTotals.saidas + overdueTotals.saidas;
     return { entradas, saidas, saldo: entradas - saidas };
   }, [monthTotals, overdueTotals]);
+
+  const overdueGlobalTotals = useMemo(() => {
+    return allData.reduce(
+      (acc, item) => {
+        if (!item.dataStr || item.dataStr >= todayStr || isPago(item)) return acc;
+        if (item.tipoNorm === 'entrada') acc.entradas += valorReceber(item);
+        if (item.tipoNorm === 'saida') acc.saidas += valorPagar(item);
+        return acc;
+      },
+      { entradas: 0, saidas: 0 },
+    );
+  }, [allData, todayStr]);
+
+  const totalReceberResumo = useMemo(() => {
+    return monthTotals.entradas + overdueGlobalTotals.entradas + (Number(emCashValue) || 0);
+  }, [monthTotals.entradas, overdueGlobalTotals.entradas, emCashValue]);
+
+  const resultadoOperacionalPrevisto = useMemo(() => {
+    return totalReceberResumo - totalsWithAdjustments.saidas;
+  }, [totalReceberResumo, totalsWithAdjustments.saidas]);
 
   const leadingEmptyCells = useMemo(() => {
     if (!calendarCells.length) return 0;
@@ -149,8 +215,8 @@ const calendarCells = useMemo(() => {
   const handleDownloadPdf = () => {
     if (!reportGenerated) {
       toast({
-        title: 'Gere o relatório primeiro',
-        description: 'Clique em "Gerar relatório" para carregar os dados.',
+        title: 'Gere o relatÃ³rio primeiro',
+        description: 'Clique em "Gerar relatÃ³rio" para carregar os dados.',
         variant: 'destructive',
       });
       return;
@@ -160,9 +226,9 @@ const calendarCells = useMemo(() => {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
     const margin = 24;
     const headerY = margin;
-    const summaryStartY = headerY + 22;
-    const summaryGap = 14;
-    const gridStartY = summaryStartY + summaryGap * 3 + 16;
+    const summaryStartY = headerY + 18;
+    const summaryGap = 11;
+    const gridStartY = summaryStartY + summaryGap * 2 + 12;
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const cellsPerRow = 7;
@@ -182,26 +248,21 @@ const calendarCells = useMemo(() => {
     const expenseColor = { r: 0, g: 0, b: 0 };
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(18);
+    doc.setFontSize(16);
     doc.text(`Mapa Mensal - ${format(current, 'MMMM yyyy')}`, margin, headerY);
 
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(0);
-    doc.setFontSize(12);
+    doc.setFontSize(9);
     doc.text(
-      `Total de Entradas (inclui atrasados): ${formatCurrency(totalsWithAdjustments.entradas)}`,
+      `Resumo: Receber ${formatCurrency(totalReceberResumo)} | Pagar ${formatCurrency(totalsWithAdjustments.saidas)} | Resultado ${formatCurrency(resultadoOperacionalPrevisto)}`,
       margin,
       summaryStartY,
     );
     doc.text(
-      `Total de Despesas (inclui atrasados): ${formatCurrency(totalsWithAdjustments.saidas)}`,
+      `Detalhe Receber: valor ${formatCurrency(monthTotals.entradas)} | atraso ${formatCurrency(overdueGlobalTotals.entradas)} | cash ${formatCurrency(emCashValue)}  ||  Detalhe Pagar: mes ${formatCurrency(monthTotals.saidas)} | vencido ${formatCurrency(overdueGlobalTotals.saidas)}`,
       margin,
       summaryStartY + summaryGap,
-    );
-    doc.text(
-      `Saldo do Mês: ${formatCurrency(totalsWithAdjustments.saldo)}`,
-      margin,
-      summaryStartY + summaryGap * 2,
     );
 
     cellsWithPlaceholders.forEach((cell, index) => {
@@ -211,7 +272,7 @@ const calendarCells = useMemo(() => {
       const y = gridStartY + row * cellHeight;
 
       if (!cell) {
-        // células vazias do início do mês
+        // cÃ©lulas vazias do inÃ­cio do mÃªs
         doc.setLineDash([2, 2], 0);
         doc.setDrawColor(mutedColor.r, mutedColor.g, mutedColor.b);
         doc.rect(x, y, cellWidth, cellHeight);
@@ -250,7 +311,7 @@ const calendarCells = useMemo(() => {
         const itemLineHeight = 8;
         const maxItems = 7;
         doc.setFontSize(itemFontSize);
-        const nameWidth = cellWidth - padding * 2 - 58; // deixa espaço para o valor à direita
+        const nameWidth = cellWidth - padding * 2 - 58; // deixa espaÃ§o para o valor Ã  direita
         cell.despesas.slice(0, maxItems).forEach((despesa) => {
           if (cursorY > listMaxY) return;
           const name = despesa.cliente_fornecedor || despesa.descricao || 'Despesa';
@@ -292,7 +353,7 @@ const calendarCells = useMemo(() => {
         <title>Mapa Mensal - BooK+</title>
         <meta
           name="description"
-          content="Visualize o calendário mensal com despesas por dia e somatório de entradas."
+          content="Visualize o calendÃ¡rio mensal com despesas por dia e somatÃ³rio de entradas."
         />
       </Helmet>
 
@@ -309,7 +370,7 @@ const calendarCells = useMemo(() => {
             </Button>
             <div>
               <h1 className="text-3xl font-bold gradient-text">Mapa Mensal</h1>
-              <p className="text-sm text-gray-300">Calendário das despesas diárias e entradas por dia.</p>
+              <p className="text-sm text-gray-300">CalendÃ¡rio das despesas diÃ¡rias e entradas por dia.</p>
             </div>
           </div>
           <div className="flex flex-col items-end gap-2">
@@ -332,13 +393,13 @@ const calendarCells = useMemo(() => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-white">
               <CalendarRange className="w-5 h-5" />
-              Configuração do relatório
+              ConfiguraÃ§Ã£o do relatÃ³rio
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-col md:flex-row gap-4 md:items-end md:justify-between">
               <div className="flex flex-col gap-2 w-full md:w-72">
-                <label className="text-sm text-gray-300">Competência</label>
+                <label className="text-sm text-gray-300">CompetÃªncia</label>
                 <Input
                   type="month"
                   value={selectedMonth}
@@ -349,7 +410,7 @@ const calendarCells = useMemo(() => {
               <div className="flex flex-col sm:flex-row gap-3">
                 <Button onClick={handleGenerateReport} disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white">
                   {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  {loading ? 'Gerando...' : 'Gerar relatório'}
+                  {loading ? 'Gerando...' : 'Gerar relatÃ³rio'}
                 </Button>
                 <Button
                   onClick={handleDownloadPdf}
@@ -372,36 +433,90 @@ const calendarCells = useMemo(() => {
 
         <Card className="glass-card">
           <CardHeader>
-            <CardTitle className="text-white">Resumo do mês</CardTitle>
+            <CardTitle className="text-white">Resumo do mÃªs</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 text-white">
-            <div className="rounded-lg bg-white/5 border border-white/10 p-4">
-              <p className="text-sm text-gray-300">Total de Entradas</p>
-              <p className="text-2xl font-semibold text-green-300">{formatCurrency(totalsWithAdjustments.entradas)}</p>
+          <CardContent className="grid grid-cols-1 lg:grid-cols-3 gap-5 text-white">
+            <div className="rounded-xl border border-white/15 bg-[#344b92]/70 p-6">
+              <div className="flex items-start justify-between">
+                <p className="text-lg font-semibold text-white/90">Total a Receber</p>
+                <div className="h-8 w-8 rounded bg-cyan-400/20 border border-cyan-300/20" />
+              </div>
+              <p className="mt-4 text-4xl font-bold text-green-300">{formatCurrency(totalReceberResumo)}</p>
+              <div className="mt-6 space-y-2 text-sm">
+                <div className="flex items-center justify-between text-white/75">
+                  <span>Valor a receber:</span>
+                  <span className="font-semibold text-white">{formatCurrency(monthTotals.entradas)}</span>
+                </div>
+                <div className="flex items-center justify-between text-white/75">
+                  <span>Em atraso (geral):</span>
+                  <span className="font-semibold text-amber-300">{formatCurrency(overdueGlobalTotals.entradas)}</span>
+                </div>
+                <div className="flex items-center justify-between text-white/75">
+                  <span>Em Cash:</span>
+                  <span className="font-semibold text-emerald-300">{formatCurrency(emCashValue)}</span>
+                </div>
+              </div>
             </div>
-            <div className="rounded-lg bg-white/5 border border-white/10 p-4">
-              <p className="text-sm text-gray-300">Total de Despesas</p>
-              <p className="text-2xl font-semibold text-red-300">{formatCurrency(totalsWithAdjustments.saidas)}</p>
+
+            <div className="rounded-xl border border-white/15 bg-[#344b92]/70 p-6">
+              <div className="flex items-start justify-between">
+                <p className="text-lg font-semibold text-white/90">Total a Pagar</p>
+                <div className="h-8 w-8 rounded bg-rose-400/20 border border-rose-300/20" />
+              </div>
+              <p className="mt-4 text-4xl font-bold text-red-300">{formatCurrency(totalsWithAdjustments.saidas)}</p>
+              <div className="mt-6 space-y-2 text-sm">
+                <div className="flex items-center justify-between text-white/75">
+                  <span>Do mes:</span>
+                  <span className="font-semibold text-white">{formatCurrency(monthTotals.saidas)}</span>
+                </div>
+                <div className="flex items-center justify-between text-white/75">
+                  <span>Vencido (geral):</span>
+                  <span className="font-semibold text-amber-300">{formatCurrency(overdueGlobalTotals.saidas)}</span>
+                </div>
+                <div className="flex items-center justify-between text-white/75">
+                  <span>Pendentes:</span>
+                  <span className="font-semibold text-white">{formatCurrency(totalsWithAdjustments.saidas)}</span>
+                </div>
+              </div>
             </div>
-            <div className="rounded-lg bg-white/5 border border-white/10 p-4">
-              <p className="text-sm text-gray-300">Saldo do Mês</p>
+
+            <div className="rounded-xl border border-white/15 bg-[#344b92]/70 p-6">
+              <div className="flex items-start justify-between">
+                <p className="text-lg font-semibold text-white/90">Resultado Operacional (Previsto)</p>
+                <div className="h-8 w-8 rounded bg-blue-400/20 border border-blue-300/20" />
+              </div>
               <p
-                className={`text-2xl font-semibold ${
-                  totalsWithAdjustments.saldo >= 0 ? 'text-green-300' : 'text-orange-300'
+                className={`mt-4 text-4xl font-bold ${
+                  resultadoOperacionalPrevisto >= 0 ? 'text-blue-300' : 'text-orange-300'
                 }`}
               >
-                {formatCurrency(totalsWithAdjustments.saldo)}
+                {formatCurrency(resultadoOperacionalPrevisto)}
               </p>
-            </div>
-            <div className="text-xs text-gray-400 md:col-span-3">
-              Totais incluem valores em atraso.
+              <div className="mt-6 space-y-2 text-sm">
+                <div className="flex items-center justify-between text-white/75">
+                  <span>Total a Receber - Total a Pagar:</span>
+                  <span className="font-semibold text-white">
+                    {formatCurrency(resultadoOperacionalPrevisto)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-white/75">
+                  <span>Saldo em Cash:</span>
+                  <span className="font-semibold text-emerald-300">{formatCurrency(emCashValue)}</span>
+                </div>
+                <div className="flex items-center justify-between text-white/75">
+                  <span>Atrasado liquido:</span>
+                  <span className="font-semibold text-amber-300">
+                    {formatCurrency(overdueGlobalTotals.entradas - overdueGlobalTotals.saidas)}
+                  </span>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="glass-card">
           <CardHeader>
-            <CardTitle className="text-white">Calendário do mês</CardTitle>
+            <CardTitle className="text-white">CalendÃ¡rio do mÃªs</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-7 gap-2 text-center text-gray-300 text-sm">
@@ -423,14 +538,14 @@ const calendarCells = useMemo(() => {
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-semibold">{format(cell.date, 'd')}</span>
                     <span className="text-xs text-gray-300">
-                      {formatCurrency(cell.saidasTotal - cell.entradasTotal)}
+                      {formatCurrency(cell.entradasTotal - cell.saidasTotal)}
                     </span>
                   </div>
                   <div className="flex-1 overflow-auto space-y-1">
                     {cell.despesas.length === 0 ? (
                       <p className="text-xs text-gray-400">Sem despesas</p>
                     ) : (
-                      cell.despesas.slice(0, 4).map((despesa) => (
+                      cell.despesas.map((despesa) => (
                         <div key={despesa.id} className="text-xs flex justify-between gap-1">
                           <span className="truncate max-w-[70%]">{despesa.cliente_fornecedor || despesa.descricao || 'Despesa'}</span>
                           <span className="text-red-300 font-mono">
@@ -438,9 +553,6 @@ const calendarCells = useMemo(() => {
                           </span>
                         </div>
                       ))
-                    )}
-                    {cell.despesas.length > 4 && (
-                      <p className="text-[10px] text-gray-400">+{cell.despesas.length - 4} itens</p>
                     )}
                   </div>
                   <div className="text-xs text-green-300 border-t border-white/10 pt-2">
@@ -450,7 +562,7 @@ const calendarCells = useMemo(() => {
               ))}
             </div>
             {!calendarCells.length && (
-              <p className="text-center text-gray-400">Nenhum dado para este mês.</p>
+              <p className="text-center text-gray-400">Nenhum dado para este mÃªs.</p>
             )}
           </CardContent>
         </Card>
