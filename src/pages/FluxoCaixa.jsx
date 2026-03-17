@@ -87,6 +87,19 @@ const FluxoCaixa = () => {
       };
       const todayStr = new Date().toISOString().split('T')[0];
 
+      const getValorReceber = (item) => {
+        if (item?.tipoNorm !== 'entrada') return 0;
+        const valor = Number(item?.valor) || 0;
+        if (item.statusNorm === STATUS.A_VENCER) {
+          const descPontual = Number(item?.desc_pontual);
+          return Number.isFinite(descPontual) ? descPontual : valor;
+        }
+        if (item.statusNorm === STATUS.ATRASADO) {
+          return valor;
+        }
+        return valor;
+      };
+
       const monthData = useMemo(() => {
         const firstDayOfMonth = startOfMonth(currentDate);
         const lastDayOfMonth = endOfMonth(currentDate);
@@ -116,20 +129,8 @@ const FluxoCaixa = () => {
             item.statusNorm !== STATUS.PAGO
           );
 
-        const getValorReceber = (item) => {
-          if (item?.tipoNorm !== 'entrada') return 0;
-          const valor = Number(item?.valor) || 0;
-          if (item.statusNorm === STATUS.A_VENCER) {
-            const descPontual = Number(item?.desc_pontual);
-            return Number.isFinite(descPontual) ? descPontual : valor;
-          }
-          if (item.statusNorm === STATUS.ATRASADO) {
-            return valor;
-          }
-          return valor;
-        };
-
-        const atrasados = normalizedData.filter((item) => item.dataStr < startStr);
+        const isAtrasadoItem = (item) => item.statusNorm === STATUS.ATRASADO || item.dataStr < startStr;
+        const atrasados = normalizedData.filter(isAtrasadoItem);
         const atrasadosReceber = atrasados.filter((i) => i.tipoNorm === 'entrada');
         const atrasadosPagar = atrasados.filter((i) => i.tipoNorm === 'saida');
 
@@ -155,7 +156,9 @@ const FluxoCaixa = () => {
           details: { receber: [], pagar: [] }
         }));
 
-        const monthDataFiltered = normalizedData.filter((item) => item.dataStr >= startStr && item.dataStr <= endStr);
+        const monthDataFiltered = normalizedData.filter(
+          (item) => !isAtrasadoItem(item) && item.dataStr >= startStr && item.dataStr <= endStr
+        );
 
         monthDataFiltered.forEach((item) => {
           const dayIndex = Number(item.dataStr.slice(8, 10)) - 1;

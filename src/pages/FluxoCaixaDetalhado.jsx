@@ -133,7 +133,9 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
           ? normalizedData
           : normalizedData.filter(item => item.unidade === unidadeFiltro);
 
-        const atrasadosLancamentos = filteredByUnit.filter(item => item.dataStr < startStr);
+        // Considera como atrasado tanto lançamentos com status ATRASADO quanto lançamentos com data anterior ao mês
+        const isAtrasadoItem = (item) => item.statusNorm === STATUS.ATRASADO || item.dataStr < startStr;
+        const atrasadosLancamentos = filteredByUnit.filter(isAtrasadoItem);
 
         const atrasadosReceber = atrasadosLancamentos.filter(i => i.tipoNorm === 'entrada');
         const atrasadosPagar = atrasadosLancamentos.filter(i => i.tipoNorm === 'saida');
@@ -151,7 +153,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
         };
 
         const monthDataFiltered = filteredByUnit.filter(
-          item => item.dataStr >= startStr && item.dataStr <= endStr
+          item => !isAtrasadoItem(item) && item.dataStr >= startStr && item.dataStr <= endStr
         );
 
         monthDataFiltered.forEach(item => {
