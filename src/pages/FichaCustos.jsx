@@ -390,11 +390,11 @@ const FichaCustos = () => {
     if (!cargaHr || !totalTurmasUnit) return null;
     if (selectedUnit === 'CNA Angra dos Reis') {
       if (!horaAulaCnt) return null;
-      return (cargaHr * totalTurmasUnit * horaAulaCnt) / 6;
+      return (cargaHr * totalTurmasUnit * horaAulaCnt) / 4;
     }
     if (selectedUnit === 'CNA Mangaratiba') {
       if (!horaAulaClt) return null;
-      return (cargaHr * totalTurmasUnit * horaAulaClt) / 6;
+      return (cargaHr * totalTurmasUnit * horaAulaClt) / 4;
     }
     return null;
   }, [cargaHr, totalTurmasUnit, horaAulaCnt, horaAulaClt, selectedUnit]);
