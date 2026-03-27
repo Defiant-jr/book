@@ -90,6 +90,13 @@ import { BarChart3, PieChart, TrendingUp, ArrowLeft, FileClock, Printer, Calenda
                 implemented: true,
             },
             {
+                title: "Declaração IR",
+                icon: FileText,
+                description: "Emissão e acompanhamento da declaração de imposto de renda.",
+                action: () => handleNavigation('/relatorios/declaracao-ir'),
+                implemented: true,
+            },
+            {
                 title: "Custo",
                 icon: DollarSign,
                 description: "Relat¢rio de custos para an lise futura.",
@@ -137,12 +144,12 @@ import { BarChart3, PieChart, TrendingUp, ArrowLeft, FileClock, Printer, Calenda
                                     onClick={option.action}
                                 >
                                     <CardContent className="p-4 flex flex-col items-center text-center">
-                                        <div className="p-3 bg-blue-500/10 rounded-full mb-3">
-                                            <Icon className={`w-9 h-9 ${option.implemented ? 'text-blue-400' : 'text-gray-500'}`} />
-                                        </div>
-                                        <h2 className={`text-base font-semibold mb-2 ${option.implemented ? 'text-white' : 'text-gray-400'}`}>{option.title}</h2>
-                                        <p className="text-gray-400 text-xs flex-grow">{option.description}</p>
-                                    </CardContent>
+                                         <div className="p-3 bg-blue-500/10 rounded-full mb-3">
+                                             <Icon className={`w-9 h-9 ${option.implemented ? 'text-blue-400' : 'text-gray-500'}`} />
+                                         </div>
+                                         <h2 className={`text-base font-semibold mb-2 ${option.implemented ? 'text-white' : 'text-gray-400'}`}>{option.title}</h2>
+                                         <p className="text-gray-400 text-xs flex-grow">{option.description}</p>
+                                     </CardContent>
                                     <div className="p-3 pt-0">
                                          <Button className="w-full bg-blue-600 hover:bg-blue-700 text-xs py-2" disabled={!option.implemented}>
                                             {option.implemented ? 'Gerar Relatório' : 'Em Breve'}

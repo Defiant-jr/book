@@ -5,6 +5,7 @@ import ContasPagar from '@/pages/ContasPagar';
 import ContasPagas from '@/pages/ContasPagas';
 import ContasReceber from '@/pages/ContasReceber';
 import Dashboard from '@/pages/Dashboard';
+import DeclaracaoIR from '@/pages/DeclaracaoIR';
 import DreGerencial from '@/pages/DreGerencial';
 import AreaSelection from '@/pages/AreaSelection';
 import Administrativo from '@/pages/Administrativo';
@@ -227,6 +228,14 @@ function App() {
 							element={
 								<PrivateRoute>
 									<FichaCustos />
+								</PrivateRoute>
+							}
+						/>
+						<Route
+							path="/relatorios/declaracao-ir"
+							element={
+								<PrivateRoute>
+									<DeclaracaoIR />
 								</PrivateRoute>
 							}
 						/>
