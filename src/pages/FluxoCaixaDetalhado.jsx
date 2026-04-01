@@ -87,7 +87,8 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
           return Number.isFinite(descPontual) ? descPontual : valor;
         }
         if (status === STATUS.ATRASADO) {
-          return valor;
+          const valorAberto = Number(item?.valor_aberto);
+          return Number.isFinite(valorAberto) ? valorAberto : valor;
         }
         return valor;
       };

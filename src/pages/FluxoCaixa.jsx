@@ -95,7 +95,8 @@ const FluxoCaixa = () => {
           return Number.isFinite(descPontual) ? descPontual : valor;
         }
         if (item.statusNorm === STATUS.ATRASADO) {
-          return valor;
+          const valorAberto = Number(item?.valor_aberto);
+          return Number.isFinite(valorAberto) ? valorAberto : valor;
         }
         return valor;
       };
