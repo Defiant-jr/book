@@ -61,6 +61,16 @@ const ContasPagas = () => {
   const formatDate = (dateString) => new Date(dateString + 'T00:00:00').toLocaleDateString('pt-BR', { timeZone: 'UTC' });
   const todayStr = new Date().toISOString().split('T')[0];
 
+  const valoresParaFiltro = (conta) => {
+    if (CONTAS_PAGAS_REF !== 26000) {
+      return [getValorConsiderado(conta, todayStr)];
+    }
+
+    return [conta?.valor, conta?.valor_aberto, conta?.desc_pontual]
+      .map((value) => Number(value))
+      .filter((value) => Number.isFinite(value));
+  };
+
   const filteredContas = useMemo(() => {
     let filtered = [...contas];
     const toCents = (value) => Math.round((Number(value) || 0) * 100);
@@ -85,14 +95,17 @@ const ContasPagas = () => {
       const inicioCents = hasInicio ? toCents(filters.valorInicio) : null;
       const fimCents = hasFim ? toCents(filters.valorFim) : null;
       filtered = filtered.filter((conta) => {
-        const contaCents = toCents(getValorConsiderado(conta, todayStr));
-        if (hasInicio && hasFim) {
-          return contaCents >= inicioCents && contaCents <= fimCents;
-        }
-        if (hasInicio) {
-          return contaCents === inicioCents;
-        }
-        return contaCents <= fimCents;
+        const contaValores = valoresParaFiltro(conta).map(toCents);
+
+        return contaValores.some((contaCents) => {
+          if (hasInicio && hasFim) {
+            return contaCents >= inicioCents && contaCents <= fimCents;
+          }
+          if (hasInicio) {
+            return contaCents === inicioCents;
+          }
+          return contaCents <= fimCents;
+        });
       });
     }
     return filtered.sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());

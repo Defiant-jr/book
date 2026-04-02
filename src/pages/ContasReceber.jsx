@@ -133,6 +133,16 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
         }
         return valor;
       };
+
+      const valoresParaFiltro = (conta) => {
+        if (headerRef !== CONTAS_RECEBER_REF && headerRef !== CONTAS_RECEBIDAS_REF) {
+          return [valorParaReceber(conta)];
+        }
+
+        return [conta?.valor, conta?.valor_aberto, conta?.desc_pontual]
+          .map((value) => Number(value))
+          .filter((value) => Number.isFinite(value));
+      };
     
       const filteredContas = useMemo(() => {
         let filtered = [...contas];
@@ -177,14 +187,17 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
           const inicioCents = hasInicio ? toCents(filters.valorInicio) : null;
           const fimCents = hasFim ? toCents(filters.valorFim) : null;
           filtered = filtered.filter((conta) => {
-            const contaCents = toCents(valorParaReceber(conta));
-            if (hasInicio && hasFim) {
-              return contaCents >= inicioCents && contaCents <= fimCents;
-            }
-            if (hasInicio) {
-              return contaCents === inicioCents;
-            }
-            return contaCents <= fimCents;
+            const contaValores = valoresParaFiltro(conta).map(toCents);
+
+            return contaValores.some((contaCents) => {
+              if (hasInicio && hasFim) {
+                return contaCents >= inicioCents && contaCents <= fimCents;
+              }
+              if (hasInicio) {
+                return contaCents === inicioCents;
+              }
+              return contaCents <= fimCents;
+            });
           });
         }
         return filtered.sort((a, b) => {
