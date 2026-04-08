@@ -58,7 +58,7 @@ const PrivateRoute = ({ children }) => {
 function App() {
 	return (
 		<Router>
-			<div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900">
+			<div className="app-frame">
 				<Helmet>
 					<title>BooK+ v1.0.0 - Dashboard Financeiro</title>
 					<meta
@@ -67,7 +67,7 @@ function App() {
 					/>
 				</Helmet>
 
-				<main className="container mx-auto px-4 py-8">
+				<main className="app-shell">
 					<Routes>
 						<Route path="/login" element={<Login />} />
 						<Route path="/signup" element={<SignUp />} />

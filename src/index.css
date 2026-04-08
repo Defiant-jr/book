@@ -3,6 +3,9 @@
 @tailwind utilities;
 
 :root {
+  --app-max-width: 1920px;
+  --app-min-width: 1280px;
+  --app-aspect-ratio: 16 / 9;
   --background: 222.2 84% 4.9%;
   --foreground: 210 40% 98%;
   --card: 222.2 84% 4.9%;
@@ -24,9 +27,44 @@
   --ring: 212.7 26.8% 83.9%;
 }
 
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
 body {
   @apply bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 text-white min-h-screen;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.app-frame {
+  @apply min-h-screen w-full bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900;
+}
+
+.app-shell {
+  width: min(100%, var(--app-max-width));
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: clamp(1rem, 1.2vw, 1.5rem) clamp(1rem, 1.8vw, 2rem) clamp(1.5rem, 2vh, 2rem);
+}
+
+@media (min-width: 1280px) and (min-aspect-ratio: 16/9) {
+  .app-shell {
+    width: min(100vw, var(--app-max-width));
+    min-width: min(100vw, var(--app-min-width));
+    aspect-ratio: var(--app-aspect-ratio);
+    min-height: min(100vh, calc(var(--app-max-width) * 9 / 16));
+    padding: clamp(1.25rem, 1.4vw, 1.75rem) clamp(1.5rem, 2vw, 2.5rem);
+  }
+}
+
+@media (max-width: 1279px), (max-aspect-ratio: 16/9) {
+  .app-shell {
+    width: 100%;
+    min-width: 0;
+    aspect-ratio: auto;
+  }
 }
 
 .glass-card {
