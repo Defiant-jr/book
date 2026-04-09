@@ -16,10 +16,26 @@ const DECLARACAO_IR_REF = 81100;
 const HEADER_ROW_INDEX = 6;
 const DATA_START_INDEX = 7;
 
-const COMPANY = {
-  razaoSocial: 'JE Curso de Idiomas LTDA',
-  cnpj: '47.291.916/0001-01',
-  endereco: 'Rua José Elias Rabha, 280 - lj 107, Parque das Palmeiras - Angra dos Reis/RJ - CEP: 23.906-510',
+const COMPANY_PROFILES = {
+  default: {
+    razaoSocial: 'JE Curso de Idiomas LTDA',
+    cnpj: '47.291.916/0001-01',
+    endereco: 'Rua José Elias Rabha, 280 - lj 107, Parque das Palmeiras - Angra dos Reis/RJ - CEP: 23.906-510',
+    cidadeAssinatura: 'Angra dos Reis',
+    assinatura: 'JE Curso de Idiomas LTDA',
+  },
+  ejMangaratiba: {
+    razaoSocial: 'EJ Curso de Idiomas LTDA',
+    cnpj: '39.974.447/0001-05',
+    endereco: 'Rua Arthur Pires,453 - Centro - Mangaratiba/RJ CEP: 23.860-000',
+    cidadeAssinatura: 'Mangaratiba',
+    assinatura: 'EJ Curso de Idiomas LTDA',
+  },
+};
+
+const COMPANY_BY_D4_VALUE = {
+  'JE CURSO DE IDIOMAS LTDA - 472.919.160-00101': COMPANY_PROFILES.default,
+  'EJ CURSO DE IDIOMAS LTDA - 399.744.470-00105': COMPANY_PROFILES.ejMangaratiba,
 };
 
 const normalizeText = (value) => (value == null ? '' : String(value).trim());
@@ -104,6 +120,8 @@ const sanitizeFileName = (value) =>
     .replace(/^-+|-+$/g, '')
     .toLowerCase();
 
+const resolveCompanyProfileFromCell = (value) => COMPANY_BY_D4_VALUE[normalizeText(value)] || COMPANY_PROFILES.default;
+
 const loadWorkbookRowsFromBuffer = (buffer) => {
   if (!buffer) {
     throw new Error('Arquivo não carregado. Selecione a planilha novamente.');
@@ -116,14 +134,17 @@ const loadWorkbookRowsFromBuffer = (buffer) => {
     throw new Error('Nenhuma planilha encontrada no arquivo.');
   }
 
-  const rows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet], {
+  const sheet = workbook.Sheets[firstSheet];
+  const rows = XLSX.utils.sheet_to_json(sheet, {
     header: 1,
     raw: true,
     blankrows: true,
     defval: null,
   });
 
-  return { rows, sheetName: firstSheet };
+  const d4Value = sheet?.D4?.w ?? sheet?.D4?.v ?? null;
+
+  return { rows, sheetName: firstSheet, companyProfile: resolveCompanyProfileFromCell(d4Value) };
 };
 
 const buildDeclarations = (rows, headerIndex) => {
@@ -198,6 +219,7 @@ const DeclaracaoIR = () => {
   const [declarations, setDeclarations] = useState([]);
   const [selectedYear, setSelectedYear] = useState('todos');
   const [selectedDeclarationId, setSelectedDeclarationId] = useState('');
+  const [companyProfile, setCompanyProfile] = useState(COMPANY_PROFILES.default);
 
   const readFileBuffer = (selectedFile) =>
     new Promise((resolve, reject) => {
@@ -225,6 +247,7 @@ const DeclaracaoIR = () => {
     setDeclarations([]);
     setSelectedYear('todos');
     setSelectedDeclarationId('');
+    setCompanyProfile(COMPANY_PROFILES.default);
     setReportGenerated(false);
     if (!selected) return;
 
@@ -266,8 +289,9 @@ const DeclaracaoIR = () => {
 
     setLoading(true);
     try {
-      const { rows, sheetName: loadedSheetName } = loadWorkbookRowsFromBuffer(fileBuffer);
+      const { rows, sheetName: loadedSheetName, companyProfile: loadedCompanyProfile } = loadWorkbookRowsFromBuffer(fileBuffer);
       setSheetName(loadedSheetName);
+      setCompanyProfile(loadedCompanyProfile);
 
       if (!rows || rows.length <= DATA_START_INDEX) {
         throw new Error('A planilha não contém dados a partir da 8ª linha.');
@@ -292,6 +316,7 @@ const DeclaracaoIR = () => {
       });
     } catch (error) {
       setDeclarations([]);
+      setCompanyProfile(COMPANY_PROFILES.default);
       setReportGenerated(false);
       toast({
         title: 'Erro ao gerar relatório',
@@ -346,11 +371,11 @@ const DeclaracaoIR = () => {
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(13);
-    doc.text(COMPANY.razaoSocial, pageWidth / 2, top, { align: 'center' });
+    doc.text(companyProfile.razaoSocial, pageWidth / 2, top, { align: 'center' });
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
-    doc.text(`CNPJ: ${COMPANY.cnpj}`, pageWidth / 2, top + 18, { align: 'center' });
-    doc.text(COMPANY.endereco, pageWidth / 2, top + 34, { align: 'center', maxWidth: contentWidth });
+    doc.text(`CNPJ: ${companyProfile.cnpj}`, pageWidth / 2, top + 18, { align: 'center' });
+    doc.text(companyProfile.endereco, pageWidth / 2, top + 34, { align: 'center', maxWidth: contentWidth });
 
     doc.setDrawColor(0);
     doc.setLineWidth(0.8);
@@ -410,11 +435,11 @@ const DeclaracaoIR = () => {
 
     doc.setFont('times', 'normal');
     doc.setFontSize(12);
-    doc.text(`Angra dos Reis, ${new Date().toLocaleDateString('pt-BR')}.`, pageWidth - marginX, currentY, { align: 'right' });
+    doc.text(`${companyProfile.cidadeAssinatura}, ${new Date().toLocaleDateString('pt-BR')}.`, pageWidth - marginX, currentY, { align: 'right' });
 
     currentY += 84;
     doc.line(pageWidth / 2 - 120, currentY, pageWidth / 2 + 120, currentY);
-    doc.text(COMPANY.razaoSocial, pageWidth / 2, currentY + 18, { align: 'center' });
+    doc.text(companyProfile.assinatura, pageWidth / 2, currentY + 18, { align: 'center' });
 
     const fileName = `declaracao-ir-${sanitizeFileName(selectedDeclaration.aluno)}-${selectedDeclaration.ano || 'ano'}.pdf`;
     doc.save(fileName);
@@ -560,9 +585,9 @@ const DeclaracaoIR = () => {
               <CardContent className="space-y-6">
                 <div className="rounded-xl border border-white/10 bg-white p-6 text-slate-900">
                   <div className="text-center">
-                    <div className="text-lg font-semibold">{COMPANY.razaoSocial}</div>
-                    <div className="text-sm">CNPJ: {COMPANY.cnpj}</div>
-                    <div className="mt-1 text-sm">{COMPANY.endereco}</div>
+                    <div className="text-lg font-semibold">{companyProfile.razaoSocial}</div>
+                    <div className="text-sm">CNPJ: {companyProfile.cnpj}</div>
+                    <div className="mt-1 text-sm">{companyProfile.endereco}</div>
                   </div>
 
                   <div className="mt-6 text-center text-xl font-bold tracking-[0.3em]">DECLARAÇÃO</div>
@@ -600,9 +625,9 @@ const DeclaracaoIR = () => {
                     </table>
                   </div>
 
-                  <div className="mt-16 text-right text-sm">Angra dos Reis, {new Date().toLocaleDateString('pt-BR')}.</div>
+                  <div className="mt-16 text-right text-sm">{companyProfile.cidadeAssinatura}, {new Date().toLocaleDateString('pt-BR')}.</div>
                   <div className="mx-auto mt-16 w-72 border-t border-slate-500 pt-3 text-center text-sm">
-                    {COMPANY.razaoSocial}
+                    {companyProfile.assinatura}
                   </div>
                 </div>
               </CardContent>
