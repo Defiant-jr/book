@@ -34,12 +34,51 @@ body,
 }
 
 body {
-  @apply bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 text-white min-h-screen;
+  @apply text-white min-h-screen;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background-color: #142961;
 }
 
 .app-frame {
-  @apply min-h-screen w-full bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900;
+  @apply min-h-screen w-full;
+  position: relative;
+  isolation: isolate;
+  overflow-x: hidden;
+  overflow-y: visible;
+  background-color: #142961;
+}
+
+.app-frame::before,
+.app-frame::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.app-frame::before {
+  z-index: -2;
+  background-image:
+    linear-gradient(135deg, rgba(6, 16, 46, 0.58) 0%, rgba(18, 44, 113, 0.2) 45%, rgba(14, 32, 86, 0.54) 100%),
+    url('/system-background.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  transform: scale(1.04);
+  filter: saturate(1.08) contrast(1.04);
+  animation: backgroundDrift 24s ease-in-out infinite alternate;
+  transition: opacity 1.4s ease, transform 1.8s ease, filter 1.8s ease;
+}
+
+.app-frame::after {
+  z-index: -1;
+  background:
+    radial-gradient(circle at 18% 20%, rgba(132, 177, 255, 0.18), transparent 30%),
+    radial-gradient(circle at 78% 16%, rgba(92, 141, 255, 0.14), transparent 28%),
+    radial-gradient(circle at 50% 80%, rgba(10, 20, 58, 0.34), transparent 36%),
+    linear-gradient(180deg, rgba(3, 9, 28, 0.18) 0%, rgba(6, 14, 40, 0.42) 100%);
+  animation: overlayPulse 18s ease-in-out infinite;
+  transition: opacity 1.2s ease;
 }
 
 .app-shell {
@@ -47,14 +86,17 @@ body {
   min-height: 100vh;
   margin: 0 auto;
   padding: clamp(1rem, 1.2vw, 1.5rem) clamp(1rem, 1.8vw, 2rem) clamp(1.5rem, 2vh, 2rem);
+  position: relative;
+  z-index: 1;
+  animation: appShellFade 900ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @media (min-width: 1280px) and (min-aspect-ratio: 16/9) {
   .app-shell {
     width: min(100vw, var(--app-max-width));
     min-width: min(100vw, var(--app-min-width));
-    aspect-ratio: var(--app-aspect-ratio);
-    min-height: min(100vh, calc(var(--app-max-width) * 9 / 16));
+    aspect-ratio: auto;
+    min-height: 100vh;
     padding: clamp(1.25rem, 1.4vw, 1.75rem) clamp(1.5rem, 2vw, 2.5rem);
   }
 }
@@ -69,6 +111,8 @@ body {
 
 .glass-card {
   @apply bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl shadow-2xl;
+  box-shadow: 0 24px 60px rgba(2, 8, 28, 0.28);
+  transition: background-color 500ms ease, border-color 500ms ease, box-shadow 500ms ease, transform 500ms ease;
 }
 
 .gradient-text {
@@ -82,6 +126,48 @@ body {
 @keyframes float {
   0%, 100% { transform: translateY(0px); }
   50% { transform: translateY(-10px); }
+}
+
+@keyframes backgroundDrift {
+  0% {
+    transform: scale(1.04) translate3d(0, 0, 0);
+    filter: saturate(1.04) contrast(1.02) brightness(0.92);
+  }
+  100% {
+    transform: scale(1.08) translate3d(0, -1.5%, 0);
+    filter: saturate(1.12) contrast(1.05) brightness(1);
+  }
+}
+
+@keyframes overlayPulse {
+  0%, 100% {
+    opacity: 0.82;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes appShellFade {
+  0% {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-frame::before,
+  .app-frame::after,
+  .app-shell,
+  .glass-card,
+  .animate-float {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 
 .scrollbar-hide {
