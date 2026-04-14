@@ -33,7 +33,7 @@ const FluxoCaixa = () => {
       const [unidadeFiltro, setUnidadeFiltro] = useState('todas');
       const [viewType, setViewType] = useState('sintetico');
       const [expandedRows, setExpandedRows] = useState({});
-      const [emCashValue] = useEmCashValue();
+      const [emCashValue, , emCashLoading] = useEmCashValue();
 
       useEffect(() => {
         loadData();
@@ -283,7 +283,7 @@ const FluxoCaixa = () => {
                     </thead>
                     
                       <tbody>
-                        {loading ? (
+                        {loading || emCashLoading ? (
                           <tr><td colSpan={6} className="text-center p-8"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mx-auto"></div></td></tr>
                         ) : monthData.length > 0 ? monthData.map((dia) => (
                           <React.Fragment key={dia.dia}>
@@ -360,6 +360,11 @@ const FluxoCaixa = () => {
                 <CardTitle>Gráfico de Fluxo de Caixa Acumulado</CardTitle>
               </CardHeader>
               <CardContent>
+                {emCashLoading ? (
+                  <div className="flex h-[400px] items-center justify-center text-slate-300">
+                    Carregando saldo em cash...
+                  </div>
+                ) : (
                 <ResponsiveContainer width="100%" height={400}>
                   <LineChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
@@ -382,6 +387,7 @@ const FluxoCaixa = () => {
                     <Line type="monotone" dataKey="pagar" name="A Pagar" stroke="#f87171" strokeWidth={2} />
                   </LineChart>
                 </ResponsiveContainer>
+                )}
               </CardContent>
             </Card>
           </motion.div>

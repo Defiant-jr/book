@@ -27,7 +27,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
       const [expandedRows, setExpandedRows] = useState({});
       const [reportGenerated, setReportGenerated] = useState(false);
       const [generatedAt, setGeneratedAt] = useState(null);
-      const [emCashValue] = useEmCashValue();
+      const [emCashValue, , emCashLoading] = useEmCashValue();
 
       const handleGenerateReport = async () => {
         setLoading(true);
@@ -178,7 +178,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
           saldoAcumulado += saldoDia;
           return { ...dia, saldoDia, saldoAcumulado };
         });
-      }, [allData, currentDate, unidadeFiltro]);
+      }, [allData, currentDate, unidadeFiltro, emCashValue]);
 
       const monthName = currentDate.toLocaleString('pt-BR', { month: 'long', timeZone: 'UTC' });
       const year = currentDate.getFullYear();
@@ -291,8 +291,8 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
                   </Select>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
-                  <Button onClick={handleGenerateReport} disabled={loading} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white">{loading ? 'Gerando...' : 'Gerar Relatório'}</Button>
-                  <Button onClick={generatePDF} disabled={!reportGenerated || loading} variant="outline" className="w-full sm:w-auto border-blue-600 text-blue-600 hover:bg-blue-50">
+                  <Button onClick={handleGenerateReport} disabled={loading || emCashLoading} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white">{loading ? 'Gerando...' : emCashLoading ? 'Carregando cash...' : 'Gerar Relatório'}</Button>
+                  <Button onClick={generatePDF} disabled={!reportGenerated || loading || emCashLoading} variant="outline" className="w-full sm:w-auto border-blue-600 text-blue-600 hover:bg-blue-50">
                     <FileDown className="w-4 h-4 mr-2" /> Gerar PDF
                   </Button>
                 </div>
@@ -306,12 +306,12 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
                 </CardContent>
               </Card>
             )}
-            {loading && (
+            {(loading || emCashLoading) && (
               <div className="flex justify-center py-16">
                 <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
               </div>
             )}
-            {reportGenerated && !loading && (
+            {reportGenerated && !loading && !emCashLoading && (
               <>
                 {generatedAt && (
                   <div className="text-sm text-gray-300 text-right">

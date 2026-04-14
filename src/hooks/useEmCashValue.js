@@ -1,45 +1,97 @@
 import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/customSupabaseClient';
 
-const STORAGE_KEY = 'defFinance:emCashValue';
+const CHANGE_EVENT = 'defFinance:emCashValueChanged';
 
 const parseValue = (raw) => {
   const parsed = Number.parseFloat(raw ?? '');
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const readStoredValue = () => {
-  if (typeof window === 'undefined' || !window.localStorage) {
-    return 0;
-  }
-  const stored = window.localStorage.getItem(STORAGE_KEY);
-  return parseValue(stored);
+const emitValueChanged = (value) => {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: { value: parseValue(value) } }));
 };
 
-const writeStoredValue = (value) => {
-  if (typeof window === 'undefined' || !window.localStorage) {
-    return;
+const fetchRemoteValue = async () => {
+  const { data, error } = await supabase
+    .from('parametros')
+    .select('id, cash')
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+};
+
+const persistRemoteValue = async (value) => {
+  const numericValue = parseValue(value);
+  const row = await fetchRemoteValue();
+
+  if (!row) {
+    const { error } = await supabase.from('parametros').insert({ cash: numericValue });
+    if (error) throw error;
+    return numericValue;
   }
-  window.localStorage.setItem(STORAGE_KEY, String(value ?? 0));
+
+  let query = supabase.from('parametros').update({ cash: numericValue });
+  query = row.id != null ? query.eq('id', row.id) : query;
+
+  const { error } = await query;
+  if (error) throw error;
+
+  return numericValue;
 };
 
 export const useEmCashValue = () => {
-  const [value, setValue] = useState(() => readStoredValue());
+  const [value, setValue] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    writeStoredValue(value);
-  }, [value]);
+    let isMounted = true;
 
-  useEffect(() => {
-    const handler = (event) => {
-      if (event.key === STORAGE_KEY) {
-        setValue(readStoredValue());
+    const syncFromSupabase = async () => {
+      try {
+        const remote = await fetchRemoteValue();
+        if (!isMounted) return;
+        const nextValue = parseValue(remote?.cash);
+        setValue(nextValue);
+      } catch (error) {
+        console.error('Falha ao carregar cash em parametros', error);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
-    window.addEventListener('storage', handler);
-    return () => window.removeEventListener('storage', handler);
+
+    syncFromSupabase();
+
+    const syncValue = (event) => {
+      setValue(parseValue(event?.detail?.value));
+    };
+
+    window.addEventListener(CHANGE_EVENT, syncValue);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener(CHANGE_EVENT, syncValue);
+    };
   }, []);
 
-  return [value, setValue];
-};
+  const updateValue = async (nextValue) => {
+    const parsedValue = parseValue(nextValue);
+    setValue(parsedValue);
+    emitValueChanged(parsedValue);
 
-export const getStoredEmCashValue = () => readStoredValue();
+    try {
+      await persistRemoteValue(parsedValue);
+      return { ok: true, value: parsedValue };
+    } catch (error) {
+      console.error('Falha ao salvar cash em parametros', error);
+      return { ok: false, value: parsedValue, error };
+    }
+  };
+
+  return [value, updateValue, isLoading];
+};

@@ -27,7 +27,7 @@ const MapaMensal = () => {
   const RELATORIOS_MAPA_MENSAL_REF = 86000;
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [emCashValue] = useEmCashValue();
+  const [emCashValue, , emCashLoading] = useEmCashValue();
   const [allData, setAllData] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState(() => format(new Date(), 'yyyy-MM'));
   const [loading, setLoading] = useState(false);
@@ -408,13 +408,13 @@ const calendarCells = useMemo(() => {
                 />
               </div>
               <div className="flex flex-col sm:flex-row gap-3">
-                <Button onClick={handleGenerateReport} disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white">
+                <Button onClick={handleGenerateReport} disabled={loading || emCashLoading} className="bg-blue-600 hover:bg-blue-700 text-white">
                   {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  {loading ? 'Gerando...' : 'Gerar relatÃ³rio'}
+                  {loading ? 'Gerando...' : emCashLoading ? 'Carregando cash...' : 'Gerar relatÃ³rio'}
                 </Button>
                 <Button
                   onClick={handleDownloadPdf}
-                  disabled={!reportGenerated || loading}
+                  disabled={!reportGenerated || loading || emCashLoading}
                   variant="outline"
                   className="border-blue-500 text-blue-300 hover:bg-blue-500/10"
                 >
@@ -431,6 +431,13 @@ const calendarCells = useMemo(() => {
           </CardContent>
         </Card>
 
+        {emCashLoading ? (
+          <Card className="glass-card">
+            <CardContent className="py-12 text-center text-gray-300">
+              Carregando saldo em cash para atualizar o mapa mensal...
+            </CardContent>
+          </Card>
+        ) : (
         <Card className="glass-card">
           <CardHeader>
             <CardTitle className="text-white">Resumo do mÃªs</CardTitle>
@@ -513,7 +520,9 @@ const calendarCells = useMemo(() => {
             </div>
           </CardContent>
         </Card>
+        )}
 
+        {!emCashLoading && (
         <Card className="glass-card">
           <CardHeader>
             <CardTitle className="text-white">CalendÃ¡rio do mÃªs</CardTitle>
@@ -566,6 +575,7 @@ const calendarCells = useMemo(() => {
             )}
           </CardContent>
         </Card>
+        )}
       </motion.div>
     </>
   );

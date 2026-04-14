@@ -21,8 +21,9 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
       const [loading, setLoading] = useState(false);
       const [chartData, setChartData] = useState([]);
       const [monthsSpan, setMonthsSpan] = useState(12);
-      const [emCashValue, setEmCashValue] = useEmCashValue();
+      const [emCashValue, setEmCashValue, emCashLoading] = useEmCashValue();
       const [emCashDraft, setEmCashDraft] = useState(0);
+      const [savingEmCash, setSavingEmCash] = useState(false);
     
       useEffect(() => {
         setEmCashDraft(emCashValue);
@@ -177,8 +178,9 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
       };
     
       useEffect(() => {
+        if (emCashLoading) return;
         generateChartData({ lancamentos: data.lancamentos }, monthsSpan, emCashValue);
-      }, [data.lancamentos, monthsSpan, emCashValue]);
+      }, [data.lancamentos, monthsSpan, emCashValue, emCashLoading]);
     
       const formatCurrency = (value) => {
         return (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -201,8 +203,20 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
         }
       };
     
-      const handleConfirmEmCash = () => {
-        setEmCashValue(emCashDraft);
+      const handleConfirmEmCash = async () => {
+        setSavingEmCash(true);
+        const result = await setEmCashValue(emCashDraft);
+        setSavingEmCash(false);
+
+        if (!result?.ok) {
+          toast({
+            title: 'Erro ao atualizar saldo em Cash',
+            description: result?.error?.message || 'Nao foi possivel salvar o valor em parametros.cash.',
+            variant: 'destructive'
+          });
+          return;
+        }
+
         toast({
           title: 'Saldo em Cash atualizado',
           description: `Novo valor confirmado: ${formatCurrency(emCashDraft)}`
@@ -415,7 +429,9 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
                 </div>
                 <div className="text-right">
                   <span className="text-xs uppercase tracking-wide text-gray-400">Valor atual</span>
-                  <p className="text-2xl font-semibold text-white">{formatCurrency(emCashValue)}</p>
+                  <p className="text-2xl font-semibold text-white">
+                    {emCashLoading ? 'Carregando...' : formatCurrency(emCashValue)}
+                  </p>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -425,18 +441,19 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
                     id="emCashInput"
                     type="text"
                     inputMode="decimal"
-                    value={formatCurrency(emCashDraft)}
+                    value={emCashLoading ? '' : formatCurrency(emCashDraft)}
                     onChange={handleEmCashInputChange}
                     onKeyDown={handleEmCashInputKeyDown}
                     className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 font-semibold tracking-wide"
-                    placeholder="R$ 0,00"
+                    placeholder={emCashLoading ? 'Carregando saldo...' : 'R$ 0,00'}
+                    disabled={emCashLoading}
                   />
                   <Button
                     onClick={handleConfirmEmCash}
-                    disabled={!emCashIsDirty}
+                    disabled={!emCashIsDirty || savingEmCash || emCashLoading}
                     className="lg:w-48"
                   >
-                    Confirmar valor
+                    {savingEmCash ? 'Salvando...' : 'Confirmar valor'}
                   </Button>
                 </div>
                 <p className="text-xs text-gray-400">
@@ -446,6 +463,13 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
             </Card>
           </motion.div>
     
+          {emCashLoading ? (
+            <Card className="glass-card">
+              <CardContent className="py-12 text-center text-gray-300">
+                Carregando saldo em cash para atualizar os calculos...
+              </CardContent>
+            </Card>
+          ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {summaryCards.map((card, index) => {
               const Icon = card.icon;
@@ -504,7 +528,9 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
               );
             })}
           </div>
+          )}
     
+          {!emCashLoading && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -538,6 +564,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
               </CardContent>
             </Card>
           </motion.div>
+          )}
         </div>
       );
     };

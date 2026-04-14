@@ -44,7 +44,7 @@ const RelatorioFechamento = () => {
   const [loading, setLoading] = useState(false);
   const [reportGenerated, setReportGenerated] = useState(false);
   const [generatedAt, setGeneratedAt] = useState(null);
-  const [emCashValue] = useEmCashValue();
+  const [emCashValue, , emCashLoading] = useEmCashValue();
 
   const formatCurrency = (value) => {
     const amount = Number(value || 0);
@@ -370,14 +370,14 @@ const RelatorioFechamento = () => {
           <div className="flex flex-col sm:flex-row gap-3 md:justify-end">
             <Button
               onClick={handleGenerateReport}
-              disabled={loading}
+              disabled={loading || emCashLoading}
               className="bg-blue-600 hover:bg-blue-700 text-white"
             >
-              {loading ? 'Gerando...' : 'Gerar Relatorio'}
+              {loading ? 'Gerando...' : emCashLoading ? 'Carregando cash...' : 'Gerar Relatorio'}
             </Button>
             <Button
               onClick={handleGeneratePdf}
-              disabled={!reportGenerated || loading}
+              disabled={!reportGenerated || loading || emCashLoading}
               variant="outline"
               className="border-blue-500 text-blue-300 hover:bg-blue-500/10"
             >
@@ -396,13 +396,13 @@ const RelatorioFechamento = () => {
             </div>
           )}
 
-          {loading && (
+          {(loading || emCashLoading) && (
             <div className="flex justify-center py-16">
               <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
             </div>
           )}
 
-          {reportGenerated && !loading && (
+          {reportGenerated && !loading && !emCashLoading && (
             <div className="space-y-10">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-gray-300">
                 <div>
