@@ -11,7 +11,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { endOfMonth, endOfWeek, format } from 'date-fns';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { useEmCashValue } from '@/hooks/useEmCashValue';
+import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
 import { getLancamentoStatus, STATUS } from '@/lib/lancamentoStatus';
 
 const unitOptions = [
@@ -44,7 +44,7 @@ const RelatorioFechamento = () => {
   const [loading, setLoading] = useState(false);
   const [reportGenerated, setReportGenerated] = useState(false);
   const [generatedAt, setGeneratedAt] = useState(null);
-  const [emCashValue, , emCashLoading] = useEmCashValue();
+  const [financialAdjustments, , adjustmentsLoading] = useFinanceAdjustments();
 
   const formatCurrency = (value) => {
     const amount = Number(value || 0);
@@ -120,9 +120,9 @@ const RelatorioFechamento = () => {
   );
 
   const saldoFechamento = useMemo(() => totalEntries - totalExits, [totalEntries, totalExits]);
-  const saldoComCash = useMemo(
-    () => saldoFechamento + Number(emCashValue || 0),
-    [saldoFechamento, emCashValue]
+  const saldoComAjustes = useMemo(
+    () => saldoFechamento + Number(financialAdjustments.cash || 0) - Number(financialAdjustments.investimento || 0),
+    [saldoFechamento, financialAdjustments.cash, financialAdjustments.investimento]
   );
 
   const handleGenerateReport = async () => {
@@ -296,10 +296,12 @@ const RelatorioFechamento = () => {
     doc.text(`Saldo do Fechamento: ${formatCurrency(saldoFechamento)}`, marginLeft, cursorY);
     cursorY += 18;
     doc.setFontSize(12);
-    doc.text(`Saldo em Cash: ${formatCurrency(emCashValue)}`, marginLeft, cursorY);
+    doc.text(`Saldo em Cash: ${formatCurrency(financialAdjustments.cash)}`, marginLeft, cursorY);
+    cursorY += 18;
+    doc.text(`Investimento: ${formatCurrency(financialAdjustments.investimento)}`, marginLeft, cursorY);
     cursorY += 18;
     doc.setFontSize(14);
-    doc.text(`Saldo Final Considerando Cash: ${formatCurrency(saldoComCash)}`, marginLeft, cursorY);
+    doc.text(`Saldo Final Considerando Ajustes: ${formatCurrency(saldoComAjustes)}`, marginLeft, cursorY);
 
     doc.save('relatorio_fechamento.pdf');
   };
@@ -370,14 +372,14 @@ const RelatorioFechamento = () => {
           <div className="flex flex-col sm:flex-row gap-3 md:justify-end">
             <Button
               onClick={handleGenerateReport}
-              disabled={loading || emCashLoading}
+              disabled={loading || adjustmentsLoading}
               className="bg-blue-600 hover:bg-blue-700 text-white"
             >
-              {loading ? 'Gerando...' : emCashLoading ? 'Carregando cash...' : 'Gerar Relatorio'}
+              {loading ? 'Gerando...' : adjustmentsLoading ? 'Carregando ajustes...' : 'Gerar Relatorio'}
             </Button>
             <Button
               onClick={handleGeneratePdf}
-              disabled={!reportGenerated || loading || emCashLoading}
+              disabled={!reportGenerated || loading || adjustmentsLoading}
               variant="outline"
               className="border-blue-500 text-blue-300 hover:bg-blue-500/10"
             >
@@ -396,13 +398,13 @@ const RelatorioFechamento = () => {
             </div>
           )}
 
-          {(loading || emCashLoading) && (
+          {(loading || adjustmentsLoading) && (
             <div className="flex justify-center py-16">
               <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
             </div>
           )}
 
-          {reportGenerated && !loading && !emCashLoading && (
+          {reportGenerated && !loading && !adjustmentsLoading && (
             <div className="space-y-10">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-gray-300">
                 <div>
@@ -540,15 +542,19 @@ const RelatorioFechamento = () => {
                   </dl>
                 </div>
                 <div className="rounded-xl border border-white/10 bg-white/5 p-6 text-gray-200">
-                  <h4 className="text-lg font-semibold text-white mb-4">Impacto do Cash</h4>
+                  <h4 className="text-lg font-semibold text-white mb-4">Impacto dos Ajustes</h4>
                   <dl className="space-y-3 text-sm">
                     <div className="flex items-center justify-between">
                       <dt className="text-gray-400 font-medium">Saldo em Cash</dt>
-                      <dd className="text-blue-300 font-semibold">{formatCurrency(emCashValue)}</dd>
+                      <dd className="text-blue-300 font-semibold">{formatCurrency(financialAdjustments.cash)}</dd>
                     </div>
                     <div className="flex items-center justify-between">
-                      <dt className="text-gray-400 font-medium">Saldo Final com Cash</dt>
-                      <dd className="text-blue-200 font-semibold">{formatCurrency(saldoComCash)}</dd>
+                      <dt className="text-gray-400 font-medium">Investimento</dt>
+                      <dd className="text-amber-300 font-semibold">{formatCurrency(financialAdjustments.investimento)}</dd>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <dt className="text-gray-400 font-medium">Saldo Final com Ajustes</dt>
+                      <dd className="text-blue-200 font-semibold">{formatCurrency(saldoComAjustes)}</dd>
                     </div>
                   </dl>
                 </div>

@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
-import { useEmCashValue } from '@/hooks/useEmCashValue';
+import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
 import { startOfMonth, endOfMonth, eachDayOfInterval, format, getDay } from 'date-fns';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -27,7 +27,7 @@ const MapaMensal = () => {
   const RELATORIOS_MAPA_MENSAL_REF = 86000;
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [emCashValue, , emCashLoading] = useEmCashValue();
+  const [financialAdjustments, , adjustmentsLoading] = useFinanceAdjustments();
   const [allData, setAllData] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState(() => format(new Date(), 'yyyy-MM'));
   const [loading, setLoading] = useState(false);
@@ -198,8 +198,8 @@ const calendarCells = useMemo(() => {
   }, [allData, todayStr]);
 
   const totalReceberResumo = useMemo(() => {
-    return monthTotals.entradas + overdueGlobalTotals.entradas + (Number(emCashValue) || 0);
-  }, [monthTotals.entradas, overdueGlobalTotals.entradas, emCashValue]);
+    return monthTotals.entradas + overdueGlobalTotals.entradas + (Number(financialAdjustments.cash) || 0) - (Number(financialAdjustments.investimento) || 0);
+  }, [monthTotals.entradas, overdueGlobalTotals.entradas, financialAdjustments.cash, financialAdjustments.investimento]);
 
   const resultadoOperacionalPrevisto = useMemo(() => {
     return totalReceberResumo - totalsWithAdjustments.saidas;
@@ -260,7 +260,7 @@ const calendarCells = useMemo(() => {
       summaryStartY,
     );
     doc.text(
-      `Detalhe Receber: valor ${formatCurrency(monthTotals.entradas)} | atraso ${formatCurrency(overdueGlobalTotals.entradas)} | cash ${formatCurrency(emCashValue)}  ||  Detalhe Pagar: mes ${formatCurrency(monthTotals.saidas)} | vencido ${formatCurrency(overdueGlobalTotals.saidas)}`,
+      `Detalhe Receber: valor ${formatCurrency(monthTotals.entradas)} | atraso ${formatCurrency(overdueGlobalTotals.entradas)} | cash ${formatCurrency(financialAdjustments.cash)} | investimento ${formatCurrency(financialAdjustments.investimento)}  ||  Detalhe Pagar: mes ${formatCurrency(monthTotals.saidas)} | vencido ${formatCurrency(overdueGlobalTotals.saidas)}`,
       margin,
       summaryStartY + summaryGap,
     );
@@ -408,13 +408,13 @@ const calendarCells = useMemo(() => {
                 />
               </div>
               <div className="flex flex-col sm:flex-row gap-3">
-                <Button onClick={handleGenerateReport} disabled={loading || emCashLoading} className="bg-blue-600 hover:bg-blue-700 text-white">
+                <Button onClick={handleGenerateReport} disabled={loading || adjustmentsLoading} className="bg-blue-600 hover:bg-blue-700 text-white">
                   {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  {loading ? 'Gerando...' : emCashLoading ? 'Carregando cash...' : 'Gerar relatÃ³rio'}
+                  {loading ? 'Gerando...' : adjustmentsLoading ? 'Carregando ajustes...' : 'Gerar relatÃ³rio'}
                 </Button>
                 <Button
                   onClick={handleDownloadPdf}
-                  disabled={!reportGenerated || loading || emCashLoading}
+                  disabled={!reportGenerated || loading || adjustmentsLoading}
                   variant="outline"
                   className="border-blue-500 text-blue-300 hover:bg-blue-500/10"
                 >
@@ -431,10 +431,10 @@ const calendarCells = useMemo(() => {
           </CardContent>
         </Card>
 
-        {emCashLoading ? (
+        {adjustmentsLoading ? (
           <Card className="glass-card">
             <CardContent className="py-12 text-center text-gray-300">
-              Carregando saldo em cash para atualizar o mapa mensal...
+              Carregando ajustes financeiros para atualizar o mapa mensal...
             </CardContent>
           </Card>
         ) : (
@@ -460,7 +460,11 @@ const calendarCells = useMemo(() => {
                 </div>
                 <div className="flex items-center justify-between text-white/75">
                   <span>Em Cash:</span>
-                  <span className="font-semibold text-emerald-300">{formatCurrency(emCashValue)}</span>
+                  <span className="font-semibold text-emerald-300">{formatCurrency(financialAdjustments.cash)}</span>
+                </div>
+                <div className="flex items-center justify-between text-white/75">
+                  <span>Investimento:</span>
+                  <span className="font-semibold text-amber-300">{formatCurrency(financialAdjustments.investimento)}</span>
                 </div>
               </div>
             </div>
@@ -508,7 +512,11 @@ const calendarCells = useMemo(() => {
                 </div>
                 <div className="flex items-center justify-between text-white/75">
                   <span>Saldo em Cash:</span>
-                  <span className="font-semibold text-emerald-300">{formatCurrency(emCashValue)}</span>
+                  <span className="font-semibold text-emerald-300">{formatCurrency(financialAdjustments.cash)}</span>
+                </div>
+                <div className="flex items-center justify-between text-white/75">
+                  <span>Investimento:</span>
+                  <span className="font-semibold text-amber-300">{formatCurrency(financialAdjustments.investimento)}</span>
                 </div>
                 <div className="flex items-center justify-between text-white/75">
                   <span>Atrasado liquido:</span>
@@ -522,7 +530,7 @@ const calendarCells = useMemo(() => {
         </Card>
         )}
 
-        {!emCashLoading && (
+        {!adjustmentsLoading && (
         <Card className="glass-card">
           <CardHeader>
             <CardTitle className="text-white">CalendÃ¡rio do mÃªs</CardTitle>

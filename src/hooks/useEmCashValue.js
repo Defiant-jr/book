@@ -1,22 +1,27 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 
-const CHANGE_EVENT = 'defFinance:emCashValueChanged';
+const CHANGE_EVENT = 'defFinance:financialAdjustmentsChanged';
 
 const parseValue = (raw) => {
   const parsed = Number.parseFloat(raw ?? '');
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const emitValueChanged = (value) => {
+const parseAdjustments = (raw = {}) => ({
+  cash: parseValue(raw.cash),
+  investimento: parseValue(raw.investimento),
+});
+
+const emitAdjustmentsChanged = (adjustments) => {
   if (typeof window === 'undefined') return;
-  window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: { value: parseValue(value) } }));
+  window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: parseAdjustments(adjustments) }));
 };
 
-const fetchRemoteValue = async () => {
+const fetchRemoteAdjustments = async () => {
   const { data, error } = await supabase
     .from('parametros')
-    .select('id, cash')
+    .select('id, cash, investimento')
     .limit(1)
     .maybeSingle();
 
@@ -24,27 +29,27 @@ const fetchRemoteValue = async () => {
   return data;
 };
 
-const persistRemoteValue = async (value) => {
-  const numericValue = parseValue(value);
-  const row = await fetchRemoteValue();
+const persistRemoteAdjustments = async (nextValues) => {
+  const normalized = parseAdjustments(nextValues);
+  const row = await fetchRemoteAdjustments();
 
   if (!row) {
-    const { error } = await supabase.from('parametros').insert({ cash: numericValue });
+    const { error } = await supabase.from('parametros').insert(normalized);
     if (error) throw error;
-    return numericValue;
+    return normalized;
   }
 
-  let query = supabase.from('parametros').update({ cash: numericValue });
+  let query = supabase.from('parametros').update(normalized);
   query = row.id != null ? query.eq('id', row.id) : query;
 
   const { error } = await query;
   if (error) throw error;
 
-  return numericValue;
+  return normalized;
 };
 
-export const useEmCashValue = () => {
-  const [value, setValue] = useState(0);
+export const useFinanceAdjustments = () => {
+  const [adjustments, setAdjustments] = useState({ cash: 0, investimento: 0 });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -52,12 +57,11 @@ export const useEmCashValue = () => {
 
     const syncFromSupabase = async () => {
       try {
-        const remote = await fetchRemoteValue();
+        const remote = await fetchRemoteAdjustments();
         if (!isMounted) return;
-        const nextValue = parseValue(remote?.cash);
-        setValue(nextValue);
+        setAdjustments(parseAdjustments(remote));
       } catch (error) {
-        console.error('Falha ao carregar cash em parametros', error);
+        console.error('Falha ao carregar ajustes financeiros em parametros', error);
       } finally {
         if (isMounted) {
           setIsLoading(false);
@@ -67,31 +71,51 @@ export const useEmCashValue = () => {
 
     syncFromSupabase();
 
-    const syncValue = (event) => {
-      setValue(parseValue(event?.detail?.value));
+    const syncAdjustments = (event) => {
+      setAdjustments(parseAdjustments(event?.detail));
     };
 
-    window.addEventListener(CHANGE_EVENT, syncValue);
+    window.addEventListener(CHANGE_EVENT, syncAdjustments);
 
     return () => {
       isMounted = false;
-      window.removeEventListener(CHANGE_EVENT, syncValue);
+      window.removeEventListener(CHANGE_EVENT, syncAdjustments);
     };
   }, []);
 
-  const updateValue = async (nextValue) => {
-    const parsedValue = parseValue(nextValue);
-    setValue(parsedValue);
-    emitValueChanged(parsedValue);
+  const updateAdjustments = async (nextValues) => {
+    const normalized = parseAdjustments(nextValues);
+    setAdjustments(normalized);
+    emitAdjustmentsChanged(normalized);
 
     try {
-      await persistRemoteValue(parsedValue);
-      return { ok: true, value: parsedValue };
+      await persistRemoteAdjustments(normalized);
+      return { ok: true, value: normalized };
     } catch (error) {
-      console.error('Falha ao salvar cash em parametros', error);
-      return { ok: false, value: parsedValue, error };
+      console.error('Falha ao salvar ajustes financeiros em parametros', error);
+      return { ok: false, value: normalized, error };
     }
   };
 
-  return [value, updateValue, isLoading];
+  return [adjustments, updateAdjustments, isLoading];
+};
+
+export const useEmCashValue = () => {
+  const [adjustments, updateAdjustments, isLoading] = useFinanceAdjustments();
+
+  const updateCash = async (nextCashValue) => {
+    const nextValue = parseValue(nextCashValue);
+    const result = await updateAdjustments({
+      cash: nextValue,
+      investimento: adjustments.investimento,
+    });
+
+    if (!result?.ok) {
+      return { ok: false, value: nextValue, error: result?.error };
+    }
+
+    return { ok: true, value: nextValue };
+  };
+
+  return [adjustments.cash, updateCash, isLoading];
 };

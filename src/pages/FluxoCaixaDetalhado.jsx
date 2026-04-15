@@ -13,7 +13,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { cn } from '@/lib/utils';
 import { getLancamentoStatus, normalizeTipo, STATUS } from '@/lib/lancamentoStatus';
-import { useEmCashValue } from '@/hooks/useEmCashValue';
+import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
 
     const FluxoCaixaDetalhado = () => {
       const RELATORIOS_FLUXO_CAIXA_REF = 81000;
@@ -27,7 +27,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
       const [expandedRows, setExpandedRows] = useState({});
       const [reportGenerated, setReportGenerated] = useState(false);
       const [generatedAt, setGeneratedAt] = useState(null);
-      const [emCashValue, , emCashLoading] = useEmCashValue();
+      const [financialAdjustments, , adjustmentsLoading] = useFinanceAdjustments();
 
       const handleGenerateReport = async () => {
         setLoading(true);
@@ -140,8 +140,31 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
 
         const atrasadosReceber = atrasadosLancamentos.filter(i => i.tipoNorm === 'entrada');
         const atrasadosPagar = atrasadosLancamentos.filter(i => i.tipoNorm === 'saida');
-        const totalReceberAtrasado = atrasadosReceber.reduce((acc, i) => acc + getValorReceber(i), 0) + (Number(emCashValue) || 0);
+        const emCashAmount = Number(financialAdjustments.cash) || 0;
+        const investimentoAmount = Number(financialAdjustments.investimento) || 0;
+        const totalReceberAtrasado =
+          atrasadosReceber.reduce((acc, i) => acc + getValorReceber(i), 0) +
+          emCashAmount -
+          investimentoAmount;
         const receberDetails = [...atrasadosReceber];
+        if (emCashAmount > 0) {
+          receberDetails.push({
+            id: 'em-cash',
+            cliente_fornecedor: 'Em Cash',
+            valor: emCashAmount,
+            tipoNorm: 'entrada',
+            dataStr: startStr,
+          });
+        }
+        if (investimentoAmount > 0) {
+          receberDetails.push({
+            id: 'investimento',
+            cliente_fornecedor: 'Investimento',
+            valor: -investimentoAmount,
+            tipoNorm: 'entrada',
+            dataStr: startStr,
+          });
+        }
 
         const dia00 = {
           dia: '00',
@@ -178,7 +201,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
           saldoAcumulado += saldoDia;
           return { ...dia, saldoDia, saldoAcumulado };
         });
-      }, [allData, currentDate, unidadeFiltro, emCashValue]);
+      }, [allData, currentDate, unidadeFiltro, financialAdjustments.cash, financialAdjustments.investimento]);
 
       const monthName = currentDate.toLocaleString('pt-BR', { month: 'long', timeZone: 'UTC' });
       const year = currentDate.getFullYear();
@@ -291,8 +314,8 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
                   </Select>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
-                  <Button onClick={handleGenerateReport} disabled={loading || emCashLoading} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white">{loading ? 'Gerando...' : emCashLoading ? 'Carregando cash...' : 'Gerar Relatório'}</Button>
-                  <Button onClick={generatePDF} disabled={!reportGenerated || loading || emCashLoading} variant="outline" className="w-full sm:w-auto border-blue-600 text-blue-600 hover:bg-blue-50">
+                  <Button onClick={handleGenerateReport} disabled={loading || adjustmentsLoading} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white">{loading ? 'Gerando...' : adjustmentsLoading ? 'Carregando ajustes...' : 'Gerar Relatório'}</Button>
+                  <Button onClick={generatePDF} disabled={!reportGenerated || loading || adjustmentsLoading} variant="outline" className="w-full sm:w-auto border-blue-600 text-blue-600 hover:bg-blue-50">
                     <FileDown className="w-4 h-4 mr-2" /> Gerar PDF
                   </Button>
                 </div>
@@ -306,12 +329,12 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
                 </CardContent>
               </Card>
             )}
-            {(loading || emCashLoading) && (
+            {(loading || adjustmentsLoading) && (
               <div className="flex justify-center py-16">
                 <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
               </div>
             )}
-            {reportGenerated && !loading && !emCashLoading && (
+            {reportGenerated && !loading && !adjustmentsLoading && (
               <>
                 {generatedAt && (
                   <div className="text-sm text-gray-300 text-right">

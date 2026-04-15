@@ -11,7 +11,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { supabase } from '@/lib/customSupabaseClient';
 import { getLancamentoStatus, normalizeTipo, STATUS } from '@/lib/lancamentoStatus';
-import { useEmCashValue } from '@/hooks/useEmCashValue';
+import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
 
     const Dashboard = () => {
       const FINANCEIRO_DASHBOARD_REF = 20000;
@@ -20,14 +20,16 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
       const [data, setData] = useState({ lancamentos: [] });
       const [loading, setLoading] = useState(false);
       const [chartData, setChartData] = useState([]);
-      const [monthsSpan, setMonthsSpan] = useState(12);
-      const [emCashValue, setEmCashValue, emCashLoading] = useEmCashValue();
+      const [chartPeriod, setChartPeriod] = useState('12');
+      const [financialAdjustments, setFinancialAdjustments, adjustmentsLoading] = useFinanceAdjustments();
       const [emCashDraft, setEmCashDraft] = useState(0);
-      const [savingEmCash, setSavingEmCash] = useState(false);
+      const [investimentoDraft, setInvestimentoDraft] = useState(0);
+      const [savingAdjustments, setSavingAdjustments] = useState(false);
     
       useEffect(() => {
-        setEmCashDraft(emCashValue);
-      }, [emCashValue]);
+        setEmCashDraft(financialAdjustments.cash);
+        setInvestimentoDraft(financialAdjustments.investimento);
+      }, [financialAdjustments.cash, financialAdjustments.investimento]);
     
       useEffect(() => {
         loadDataFromSupabase();
@@ -81,6 +83,17 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
           : new Date(`${normalized}T00:00:00`);
         return Number.isNaN(parsed.getTime()) ? null : parsed;
       };
+
+      const getMonthsSpanFromPeriod = (period) => {
+        if (period === 'closing_year') {
+          const currentMonth = new Date().getMonth();
+          return 12 - currentMonth;
+        }
+        const parsed = Number(period);
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : 12;
+      };
+
+      const monthsSpan = getMonthsSpanFromPeriod(chartPeriod);
 
       const generateChartData = (financialData, span = monthsSpan, cashValue = 0) => {
         try {
@@ -178,9 +191,9 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
       };
     
       useEffect(() => {
-        if (emCashLoading) return;
-        generateChartData({ lancamentos: data.lancamentos }, monthsSpan, emCashValue);
-      }, [data.lancamentos, monthsSpan, emCashValue, emCashLoading]);
+        if (adjustmentsLoading) return;
+        generateChartData({ lancamentos: data.lancamentos }, monthsSpan, financialAdjustments.cash - financialAdjustments.investimento);
+      }, [data.lancamentos, monthsSpan, financialAdjustments.cash, financialAdjustments.investimento, adjustmentsLoading]);
     
       const formatCurrency = (value) => {
         return (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -195,35 +208,51 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
       const handleEmCashInputChange = (event) => {
         setEmCashDraft(parseCurrencyInput(event.target.value));
       };
-    
-      const handleEmCashInputKeyDown = (event) => {
-        if (event.key === 'Enter' && emCashIsDirty) {
-          event.preventDefault();
-          handleConfirmEmCash();
-        }
+
+      const handleInvestimentoInputChange = (event) => {
+        setInvestimentoDraft(parseCurrencyInput(event.target.value));
       };
     
-      const handleConfirmEmCash = async () => {
-        setSavingEmCash(true);
-        const result = await setEmCashValue(emCashDraft);
-        setSavingEmCash(false);
+      const handleEmCashInputKeyDown = (event) => {
+        if (event.key === 'Enter' && adjustmentsAreDirty) {
+          event.preventDefault();
+          handleConfirmAdjustments();
+        }
+      };
+
+      const handleInvestimentoInputKeyDown = (event) => {
+        if (event.key === 'Enter' && adjustmentsAreDirty) {
+          event.preventDefault();
+          handleConfirmAdjustments();
+        }
+      };
+
+      const handleConfirmAdjustments = async () => {
+        setSavingAdjustments(true);
+        const result = await setFinancialAdjustments({
+          cash: emCashDraft,
+          investimento: investimentoDraft,
+        });
+        setSavingAdjustments(false);
 
         if (!result?.ok) {
           toast({
-            title: 'Erro ao atualizar saldo em Cash',
-            description: result?.error?.message || 'Nao foi possivel salvar o valor em parametros.cash.',
+            title: 'Erro ao atualizar ajustes financeiros',
+            description: result?.error?.message || 'Nao foi possivel salvar os valores em parametros.cash e parametros.investimento.',
             variant: 'destructive'
           });
           return;
         }
 
         toast({
-          title: 'Saldo em Cash atualizado',
-          description: `Novo valor confirmado: ${formatCurrency(emCashDraft)}`
+          title: 'Ajustes financeiros atualizados',
+          description: `Cash: ${formatCurrency(emCashDraft)} | Investimento: ${formatCurrency(investimentoDraft)}`
         });
       };
-    
-      const emCashIsDirty = Math.round(emCashDraft * 100) !== Math.round(emCashValue * 100);
+     
+      const adjustmentsAreDirty =
+        Math.round(emCashDraft * 100) !== Math.round(financialAdjustments.cash * 100) ||
+        Math.round(investimentoDraft * 100) !== Math.round(financialAdjustments.investimento * 100);
     
       const hoje = new Date();
       hoje.setHours(0, 0, 0, 0);
@@ -294,9 +323,11 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
       const receberAtrasado = entradasPeriodo
         .filter(c => getStatus(c) === STATUS.ATRASADO)
         .reduce((sum, c) => sum + getValorReceber(c), 0) + receberAtrasadoAnterior;
-      const emCashAmount = Number(emCashValue) || 0;
-      const totalReceberComCash = totalReceber + emCashAmount;
-      const totalReceberPendente = receberAberto + receberAtrasado + emCashAmount;
+      const emCashAmount = Number(financialAdjustments.cash) || 0;
+      const investimentoAmount = Number(financialAdjustments.investimento) || 0;
+      const ajusteLiquido = emCashAmount - investimentoAmount;
+      const totalReceberComAjustes = totalReceber + ajusteLiquido;
+      const totalReceberPendente = receberAberto + receberAtrasado + ajusteLiquido;
 
       const totalPagar = saidasPeriodo.reduce((sum, c) => sum + getValorPagar(c), 0);
       const pagarAberto = saidasPeriodo
@@ -308,7 +339,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
       const totalPagarPendente = pagarAberto + pagarAtrasado;
 
       const resultadoOperacional = totalReceberPendente - totalPagar;
-      const resultadoOperacionalComCash = resultadoOperacional;
+      const resultadoOperacionalComAjustes = resultadoOperacional;
     
       const summaryCards = [
         {
@@ -321,6 +352,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
             { label: 'Em Aberto', value: formatCurrency(receberAberto) },
             { label: 'Em Atraso', value: formatCurrency(receberAtrasado), color: 'text-red-400' },
             { label: 'Em Cash', value: formatCurrency(emCashAmount), color: 'text-green-300' },
+            { label: 'Investimento', value: formatCurrency(investimentoAmount), color: 'text-amber-300' },
             { label: 'Pendentes', value: formatCurrency(totalReceberPendente) },
           ]
         },
@@ -343,9 +375,10 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
           color: resultadoOperacional >= 0 ? 'from-blue-500 to-blue-600' : 'from-orange-500 to-orange-600',
           bgColor: resultadoOperacional >= 0 ? 'bg-blue-500/10' : 'bg-orange-500/10',
           showSpanSelector: true,
-          details: emCashAmount ? [
-            { label: 'Previsto com Cash', value: formatCurrency(resultadoOperacionalComCash), color: 'text-gray-300' },
+          details: (emCashAmount || investimentoAmount) ? [
+            { label: 'Previsto com Ajustes', value: formatCurrency(resultadoOperacionalComAjustes), color: 'text-gray-300' },
             { label: 'Saldo em Cash', value: formatCurrency(emCashAmount), color: 'text-green-300' },
+            { label: 'Investimento', value: formatCurrency(investimentoAmount), color: 'text-amber-300' },
           ] : undefined
         }
       ];
@@ -422,51 +455,77 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
             <Card className="glass-card">
               <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                  <CardTitle className="text-white">Saldo em Cash</CardTitle>
+                  <CardTitle className="text-white">Valores em Cash e Investimentos</CardTitle>
                   <p className="text-sm text-gray-400">
-                    Este valor será somado aos lançamentos em atraso e impacta diretamente o fluxo de caixa.
+                    Cash soma os valores previstos. Investimento reduz os calculos financeiros em todo o sistema.
                   </p>
                 </div>
-                <div className="text-right">
-                  <span className="text-xs uppercase tracking-wide text-gray-400">Valor atual</span>
-                  <p className="text-2xl font-semibold text-white">
-                    {emCashLoading ? 'Carregando...' : formatCurrency(emCashValue)}
-                  </p>
+                <div className="grid gap-4 text-right sm:grid-cols-2">
+                  <div>
+                    <span className="text-xs uppercase tracking-wide text-gray-400">Cash atual</span>
+                    <p className="text-2xl font-semibold text-white">
+                      {adjustmentsLoading ? 'Carregando...' : formatCurrency(financialAdjustments.cash)}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs uppercase tracking-wide text-gray-400">Investimento atual</span>
+                    <p className="text-2xl font-semibold text-white">
+                      {adjustmentsLoading ? 'Carregando...' : formatCurrency(financialAdjustments.investimento)}
+                    </p>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                <label htmlFor="emCashInput" className="text-sm text-gray-300">Atualizar valor</label>
-                <div className="flex flex-col gap-3 lg:flex-row">
-                  <Input
-                    id="emCashInput"
-                    type="text"
-                    inputMode="decimal"
-                    value={emCashLoading ? '' : formatCurrency(emCashDraft)}
-                    onChange={handleEmCashInputChange}
-                    onKeyDown={handleEmCashInputKeyDown}
-                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 font-semibold tracking-wide"
-                    placeholder={emCashLoading ? 'Carregando saldo...' : 'R$ 0,00'}
-                    disabled={emCashLoading}
-                  />
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <div className="space-y-3">
+                    <label htmlFor="emCashInput" className="text-sm text-gray-300">Atualizar cash</label>
+                    <Input
+                      id="emCashInput"
+                      type="text"
+                      inputMode="decimal"
+                      value={adjustmentsLoading ? '' : formatCurrency(emCashDraft)}
+                      onChange={handleEmCashInputChange}
+                      onKeyDown={handleEmCashInputKeyDown}
+                      className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 font-semibold tracking-wide"
+                      placeholder={adjustmentsLoading ? 'Carregando saldo...' : 'R$ 0,00'}
+                      disabled={adjustmentsLoading}
+                    />
+                  </div>
+                  <div className="space-y-3">
+                    <label htmlFor="investimentoInput" className="text-sm text-gray-300">Atualizar investimento</label>
+                    <Input
+                      id="investimentoInput"
+                      type="text"
+                      inputMode="decimal"
+                      value={adjustmentsLoading ? '' : formatCurrency(investimentoDraft)}
+                      onChange={handleInvestimentoInputChange}
+                      onKeyDown={handleInvestimentoInputKeyDown}
+                      className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 font-semibold tracking-wide"
+                      placeholder={adjustmentsLoading ? 'Carregando investimento...' : 'R$ 0,00'}
+                      disabled={adjustmentsLoading}
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end">
                   <Button
-                    onClick={handleConfirmEmCash}
-                    disabled={!emCashIsDirty || savingEmCash || emCashLoading}
-                    className="lg:w-48"
+                    onClick={handleConfirmAdjustments}
+                    disabled={!adjustmentsAreDirty || savingAdjustments || adjustmentsLoading}
+                    className="w-full lg:w-56"
                   >
-                    {savingEmCash ? 'Salvando...' : 'Confirmar valor'}
+                    {savingAdjustments ? 'Salvando...' : 'Confirmar valores'}
                   </Button>
                 </div>
                 <p className="text-xs text-gray-400">
-                  Ajuste manual usado para demonstrar o caixa imediato disponível. Clique em confirmar para aplicar.
+                  Os dois valores sao persistidos em parametros e aplicados globalmente. Cash adiciona ao previsto; investimento abate do resultado.
                 </p>
               </CardContent>
             </Card>
           </motion.div>
-    
-          {emCashLoading ? (
+     
+          {adjustmentsLoading ? (
             <Card className="glass-card">
               <CardContent className="py-12 text-center text-gray-300">
-                Carregando saldo em cash para atualizar os calculos...
+                Carregando ajustes financeiros para atualizar os calculos...
               </CardContent>
             </Card>
           ) : (
@@ -508,7 +567,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
                       {card.showSpanSelector && (
                         <div className="mt-4 space-y-2">
                           <span className="text-sm text-gray-300">Periodo do grafico</span>
-                          <Select value={String(monthsSpan)} onValueChange={(value) => setMonthsSpan(Number(value))}>
+                          <Select value={chartPeriod} onValueChange={setChartPeriod}>
                             <SelectTrigger className="w-full bg-white/10 border-white/20 text-white">
                               <SelectValue placeholder="Meses" />
                             </SelectTrigger>
@@ -518,6 +577,9 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
                                   {option} {option === 1 ? 'mes' : 'meses'}
                                 </SelectItem>
                               ))}
+                              <SelectItem value="closing_year">
+                                Fechamento Ano
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -530,7 +592,7 @@ import { useEmCashValue } from '@/hooks/useEmCashValue';
           </div>
           )}
     
-          {!emCashLoading && (
+          {!adjustmentsLoading && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

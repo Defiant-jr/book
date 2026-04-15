@@ -21,7 +21,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { startOfMonth, endOfMonth, format, eachDayOfInterval } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { getLancamentoStatus, normalizeTipo, STATUS } from '@/lib/lancamentoStatus';
-import { useEmCashValue } from '@/hooks/useEmCashValue';
+import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
 
 const FluxoCaixa = () => {
   const FLUXO_CAIXA_REF = 23000;
@@ -33,7 +33,7 @@ const FluxoCaixa = () => {
       const [unidadeFiltro, setUnidadeFiltro] = useState('todas');
       const [viewType, setViewType] = useState('sintetico');
       const [expandedRows, setExpandedRows] = useState({});
-      const [emCashValue, , emCashLoading] = useEmCashValue();
+      const [financialAdjustments, , adjustmentsLoading] = useFinanceAdjustments();
 
       useEffect(() => {
         loadData();
@@ -135,8 +135,10 @@ const FluxoCaixa = () => {
         const atrasadosReceber = atrasados.filter((i) => i.tipoNorm === 'entrada');
         const atrasadosPagar = atrasados.filter((i) => i.tipoNorm === 'saida');
 
-        const emCashAmount = Number(emCashValue) || 0;
-        const totalAtrasadoReceber = atrasadosReceber.reduce((acc, i) => acc + getValorReceber(i), 0) + emCashAmount;
+        const emCashAmount = Number(financialAdjustments.cash) || 0;
+        const investimentoAmount = Number(financialAdjustments.investimento) || 0;
+        const ajusteLiquido = emCashAmount - investimentoAmount;
+        const totalAtrasadoReceber = atrasadosReceber.reduce((acc, i) => acc + getValorReceber(i), 0) + ajusteLiquido;
         const totalAtrasadoPagar = atrasadosPagar.reduce((acc, i) => acc + (Number(i?.valor) || 0), 0);
 
         const receberDetails = [...atrasadosReceber];
@@ -145,6 +147,15 @@ const FluxoCaixa = () => {
             id: 'em-cash',
             cliente_fornecedor: 'Em Cash',
             valor: emCashAmount,
+            tipoNorm: 'entrada',
+            dataStr: startStr,
+          });
+        }
+        if (investimentoAmount > 0) {
+          receberDetails.push({
+            id: 'investimento',
+            cliente_fornecedor: 'Investimento',
+            valor: -investimentoAmount,
             tipoNorm: 'entrada',
             dataStr: startStr,
           });
@@ -189,7 +200,7 @@ const FluxoCaixa = () => {
           saldoAcumulado += saldoDia;
           return { ...dia, saldoDia, saldoAcumulado };
         });
-      }, [allData, currentDate, emCashValue]);
+      }, [allData, currentDate, financialAdjustments.cash, financialAdjustments.investimento]);
 
       const chartData = monthData.map(d => ({
         name: d.dia,
@@ -283,7 +294,7 @@ const FluxoCaixa = () => {
                     </thead>
                     
                       <tbody>
-                        {loading || emCashLoading ? (
+                        {loading || adjustmentsLoading ? (
                           <tr><td colSpan={6} className="text-center p-8"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mx-auto"></div></td></tr>
                         ) : monthData.length > 0 ? monthData.map((dia) => (
                           <React.Fragment key={dia.dia}>
@@ -360,9 +371,9 @@ const FluxoCaixa = () => {
                 <CardTitle>Gráfico de Fluxo de Caixa Acumulado</CardTitle>
               </CardHeader>
               <CardContent>
-                {emCashLoading ? (
+                {adjustmentsLoading ? (
                   <div className="flex h-[400px] items-center justify-center text-slate-300">
-                    Carregando saldo em cash...
+                    Carregando ajustes financeiros...
                   </div>
                 ) : (
                 <ResponsiveContainer width="100%" height={400}>
