@@ -221,7 +221,17 @@ const RelatorioFechamento = () => {
 
     const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
     const marginLeft = 40;
+    const marginRight = 40;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const contentWidth = pageWidth - marginLeft - marginRight;
     let cursorY = 50;
+
+    const ensureSpace = (requiredHeight) => {
+      if (cursorY + requiredHeight <= pageHeight - 36) return;
+      doc.addPage();
+      cursorY = 50;
+    };
 
     doc.setFontSize(18);
     doc.text('Relatorio de Fechamento', marginLeft, cursorY);
@@ -272,6 +282,41 @@ const RelatorioFechamento = () => {
       cursorY = doc.lastAutoTable.finalY;
     };
 
+    const drawSummaryCard = (title, rows, x, y, width) => {
+      const headerHeight = 30;
+      const rowHeight = 22;
+      const paddingX = 16;
+      const cardHeight = headerHeight + rows.length * rowHeight + 14;
+
+      doc.setDrawColor(229, 231, 235);
+      doc.setFillColor(248, 250, 252);
+      doc.roundedRect(x, y, width, cardHeight, 10, 10, 'FD');
+
+      doc.setFillColor(241, 245, 249);
+      doc.roundedRect(x, y, width, headerHeight, 10, 10, 'F');
+      doc.rect(x, y + headerHeight - 10, width, 10, 'F');
+
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(15, 23, 42);
+      doc.text(title, x + paddingX, y + 19);
+
+      rows.forEach(({ label, value, color }, index) => {
+        const rowY = y + headerHeight + 18 + index * rowHeight;
+
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(71, 85, 105);
+        doc.text(label, x + paddingX, rowY);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...color);
+        doc.text(value, x + width - paddingX, rowY, { align: 'right' });
+      });
+
+      return cardHeight;
+    };
+
     if (entries.length) {
       buildTable('Entradas em aberto e a vencer', entries, valorReceber, { fontSize: 8, cellPadding: 3 });
       cursorY += 18;
@@ -291,17 +336,27 @@ const RelatorioFechamento = () => {
       doc.text('Saidas em atraso e em aberto: sem registros', marginLeft, cursorY);
     }
 
-    cursorY += 32;
-    doc.setFontSize(14);
-    doc.text(`Saldo do Fechamento: ${formatCurrency(saldoFechamento)}`, marginLeft, cursorY);
-    cursorY += 18;
-    doc.setFontSize(12);
-    doc.text(`Saldo em Cash: ${formatCurrency(financialAdjustments.cash)}`, marginLeft, cursorY);
-    cursorY += 18;
-    doc.text(`Investimento: ${formatCurrency(financialAdjustments.investimento)}`, marginLeft, cursorY);
-    cursorY += 18;
-    doc.setFontSize(14);
-    doc.text(`Saldo Final Considerando Ajustes: ${formatCurrency(saldoComAjustes)}`, marginLeft, cursorY);
+    const summaryRows = [
+      { label: 'Total de Entradas', value: formatCurrency(totalEntries), color: [22, 163, 74] },
+      { label: 'Total de Saidas', value: formatCurrency(totalExits), color: [220, 38, 38] },
+      { label: 'Saldo do Fechamento', value: formatCurrency(saldoFechamento), color: saldoFechamento >= 0 ? [22, 163, 74] : [220, 38, 38] },
+    ];
+    const adjustmentsRows = [
+      { label: 'Saldo em Cash', value: formatCurrency(financialAdjustments.cash), color: [37, 99, 235] },
+      { label: 'Investimento', value: formatCurrency(financialAdjustments.investimento), color: [217, 119, 6] },
+      { label: 'Saldo Final com Ajustes', value: formatCurrency(saldoComAjustes), color: [30, 64, 175] },
+    ];
+    const cardsTopSpacing = 28;
+    const cardGap = 20;
+    const cardWidth = (contentWidth - cardGap) / 2;
+    const cardHeight = 30 + summaryRows.length * 22 + 14;
+
+    cursorY += 28;
+    ensureSpace(cardsTopSpacing + cardHeight);
+    cursorY += cardsTopSpacing;
+
+    drawSummaryCard('Resumo dos Totais', summaryRows, marginLeft, cursorY, cardWidth);
+    drawSummaryCard('Impacto dos Ajustes', adjustmentsRows, marginLeft + cardWidth + cardGap, cursorY, cardWidth);
 
     doc.save('relatorio_fechamento.pdf');
   };

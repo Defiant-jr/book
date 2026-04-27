@@ -20,7 +20,7 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
       const [data, setData] = useState({ lancamentos: [] });
       const [loading, setLoading] = useState(false);
       const [chartData, setChartData] = useState([]);
-      const [chartPeriod, setChartPeriod] = useState('12');
+      const [chartPeriod, setChartPeriod] = useState('closing_semester');
       const [financialAdjustments, setFinancialAdjustments, adjustmentsLoading] = useFinanceAdjustments();
       const [emCashDraft, setEmCashDraft] = useState(0);
       const [investimentoDraft, setInvestimentoDraft] = useState(0);
@@ -88,6 +88,11 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
         if (period === 'closing_year') {
           const currentMonth = new Date().getMonth();
           return 12 - currentMonth;
+        }
+        if (period === 'closing_semester') {
+          const currentMonth = new Date().getMonth();
+          const semesterEndMonth = currentMonth < 6 ? 6 : 12;
+          return semesterEndMonth - currentMonth;
         }
         const parsed = Number(period);
         return Number.isFinite(parsed) && parsed > 0 ? parsed : 12;
@@ -579,6 +584,9 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
                               ))}
                               <SelectItem value="closing_year">
                                 Fechamento Ano
+                              </SelectItem>
+                              <SelectItem value="closing_semester">
+                                Fechamento Semestre
                               </SelectItem>
                             </SelectContent>
                           </Select>
