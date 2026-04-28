@@ -1,21 +1,37 @@
 ## Pages
+- [- BooK+](/contasreceber): Gerencie suas contas a receber com filtros e totalizadores
 - [Administrativo - BooK+](/administrativo): Módulo administrativo
-- [Área Financeira - BooK+](/dashboard): Área financeira com visão geral das finanças
+- [Cadastro de Alunos - Operacoes](/operacoescadastroaluno): Edicao da tabela de alunos.
+- [Cadastro de Rateio - Operacoes](/operacoescadastrorateio): Edicao da tabela de rateio.
+- [Cadastro de Turmas - Operacoes](/operacoescadastroturma): Edicao da tabela de turmas.
 - [Cadastro Financeiro - BooK+](/financeirocadastro): Cadastre lançamentos financeiros.
-- [Cadastros - BooK+](/cadastros): Central de cadastros de clientes, fornecedores e unidades.
-- [Central de Relatórios - BooK+](/relatorios): Gere relatórios financeiros detalhados.
+- [Cadastros - BooK+](/cadastros): Central de cadastros de alunos, responsaveis, fornecedores, unidades e turmas.
 - [Contas a Pagar - BooK+](/contaspagar): Gerencie suas contas a pagar com filtros e totalizadores
-- [Contas a Receber - BooK+](/contasreceber): Gerencie suas contas a receber com filtros e totalizadores
+- [Contas Pagas - BooK+](/contaspagas): Gerencie seus pagamentos com filtros e totalizadores
+- [Contas Pagas/Recebidas - BooK+](/relatoriopagosrecebidos): No description available
+- [Custo por Turma - BooK+](/custoturma): Calculadora de custos por turma.
+- [Declaração IR - BooK+](/declaracaoir): Leitura de planilha Excel para emissão de declaração IR de alunos.
 - [DRE Gerencial - BooK+](/dregerencial): No description available
 - [Emissão de Duplicata - BooK+](/emissaoduplicata): Emita duplicatas a partir das contas a receber.
+- [Estatisticas - BooK+](/estatisticas): Central de estatisticas e indicadores.
+- [Ficha de Custos - BooK+](/fichacustos): Ficha de custos com rateio, formulas e base de turmas.
+- [Financeiro - BooK+](/dashboard): Financeiro com visão geral das finanças
 - [Financeiro - BooK+](/financeiro): Central de ações financeiras.
 - [Fluxo de Caixa Previsto - BooK+](/fluxocaixa): Análise do fluxo de caixa previsto (valores a vencer).
 - [Impressão de DOC - BooK+](/impressaodoc): Relatório completo dos lançamentos para impressão em DOC.
-- [Integração - BooK+](/integracao): Central de integrações com serviços externos.
-- [Mapa Mensal - BooK+](/mapamensal): Visualize o calendário mensal com despesas por dia e somatório de entradas.
+- [Integração - SysFina](/integracao): Central de integrações com serviços externos.
+- [Integração A Receber (xlsx) - SysFina](/integracaoreceberxlsx): Importação de A Receber via planilha Excel.
+- [Integração Operações - SysFina](/integracaooperacoes): Importação de operações via planilha Excel.
+- [Mapa Mensal - BooK+](/mapamensal): Visualize o calendÃ¡rio mensal com despesas por dia e somatÃ³rio de entradas.
 - [Novo Lançamento - BooK+](/lancamentos): Tela para adicionar novos lançamentos financeiros.
+- [Operacional - BooK+](/operacional): Area operacional
+- [Pedagógico - BooK+](/pedagogico): Indicadores pedagógicos e acompanhamento acadêmico.
 - [Relatório de Contas - BooK+](/relatoriocontas): No description available
 - [Relatorio de Fechamento - BooK+](/relatoriofechamento): Relatorio de fechamento com totais de entradas, saidas e saldo final.
 - [Relatório de Fluxo de Caixa - BooK+](/fluxocaixadetalhado): Gere e visualize o relatório de fluxo de caixa detalhado.
+- [Relatório Serasa - BooK+](/relatorioserasa): No description available
+- [Relatórios - BooK+](/relatorios): Gere relatórios financeiros detalhados.
 - [Relatórios Administrativos - BooK+](/administrativorelatorios): Área reservada para relatórios administrativos.
 - [Selecione uma área - BooK+](/areaselection): Escolha o módulo que deseja acessar.
+- [Tarefas Administrativas - BooK+](/administrativotarefas): Cadastro de tarefas administrativas.
+- [Visão ADM/FIN - BooK+](/custoaluno): Indicadores de Visão ADM/FIN e recebiveis.

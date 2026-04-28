@@ -99,7 +99,7 @@ import { BarChart3, PieChart, TrendingUp, ArrowLeft, FileClock, Printer, Calenda
             {
                 title: "Custo",
                 icon: DollarSign,
-                description: "Relat¢rio de custos para an lise futura.",
+                description: "Relatório de custos para análise futura.",
                 action: () => handleNavigation('/relatorios/custo', false),
                 implemented: false,
             },
@@ -165,4 +165,3 @@ import { BarChart3, PieChart, TrendingUp, ArrowLeft, FileClock, Printer, Calenda
     };
     
     export default Relatorios;
-
