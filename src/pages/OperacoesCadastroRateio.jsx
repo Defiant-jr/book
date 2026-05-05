@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
+import { fetchAllPaginated } from '@/lib/supabasePagination';
 
 const READONLY_COLUMNS = new Set(['id', 'created_at', 'updated_at']);
 
@@ -79,7 +80,13 @@ const OperacoesCadastroRateio = () => {
 
   const fetchRateios = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from('rateio').select('*').order('id', { ascending: true });
+    const { data, error } = await fetchAllPaginated((from, to) =>
+      supabase
+        .from('rateio')
+        .select('*')
+        .order('id', { ascending: true })
+        .range(from, to)
+    );
     setLoading(false);
 
     if (error) {

@@ -13,6 +13,7 @@ import { ptBR } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { getValorConsiderado } from '@/lib/lancamentoValor';
+import { fetchAllPaginated } from '@/lib/supabasePagination';
 
     const DreGerencial = () => {
         const RELATORIOS_DRE_REF = 82000;
@@ -28,7 +29,13 @@ import { getValorConsiderado } from '@/lib/lancamentoValor';
 
         useEffect(() => {
             const fetchCompetencias = async () => {
-                const { data, error } = await supabase.from('lancamentos').select('data').order('data', { ascending: false });
+                const { data, error } = await fetchAllPaginated((from, to) =>
+                    supabase
+                        .from('lancamentos')
+                        .select('data')
+                        .order('data', { ascending: false })
+                        .range(from, to)
+                );
                 if (error || !data || data.length === 0) {
                     const now = new Date();
                     const currentCompetencia = format(now, 'yyyy-MM');
@@ -66,12 +73,15 @@ import { getValorConsiderado } from '@/lib/lancamentoValor';
             const firstDay = startOfMonth(new Date(yearNumber, monthNumber - 1));
             const lastDay = endOfMonth(new Date(yearNumber, monthNumber - 1));
 
-            const { data, error } = await supabase
-                .from('lancamentos')
-                .select('tipo, valor, obs')
-                .eq('status', 'Pago')
-                .gte('datapag', format(firstDay, 'yyyy-MM-dd'))
-                .lte('datapag', format(lastDay, 'yyyy-MM-dd'));
+            const { data, error } = await fetchAllPaginated((from, to) =>
+                supabase
+                    .from('lancamentos')
+                    .select('tipo, valor, obs')
+                    .eq('status', 'Pago')
+                    .gte('datapag', format(firstDay, 'yyyy-MM-dd'))
+                    .lte('datapag', format(lastDay, 'yyyy-MM-dd'))
+                    .range(from, to)
+            );
 
             setLoading(false);
             if (error) {

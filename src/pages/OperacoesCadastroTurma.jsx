@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
+import { fetchAllPaginated } from '@/lib/supabasePagination';
 
 const READONLY_COLUMNS = new Set(['id', 'created_at', 'updated_at']);
 
@@ -60,7 +61,13 @@ const OperacoesCadastroTurma = () => {
 
   const fetchTurmas = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from('turmas').select('*').order('id', { ascending: true });
+    const { data, error } = await fetchAllPaginated((from, to) =>
+      supabase
+        .from('turmas')
+        .select('*')
+        .order('id', { ascending: true })
+        .range(from, to)
+    );
     setLoading(false);
 
     if (error) {

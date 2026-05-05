@@ -14,6 +14,7 @@ import jsPDF from 'jspdf';
 import { format } from 'date-fns';
 import { getValorConsiderado } from '@/lib/lancamentoValor';
 import { getLancamentoStatus, STATUS_LABELS, STATUS_OPTIONS } from '@/lib/lancamentoStatus';
+import { fetchAllPaginated } from '@/lib/supabasePagination';
 
 const columns = ['Data', 'Unidade', 'Cliente/Fornecedor', 'Descrição', 'Valor', 'Status', 'Parcela', 'Observações', 'Data Pag.'];
 
@@ -38,7 +39,15 @@ const EmissaoDuplicata = () => {
   const handleGenerateReport = async () => {
     setLoading(true);
     setReportGenerated(false);
-    const { data, error } = await supabase.from('lancamentos').select('*').eq('tipo', 'Entrada');
+    const { data, error } = await fetchAllPaginated((from, to) =>
+      supabase
+        .from('lancamentos')
+        .select('*')
+        .eq('tipo', 'Entrada')
+        .order('data', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to)
+    );
     setLoading(false);
     if (error) {
       toast({ title: 'Erro', description: 'Não foi possível carregar as duplicatas.', variant: 'destructive' });

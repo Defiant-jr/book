@@ -10,6 +10,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import { getLancamentoStatus, STATUS } from '@/lib/lancamentoStatus';
 import { getValorConsiderado } from '@/lib/lancamentoValor';
+import { fetchAllPaginated } from '@/lib/supabasePagination';
 
 const ALUNOS_FIELD_CANDIDATES = [
   'quantidade_alunos',
@@ -146,7 +147,9 @@ const CustoAluno = () => {
   useEffect(() => {
     const fetchTurmas = async () => {
       setLoading(true);
-      const { data, error } = await supabase.from('turmas').select('*');
+      const { data, error } = await fetchAllPaginated((from, to) =>
+        supabase.from('turmas').select('*').order('id', { ascending: true }).range(from, to)
+      );
       setLoading(false);
 
       if (error) {
@@ -168,25 +171,16 @@ const CustoAluno = () => {
     const fetchLancamentos = async () => {
       setLoadingLancamentos(true);
       try {
-        const pageSize = 1000;
-        let from = 0;
-        const allLancamentos = [];
-        while (true) {
-          const to = from + pageSize - 1;
-          const { data, error } = await supabase.from('lancamentos').select('*').range(from, to);
-          if (error) {
-            toast({
-              title: 'Erro ao carregar estatisticas',
-              description: error.message || 'Nao foi possivel buscar os lancamentos.',
-              variant: 'destructive',
-            });
-            return;
-          }
-          if (data?.length) {
-            allLancamentos.push(...data);
-          }
-          if (!data || data.length < pageSize) break;
-          from += pageSize;
+        const { data: allLancamentos, error } = await fetchAllPaginated((from, to) =>
+          supabase.from('lancamentos').select('*').range(from, to)
+        );
+        if (error) {
+          toast({
+            title: 'Erro ao carregar estatisticas',
+            description: error.message || 'Nao foi possivel buscar os lancamentos.',
+            variant: 'destructive',
+          });
+          return;
         }
         setLancamentos(allLancamentos);
       } finally {

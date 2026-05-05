@@ -10,6 +10,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import { getLancamentoStatus, normalizeTipo, STATUS } from '@/lib/lancamentoStatus';
 import jsPDF from 'jspdf';
+import { fetchAllPaginated } from '@/lib/supabasePagination';
 
 const ALUNOS_FIELD_CANDIDATES = [
   'quantidade_alunos',
@@ -146,32 +147,24 @@ const FichaCustos = () => {
     const fetchData = async () => {
       setLoading(true);
       const [rateioResult, turmasResult, alunosResult, parametrosResult] = await Promise.all([
-        supabase.from('rateio').select('*').order('id', { ascending: true }),
-        supabase.from('turmas').select('*').order('id', { ascending: true }),
-        supabase.from('alunos').select('*').order('id', { ascending: true }),
+        fetchAllPaginated((from, to) =>
+          supabase.from('rateio').select('*').order('id', { ascending: true }).range(from, to)
+        ),
+        fetchAllPaginated((from, to) =>
+          supabase.from('turmas').select('*').order('id', { ascending: true }).range(from, to)
+        ),
+        fetchAllPaginated((from, to) =>
+          supabase.from('alunos').select('*').order('id', { ascending: true }).range(from, to)
+        ),
         supabase.from('parametros').select('*').limit(1).maybeSingle(),
       ]);
 
-      const pageSize = 1000;
-      let from = 0;
-      const allLancamentos = [];
-      let lancamentosError;
-      while (true) {
-        const to = from + pageSize - 1;
-        const { data, error } = await supabase
+      const { data: allLancamentos, error: lancamentosError } = await fetchAllPaginated((from, to) =>
+        supabase
           .from('lancamentos')
           .select('*')
-          .range(from, to);
-        if (error) {
-          lancamentosError = error;
-          break;
-        }
-        if (data?.length) {
-          allLancamentos.push(...data);
-        }
-        if (!data || data.length < pageSize) break;
-        from += pageSize;
-      }
+          .range(from, to)
+      );
 
       if (rateioResult.error) {
         toast({

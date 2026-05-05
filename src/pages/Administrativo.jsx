@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import IndicadoresPedagogico from '@/components/pedagogico/IndicadoresPedagogico';
+import { fetchAllPaginated } from '@/lib/supabasePagination';
 
 const Administrativo = () => {
   const ADMINISTRATIVO_DASHBOARD_REF = 10000;
@@ -50,7 +51,14 @@ const Administrativo = () => {
   useEffect(() => {
     const loadTarefas = async () => {
       setLoadingTarefas(true);
-      const { data, error } = await supabase.from('postit').select('*');
+      const { data, error } = await fetchAllPaginated((from, to) =>
+        supabase
+          .from('postit')
+          .select('*')
+          .order('data', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, to)
+      );
       if (error) {
         toast({ title: 'Erro ao carregar tarefas', description: error.message, variant: 'destructive' });
         setLoadingTarefas(false);

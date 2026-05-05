@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
+import { fetchAllPaginated } from '@/lib/supabasePagination';
 
 const AdministrativoTarefas = () => {
   const ADMINISTRATIVO_TAREFAS_REF = 11000;
@@ -33,10 +34,14 @@ const AdministrativoTarefas = () => {
 
   const loadTarefas = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('postit')
-      .select('*')
-      .order('data', { ascending: false });
+    const { data, error } = await fetchAllPaginated((from, to) =>
+      supabase
+        .from('postit')
+        .select('*')
+        .order('data', { ascending: false })
+        .order('id', { ascending: false })
+        .range(from, to)
+    );
 
     if (error) {
       toast({ title: 'Erro ao carregar', description: error.message, variant: 'destructive' });

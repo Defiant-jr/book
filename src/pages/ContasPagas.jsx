@@ -12,6 +12,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { format as formatDateFns } from 'date-fns';
 import { getValorConsiderado } from '@/lib/lancamentoValor';
 import { getLancamentoStatus, STATUS, STATUS_LABELS, STATUS_COLORS, STATUS_OPTIONS } from '@/lib/lancamentoStatus';
+import { fetchAllPaginated } from '@/lib/supabasePagination';
 
 const STATUS_ABERTO = 'em_aberto';
 const STATUS_ABERTO_LABEL = 'Em Aberto';
@@ -46,7 +47,15 @@ const ContasPagas = () => {
 
   const loadData = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from('lancamentos').select('*').eq('tipo', 'Saida');
+    const { data, error } = await fetchAllPaginated((from, to) =>
+      supabase
+        .from('lancamentos')
+        .select('*')
+        .eq('tipo', 'Saida')
+        .order('data', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to)
+    );
     if (error) {
       toast({ title: 'Erro ao carregar dados', description: error.message, variant: 'destructive' });
     } else {

@@ -16,6 +16,17 @@ import { getLancamentoStatus, STATUS, STATUS_LABELS, STATUS_COLORS, STATUS_OPTIO
     
 const STATUS_ABERTO = 'em_aberto';
 const STATUS_ABERTO_LABEL = 'Em Aberto';
+
+const isContaPaga = (conta) => String(conta?.status || '').trim().toLowerCase() === 'pago';
+
+const getContaStatus = (conta, todayStr) => {
+  if (isContaPaga(conta)) {
+    return STATUS.PAGO;
+  }
+
+  return getLancamentoStatus({ ...conta, datapag: null }, todayStr);
+};
+
 const ContasPagar = () => {
       const CONTAS_PAGAR_REF = 22000;
       const navigate = useNavigate();
@@ -46,16 +57,42 @@ const ContasPagar = () => {
     
       const loadData = async () => {
         setLoading(true);
-        const { data, error } = await supabase.from('lancamentos').select('*').eq('tipo', 'Saida');
-        if (error) {
-          toast({ title: 'Erro ao carregar dados', description: error.message, variant: 'destructive' });
+        const pageSize = 1000;
+        const allData = [];
+        let from = 0;
+        let shouldContinue = true;
+        let queryError = null;
+
+        while (shouldContinue) {
+          const to = from + pageSize - 1;
+          const { data, error } = await supabase
+            .from('lancamentos')
+            .select('*')
+            .eq('tipo', 'Saida')
+            .order('data', { ascending: true })
+            .order('id', { ascending: true })
+            .range(from, to);
+
+          if (error) {
+            queryError = error;
+            break;
+          }
+
+          const currentPage = data ?? [];
+          allData.push(...currentPage);
+          shouldContinue = currentPage.length === pageSize;
+          from += pageSize;
+        }
+
+        if (queryError) {
+          toast({ title: 'Erro ao carregar dados', description: queryError.message, variant: 'destructive' });
         } else {
-          setContas(data ?? []);
+          setContas(allData);
         }
         setLoading(false);
       };
     
-      const getStatus = (conta) => getLancamentoStatus(conta);
+      const getStatus = (conta) => getContaStatus(conta, todayStr);
 
       const formatCurrency = (value) => (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
       const formatDate = (dateString) => new Date(dateString + 'T00:00:00').toLocaleDateString('pt-BR', { timeZone: 'UTC' });
@@ -87,7 +124,7 @@ const ContasPagar = () => {
             filtered = filtered.filter(c => getStatus(c) === filters.status);
           }
         }
-        filtered = filtered.filter(c => getStatus(c) !== STATUS.PAGO);
+        filtered = filtered.filter((c) => !isContaPaga(c));
         if (filters.unidade !== 'todas') {
           filtered = filtered.filter(c => c.unidade === filters.unidade);
         }
