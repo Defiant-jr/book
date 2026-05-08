@@ -13,9 +13,7 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showResend, setShowResend] = useState(false);
-  const [quickPrimed, setQuickPrimed] = useState(false);
-  const passwordRef = React.useRef(null);
-  const { signIn, signInLocal } = useAuth();
+  const { signIn } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -51,35 +49,6 @@ const Login = () => {
   const handleLogin = async (e) => {
     e.preventDefault();
     await doLogin(email, password);
-  };
-
-  const handleQuickLogin = async () => {
-    const quickEmail = 'book@caedcj.com.br';
-    if (!quickPrimed) {
-      setEmail(quickEmail);
-      setPassword('');
-      setQuickPrimed(true);
-      requestAnimationFrame(() => {
-        passwordRef.current?.focus();
-      });
-      return;
-    }
-
-    const isValid = password === 'cna';
-    if (!isValid) {
-      toast({
-        variant: 'destructive',
-        title: 'Falha no Login',
-        description: 'Senha incorreta para o usuario book.',
-      });
-      return;
-    }
-    signInLocal(quickEmail, 'admin');
-    toast({
-      title: 'Login bem-sucedido!',
-      description: 'Bem-vindo de volta!',
-    });
-    navigate('/');
   };
 
   const handleResendConfirmation = async () => {
@@ -145,14 +114,10 @@ const Login = () => {
               onChange={(e) => setPassword(e.target.value)}
               required
               className="bg-slate-800/50 border-slate-700"
-              ref={passwordRef}
             />
           </div>
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? 'Entrando...' : 'Entrar'}
-          </Button>
-          <Button type="button" variant="outline" className="w-full" onClick={handleQuickLogin} disabled={loading}>
-            {loading ? 'Entrando...' : 'Entrar como Book'}
           </Button>
         </form>
         {showResend && (

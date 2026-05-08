@@ -1,3 +1,4 @@
+import './loadEnv.js';
 import express from 'express';
 import compression from 'compression';
 import serveStatic from 'serve-static';
@@ -5,6 +6,7 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { registerGoogleTasksRoutes } from './googleTasksRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -89,6 +91,8 @@ export async function createApp(options = {}) {
       });
     }
   });
+
+  registerGoogleTasksRoutes(app);
 
   if (!withFrontend) {
     return { app };

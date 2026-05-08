@@ -16,9 +16,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { supabase } from '@/lib/customSupabaseClient';
 import IndicadoresPedagogico from '@/components/pedagogico/IndicadoresPedagogico';
-import { fetchAllPaginated } from '@/lib/supabasePagination';
+import { listGoogleTasks, updateGoogleTask } from '@/services/googleTasksService';
 
 const Administrativo = () => {
   const ADMINISTRATIVO_DASHBOARD_REF = 10000;
@@ -51,63 +50,44 @@ const Administrativo = () => {
   useEffect(() => {
     const loadTarefas = async () => {
       setLoadingTarefas(true);
-      const { data, error } = await fetchAllPaginated((from, to) =>
-        supabase
-          .from('postit')
-          .select('*')
-          .order('data', { ascending: true })
-          .order('id', { ascending: true })
-          .range(from, to)
-      );
-      if (error) {
+      try {
+        const data = await listGoogleTasks();
+        const sorted = (data || []).slice().sort((a, b) => {
+          const aTime = a?.data ? new Date(a.data).getTime() : Number.POSITIVE_INFINITY;
+          const bTime = b?.data ? new Date(b.data).getTime() : Number.POSITIVE_INFINITY;
+          return aTime - bTime;
+        });
+        setTarefas(sorted);
+      } catch (error) {
         toast({ title: 'Erro ao carregar tarefas', description: error.message, variant: 'destructive' });
+      } finally {
         setLoadingTarefas(false);
-        return;
       }
-
-      const sorted = (data || []).slice().sort((a, b) => {
-        const aTime = a?.data ? new Date(a.data).getTime() : Number.POSITIVE_INFINITY;
-        const bTime = b?.data ? new Date(b.data).getTime() : Number.POSITIVE_INFINITY;
-        return aTime - bTime;
-      });
-      setTarefas(sorted);
-      setLoadingTarefas(false);
     };
 
     loadTarefas();
   }, [toast]);
 
   const handleConcluir = async (tarefa) => {
-    const { error } = await supabase
-      .from('postit')
-      .update({ concluida: 'S' })
-      .eq('id', tarefa.id);
-
-    if (error) {
+    try {
+      await updateGoogleTask(tarefa.id, { status: 'completed' });
+      setTarefas((prev) => prev.filter((item) => item.id !== tarefa.id));
+    } catch (error) {
       toast({ title: 'Erro ao concluir', description: error.message, variant: 'destructive' });
-      return;
     }
-
-    setTarefas((prev) => prev.filter((item) => item.id !== tarefa.id));
   };
 
   const handleAlterarData = async (tarefa, novaData) => {
     if (!novaData) return;
 
-    const iso = new Date(`${novaData}T00:00:00`).toISOString();
-    const { error } = await supabase
-      .from('postit')
-      .update({ data: iso })
-      .eq('id', tarefa.id);
-
-    if (error) {
+    try {
+      const updatedTask = await updateGoogleTask(tarefa.id, { due: novaData });
+      setTarefas((prev) =>
+        prev.map((item) => (item.id === tarefa.id ? updatedTask : item)),
+      );
+    } catch (error) {
       toast({ title: 'Erro ao atualizar data', description: error.message, variant: 'destructive' });
-      return;
     }
-
-    setTarefas((prev) =>
-      prev.map((item) => (item.id === tarefa.id ? { ...item, data: iso } : item)),
-    );
   };
 
   const openDatePicker = (tarefaId) => {

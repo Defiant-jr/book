@@ -9,8 +9,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
-import { supabase } from '@/lib/customSupabaseClient';
-import { fetchAllPaginated } from '@/lib/supabasePagination';
+import {
+  createGoogleTask,
+  deleteGoogleTask,
+  listGoogleTasks,
+  updateGoogleTask,
+} from '@/services/googleTasksService';
 
 const AdministrativoTarefas = () => {
   const ADMINISTRATIVO_TAREFAS_REF = 11000;
@@ -34,23 +38,14 @@ const AdministrativoTarefas = () => {
 
   const loadTarefas = async () => {
     setLoading(true);
-    const { data, error } = await fetchAllPaginated((from, to) =>
-      supabase
-        .from('postit')
-        .select('*')
-        .order('data', { ascending: false })
-        .order('id', { ascending: false })
-        .range(from, to)
-    );
-
-    if (error) {
+    try {
+      const data = await listGoogleTasks();
+      setTarefas(Array.isArray(data) ? data : []);
+    } catch (error) {
       toast({ title: 'Erro ao carregar', description: error.message, variant: 'destructive' });
+    } finally {
       setLoading(false);
-      return;
     }
-
-    setTarefas(Array.isArray(data) ? data : []);
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -65,36 +60,27 @@ const AdministrativoTarefas = () => {
     }
 
     setLoading(true);
-    const data = dataExecucao ? new Date(`${dataExecucao}T00:00:00`).toISOString() : null;
-    const { error } = await supabase.from('postit').insert([
-      {
-        tarefa,
-        concluida: 'N',
-        data,
-      },
-    ]);
-
-    if (error) {
+    try {
+      await createGoogleTask({ title: tarefa, due: dataExecucao || null });
+      setNovaTarefa('');
+      setDataExecucao('');
+      await loadTarefas();
+      toast({ title: 'Tarefa criada', description: 'A tarefa foi adicionada ao Google Tasks.' });
+    } catch (error) {
       toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
+    } finally {
       setLoading(false);
-      return;
     }
-
-    setNovaTarefa('');
-    setDataExecucao('');
-    await loadTarefas();
-    toast({ title: 'Tarefa criada', description: 'A tarefa foi adicionada.' });
   };
 
   const handleDelete = async (tarefa) => {
-    const { error } = await supabase.from('postit').delete().eq('id', tarefa.id);
-    if (error) {
+    try {
+      await deleteGoogleTask(tarefa.id);
+      setTarefas((prev) => prev.filter((item) => item.id !== tarefa.id));
+      toast({ title: 'Tarefa removida', description: 'A tarefa foi excluida do Google Tasks.' });
+    } catch (error) {
       toast({ title: 'Erro ao remover', description: error.message, variant: 'destructive' });
-      return;
     }
-
-    setTarefas((prev) => prev.filter((item) => item.id !== tarefa.id));
-    toast({ title: 'Tarefa removida', description: 'A tarefa foi excluida.' });
   };
 
   const iniciarEdicao = (tarefa) => {
@@ -116,24 +102,21 @@ const AdministrativoTarefas = () => {
       return;
     }
 
-    const iso = edicaoData ? new Date(`${edicaoData}T00:00:00`).toISOString() : null;
-    const { error } = await supabase
-      .from('postit')
-      .update({ tarefa: descricao, data: iso })
-      .eq('id', tarefaEmEdicao);
-
-    if (error) {
+    try {
+      const updatedTask = await updateGoogleTask(tarefaEmEdicao, {
+        title: descricao,
+        due: edicaoData || null,
+      });
+      setTarefas((prev) =>
+        prev.map((item) =>
+          item.id === tarefaEmEdicao ? updatedTask : item,
+        ),
+      );
+      cancelarEdicao();
+      toast({ title: 'Tarefa atualizada', description: 'A tarefa foi alterada no Google Tasks.' });
+    } catch (error) {
       toast({ title: 'Erro ao atualizar', description: error.message, variant: 'destructive' });
-      return;
     }
-
-    setTarefas((prev) =>
-      prev.map((item) =>
-        item.id === tarefaEmEdicao ? { ...item, tarefa: descricao, data: iso } : item,
-      ),
-    );
-    cancelarEdicao();
-    toast({ title: 'Tarefa atualizada', description: 'A tarefa foi alterada.' });
   };
 
   return (

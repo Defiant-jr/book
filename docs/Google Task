@@ -1,0 +1,59 @@
+Você consegue essas informações no Google Cloud Console e gera o REFRESH_TOKEN pelo OAuth 2.0 Playground.
+
+Passo a passo:
+
+Acesse o Google Cloud Console:
+https://console.cloud.google.com/
+
+Crie ou selecione um projeto.
+
+Ative a API:
+
+Vá em APIs & Services > Library
+Procure Google Tasks API
+Clique em Enable
+Configure a tela OAuth:
+
+Vá em APIs & Services > OAuth consent screen
+Tipo: normalmente External
+Adicione seu e-mail como usuário de teste, se ficar em modo Testing
+Salve
+Crie as credenciais:
+
+Vá em APIs & Services > Credentials
+Create credentials > OAuth client ID
+Tipo: Web application
+Em Authorized redirect URIs, adicione:
+https://developers.google.com/oauthplayground
+Ao salvar, você receberá:
+GOOGLE_TASKS_CLIENT_ID="..."
+GOOGLE_TASKS_CLIENT_SECRET="..."
+Gere o refresh token:
+
+Acesse:
+https://developers.google.com/oauthplayground/
+Clique na engrenagem no canto direito.
+Marque Use your own OAuth credentials.
+Cole o Client ID e Client Secret.
+No campo de scopes, use:
+https://www.googleapis.com/auth/tasks
+Clique Authorize APIs.
+Faça login na conta Google que terá as tarefas.
+Clique Exchange authorization code for tokens.
+Copie o Refresh token.
+Preencha no .env.local:
+
+GOOGLE_TASKS_CLIENT_ID="seu-client-id"
+GOOGLE_TASKS_CLIENT_SECRET="seu-client-secret"
+GOOGLE_TASKS_REFRESH_TOKEN="seu-refresh-token"
+GOOGLE_TASKS_LIST_ID="@default"
+Depois reinicie o sistema.
+
+Referências oficiais:
+
+Escopos do Google Tasks: 
+https://developers.google.com/workspace/tasks/auth
+OAuth 2.0 Playground: 
+https://developers.google.com/oauthplayground/
+OAuth 2.0 Google APIs: 
+https://developers.google.com/identity/protocols/oauth2

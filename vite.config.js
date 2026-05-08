@@ -5,6 +5,7 @@ import { createLogger, defineConfig } from 'vite';
 import inlineEditPlugin from './plugins/visual-editor/vite-plugin-react-inline-editor.js';
 import editModeDevPlugin from './plugins/visual-editor/vite-plugin-edit-mode.js';
 import iframeRouteRestorationPlugin from './plugins/vite-plugin-iframe-route-restoration.js';
+import { createApp } from './server/app.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -191,6 +192,24 @@ const addTransformIndexHtml = {
 	},
 };
 
+const apiMiddlewarePlugin = {
+	name: 'book-api-middleware',
+	configureServer(server) {
+		let appPromise;
+		server.middlewares.use((req, res, next) => {
+			if (!req.url?.startsWith('/api/')) {
+				next();
+				return;
+			}
+
+			appPromise ??= createApp({ withFrontend: false }).then(({ app }) => app);
+			appPromise
+				.then((app) => app(req, res, next))
+				.catch(next);
+		});
+	},
+};
+
 console.warn = () => undefined;
 
 const logger = createLogger();
@@ -208,6 +227,7 @@ export default defineConfig({
 	customLogger: logger,
 	plugins: [
 		...(isDev ? [inlineEditPlugin(), editModeDevPlugin(), iframeRouteRestorationPlugin()] : []),
+		...(isDev ? [apiMiddlewarePlugin] : []),
 		react(),
 		addTransformIndexHtml
 	],
