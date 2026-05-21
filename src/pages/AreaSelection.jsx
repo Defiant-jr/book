@@ -80,10 +80,11 @@ const AreaSelection = () => {
     },
     {
       title: 'Parametros',
-      description: 'Configurações e parâmetros do sistema para implementação futura.',
+      description: 'Configurações e parametros do sistema.',
       icon: Sliders,
+      action: () => navigate('/parametros'),
       sortKey: 'parametros',
-      status: 'Em breve',
+      status: 'Disponivel',
     },
   ];
 

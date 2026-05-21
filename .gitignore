@@ -17,7 +17,10 @@ logs/
 !*.example
 .env.local
 .env.production
-.emv.download
+env.local
+env.production
+env.download
+env*.download
 
 # Editor directories
 .idea/

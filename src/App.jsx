@@ -26,6 +26,7 @@ import Operacional from '@/pages/Operacional';
 import OperacoesCadastroAluno from '@/pages/OperacoesCadastroAluno';
 import OperacoesCadastroRateio from '@/pages/OperacoesCadastroRateio';
 import OperacoesCadastroTurma from '@/pages/OperacoesCadastroTurma';
+import Parametros from '@/pages/Parametros';
 import Pedagogico from '@/pages/Pedagogico';
 import RelatorioContas from '@/pages/RelatorioContas';
 import RelatorioPagosRecebidos from '@/pages/RelatorioPagosRecebidos';
@@ -108,6 +109,14 @@ function App() {
 							element={
 								<PrivateRoute>
 									<Pedagogico />
+								</PrivateRoute>
+							}
+						/>
+						<Route
+							path="/parametros"
+							element={
+								<PrivateRoute>
+									<Parametros />
 								</PrivateRoute>
 							}
 						/>
