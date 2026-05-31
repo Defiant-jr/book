@@ -11,6 +11,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import { format as formatDateFns } from 'date-fns';
 import { getLancamentoStatus, STATUS, STATUS_LABELS, STATUS_COLORS, STATUS_OPTIONS } from '@/lib/lancamentoStatus';
+import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
 
 const STATUS_ABERTO = 'em_aberto';
 const STATUS_ABERTO_LABEL = 'Em Aberto';
@@ -23,6 +24,7 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
       const { toast } = useToast();
       const [contas, setContas] = useState([]);
       const [loading, setLoading] = useState(false);
+      const [financialAdjustments] = useFinanceAdjustments();
       const [filters, setFilters] = useState({
         cliente: '',
         status: 'todos',
@@ -124,12 +126,12 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
         const status = getStatus(conta);
         const valor = Number(conta?.valor) || 0;
         const valorAberto = Number.isFinite(conta?.valor_aberto) ? Number(conta?.valor_aberto) : valor;
+        const descPontual = Number(conta?.desc_pontual);
         if (status === STATUS.A_VENCER) {
-          const descPontual = Number(conta?.desc_pontual);
           return Number.isFinite(descPontual) ? descPontual : valor;
         }
         if (status === STATUS.ATRASADO) {
-          return valorAberto;
+          return Number.isFinite(descPontual) ? descPontual : valorAberto;
         }
         return valor;
       };
@@ -209,6 +211,12 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
     
       const getStatusColor = (status) => STATUS_COLORS[status] || 'bg-gray-500/20 text-gray-400 border-gray-500/30';
       const getStatusLabel = (status) => STATUS_LABELS[status] || status;
+      const getStatusDisplay = (conta, status) => {
+        if (status !== STATUS.ATRASADO) return getStatusLabel(status);
+        const valorAberto = Number(conta?.valor_aberto);
+        const valorAbertoLabel = Number.isFinite(valorAberto) ? `${formatCurrency(valorAberto)} ` : '';
+        return `${valorAbertoLabel}${getStatusLabel(status)}`;
+      };
     
       const groupedContas = useMemo(() => {
         return filteredContas.reduce((acc, conta) => {
@@ -238,6 +246,9 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
       const totalAbertoValor = totalAberto.reduce((s, c) => s + valorParaReceber(c), 0);
       const totalAtrasadoValor = totalAtrasado.reduce((s, c) => s + valorParaReceber(c), 0);
       const totalGeral = filteredContas.reduce((sum, conta) => sum + valorParaReceber(conta), 0);
+      const emCashAmount = Number(financialAdjustments.cash) || 0;
+      const investimentoAmount = Number(financialAdjustments.investimento) || 0;
+      const totalFiltradoComAjustes = totalGeral + emCashAmount - investimentoAmount;
 
       const totalAbertoPorUnidade = calculateTotalsByUnit(totalAberto, valorParaReceber);
       const totalAtrasadoPorUnidade = calculateTotalsByUnit(totalAtrasado, valorParaReceber);
@@ -285,7 +296,21 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
                 <DollarSign className="w-4 h-4 text-blue-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-blue-400">{formatCurrency(totalGeral)}</div>
+                <div className="text-2xl font-bold text-blue-400">{formatCurrency(totalFiltradoComAjustes)}</div>
+                <div className="mt-2 space-y-1 text-xs text-gray-400">
+                  <div className="flex justify-between">
+                    <span>Total Filtrado:</span>
+                    <span className="font-semibold">{formatCurrency(totalGeral)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Em Cash:</span>
+                    <span className="font-semibold text-green-300">{formatCurrency(emCashAmount)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Investimentos:</span>
+                    <span className="font-semibold text-amber-300">{formatCurrency(investimentoAmount)}</span>
+                  </div>
+                </div>
               </CardContent>
             </Card>
             {!isRecebidos && (
@@ -393,7 +418,7 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
                             </div>
                             <div className="flex items-center gap-4">
                               {!isRecebidos && (
-                                <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(status)}`}>{getStatusLabel(status)}</span>
+                                <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(status)}`}>{getStatusDisplay(conta, status)}</span>
                               )}
                               <div className="text-lg font-bold text-green-400">{formatCurrency(valorParaReceber(conta))}</div>
                               {!isRecebidos && (

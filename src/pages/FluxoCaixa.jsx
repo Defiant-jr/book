@@ -90,13 +90,15 @@ const FluxoCaixa = () => {
       const getValorReceber = (item) => {
         if (item?.tipoNorm !== 'entrada') return 0;
         const valor = Number(item?.valor) || 0;
+        const descPontual = Number(item?.desc_pontual);
         if (item.statusNorm === STATUS.A_VENCER) {
-          const descPontual = Number(item?.desc_pontual);
           return Number.isFinite(descPontual) ? descPontual : valor;
         }
         if (item.statusNorm === STATUS.ATRASADO) {
           const valorAberto = Number(item?.valor_aberto);
-          return Number.isFinite(valorAberto) ? valorAberto : valor;
+          return Number.isFinite(descPontual)
+            ? descPontual
+            : Number.isFinite(valorAberto) ? valorAberto : valor;
         }
         return valor;
       };

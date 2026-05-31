@@ -109,12 +109,12 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
             const status = getStatus(conta);
             const valor = Number(conta?.valor) || 0;
             const valorAberto = Number.isFinite(conta?.valor_aberto) ? Number(conta?.valor_aberto) : valor;
+            const descPontual = Number(conta?.desc_pontual);
             if (status === STATUS.A_VENCER) {
-              const descPontual = Number(conta?.desc_pontual);
               return Number.isFinite(descPontual) ? descPontual : valor;
             }
             if (status === STATUS.ATRASADO) {
-              return valorAberto;
+              return Number.isFinite(descPontual) ? descPontual : valorAberto;
             }
             return valor;
           };
@@ -290,14 +290,22 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
         const status = getStatus(lancamento);
         const valor = Number(lancamento?.valor) || 0;
         const valorAberto = Number.isFinite(lancamento?.valor_aberto) ? Number(lancamento?.valor_aberto) : valor;
+        const descPontual = Number(lancamento?.desc_pontual);
         if (status === STATUS.A_VENCER) {
-          const descPontual = Number(lancamento?.desc_pontual);
           return Number.isFinite(descPontual) ? descPontual : valor;
         }
         if (status === STATUS.ATRASADO) {
-          return valorAberto;
+          return Number.isFinite(descPontual) ? descPontual : valorAberto;
         }
         return valor;
+      };
+      const getJurosReceber = (lancamento) => {
+        if (getStatus(lancamento) !== STATUS.ATRASADO) return 0;
+        const valor = Number(lancamento?.valor) || 0;
+        const valorAberto = Number.isFinite(lancamento?.valor_aberto) ? Number(lancamento?.valor_aberto) : valor;
+        const descPontual = Number(lancamento?.desc_pontual);
+        if (!Number.isFinite(descPontual)) return 0;
+        return valorAberto - descPontual;
       };
       const getValorPagar = (lancamento) => {
         const status = getStatus(lancamento);
@@ -317,6 +325,9 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
       const receberAtrasadoAnterior = entradasEmAberto
         .filter(getOverdueBeforeCurrentMonth)
         .reduce((sum, c) => sum + getValorReceber(c), 0);
+      const jurosReceberAtrasadoAnterior = entradasEmAberto
+        .filter(getOverdueBeforeCurrentMonth)
+        .reduce((sum, c) => sum + getJurosReceber(c), 0);
       const pagarAtrasadoAnterior = saidasEmAberto
         .filter(getOverdueBeforeCurrentMonth)
         .reduce((sum, c) => sum + getValorPagar(c), 0);
@@ -328,11 +339,15 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
       const receberAtrasado = entradasPeriodo
         .filter(c => getStatus(c) === STATUS.ATRASADO)
         .reduce((sum, c) => sum + getValorReceber(c), 0) + receberAtrasadoAnterior;
+      const jurosReceber = entradasPeriodo
+        .filter(c => getStatus(c) === STATUS.ATRASADO)
+        .reduce((sum, c) => sum + getJurosReceber(c), 0) + jurosReceberAtrasadoAnterior;
       const emCashAmount = Number(financialAdjustments.cash) || 0;
       const investimentoAmount = Number(financialAdjustments.investimento) || 0;
       const ajusteLiquido = emCashAmount - investimentoAmount;
       const totalReceberComAjustes = totalReceber + ajusteLiquido;
       const totalReceberPendente = receberAberto + receberAtrasado + ajusteLiquido;
+      const totalReceberComJuros = totalReceberPendente + jurosReceber;
 
       const totalPagar = saidasPeriodo.reduce((sum, c) => sum + getValorPagar(c), 0);
       const pagarAberto = saidasPeriodo
@@ -358,7 +373,9 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
             { label: 'Em Atraso', value: formatCurrency(receberAtrasado), color: 'text-red-400' },
             { label: 'Em Cash', value: formatCurrency(emCashAmount), color: 'text-green-300' },
             { label: 'Investimento', value: formatCurrency(investimentoAmount), color: 'text-amber-300' },
-            { label: 'Pendentes', value: formatCurrency(totalReceberPendente) },
+            { label: 'Total a Receber', value: formatCurrency(totalReceberPendente) },
+            { label: 'Juros', value: formatCurrency(jurosReceber), color: 'text-orange-300' },
+            { label: 'Total com Juros', value: formatCurrency(totalReceberComJuros), color: 'text-green-300' },
           ]
         },
         {
@@ -370,7 +387,7 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
           details: [
             { label: 'Em Aberto', value: formatCurrency(pagarAberto) },
             { label: 'Vencido', value: formatCurrency(pagarAtrasado), color: 'text-red-400' },
-            { label: 'Pendentes', value: formatCurrency(totalPagarPendente) },
+            { label: 'Total a Pagar', value: formatCurrency(totalPagarPendente) },
           ]
         },
         {
@@ -640,5 +657,3 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
     };
     
     export default Dashboard;
-
-
