@@ -102,13 +102,14 @@ const MapaMensal = () => {
   const valorReceber = (item) => {
     const status = getLancamentoStatus(item, todayStr);
     const valor = Number(item?.valor) || 0;
-    const valorAberto = Number.isFinite(item?.valor_aberto) ? Number(item?.valor_aberto) : valor;
+    const valorAbertoRaw = Number(item?.valor_aberto);
+    const valorAberto = Number.isFinite(valorAbertoRaw) ? valorAbertoRaw : valor;
+    const descPontual = Number(item?.desc_pontual);
     if (status === STATUS.A_VENCER) {
-      const descPontual = Number(item?.desc_pontual);
       return Number.isFinite(descPontual) ? descPontual : valor;
     }
     if (status === STATUS.ATRASADO) {
-      return valorAberto;
+      return Number.isFinite(descPontual) ? descPontual : valorAberto;
     }
     return valor;
   };

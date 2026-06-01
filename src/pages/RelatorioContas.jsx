@@ -110,17 +110,26 @@ import { getLancamentoStatus, normalizeTipo, STATUS, STATUS_LABELS, STATUS_OPTIO
         };
 
         const formatCurrency = (value) => (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const formatOptionalCurrency = (value) => Number.isFinite(value) && value !== 0 ? formatCurrency(value) : '';
+        const valorAbertoConta = (conta) => {
+            const valorAberto = Number(conta?.valor_aberto);
+            return Number.isFinite(valorAberto) && valorAberto !== 0 ? valorAberto : null;
+        };
         const valorConta = (conta) => {
             const tipoNorm = normalizeTipo(conta?.tipo);
             const valor = Number(conta?.valor) || 0;
-            const valorAberto = Number.isFinite(conta?.valor_aberto) ? Number(conta?.valor_aberto) : valor;
+            const valorAbertoRaw = Number(conta?.valor_aberto);
+            const valorAberto = Number.isFinite(valorAbertoRaw) ? valorAbertoRaw : valor;
+            const descPontual = Number(conta?.desc_pontual);
             const status = getStatus(conta);
             if (status === STATUS.ATRASADO) {
+                if (tipoNorm === 'entrada' && Number.isFinite(descPontual)) {
+                    return descPontual;
+                }
                 return valorAberto;
             }
             if (tipoNorm === 'entrada') {
                 if (status === STATUS.A_VENCER) {
-                    const descPontual = Number(conta?.desc_pontual);
                     return Number.isFinite(descPontual) ? descPontual : valor;
                 }
             }
@@ -144,14 +153,19 @@ import { getLancamentoStatus, normalizeTipo, STATUS, STATUS_LABELS, STATUS_OPTIO
             const doc = new jsPDF();
             doc.text("Relatório de Contas", 14, 16);
             doc.autoTable({
-                head: [['Data', 'Tipo', 'Cliente/Fornecedor', 'Descrição', 'Unidade', 'Status', 'Valor']],
+                head: [['Data', 'Tipo', 'Cliente/Fornecedor', 'Descrição', 'Unidade', 'Status', 'Valor Aberto', 'Valor']],
                 body: filteredAndSortedContas.map(c => [
-                    formatDate(c.data), c.tipo, c.cliente_fornecedor, c.descricao, c.unidade, formatStatusDisplay(getStatus(c)), formatCurrency(valorConta(c))
+                    formatDate(c.data), c.tipo, c.cliente_fornecedor, c.descricao, c.unidade, formatStatusDisplay(getStatus(c)), formatOptionalCurrency(valorAbertoConta(c)), formatCurrency(valorConta(c))
                 ]),
                 startY: 20,
                 theme: 'grid',
                 styles: { fontSize: 8 },
                 headStyles: { fillColor: [22, 163, 74] },
+                didParseCell: (data) => {
+                    if (data.section === 'body' && data.column.index === 6) {
+                        data.cell.styles.textColor = [239, 68, 68];
+                    }
+                },
             });
             doc.save('relatorio_contas.pdf');
         };
@@ -273,6 +287,7 @@ import { getLancamentoStatus, normalizeTipo, STATUS, STATUS_LABELS, STATUS_OPTIO
                                                 <th scope="col" className="px-6 py-3">Descrição</th>
                                                 <th scope="col" className="px-6 py-3 cursor-pointer" onClick={() => requestSort('unidade')}><div className="flex items-center">Unidade <SortIcon columnKey="unidade" /></div></th>
                                                 <th scope="col" className="px-6 py-3">Status</th>
+                                                <th scope="col" className="px-6 py-3 text-right">Valor Aberto</th>
                                                 <th scope="col" className="px-6 py-3 text-right cursor-pointer" onClick={() => requestSort('valor')}><div className="flex items-center justify-end">Valor <SortIcon columnKey="valor" /></div></th>
                                             </tr>
                                         </thead>
@@ -285,13 +300,14 @@ import { getLancamentoStatus, normalizeTipo, STATUS, STATUS_LABELS, STATUS_OPTIO
                                                     <td className="px-6 py-4">{conta.descricao}</td>
                                                     <td className="px-6 py-4">{conta.unidade}</td>
                                                     <td className="px-6 py-4">{formatStatusDisplay(getStatus(conta))}</td>
+                                                    <td className="px-6 py-4 text-right font-mono text-red-400">{formatOptionalCurrency(valorAbertoConta(conta))}</td>
                                                     <td className={`px-6 py-4 text-right font-mono ${conta.tipo === 'Entrada' ? 'text-green-400' : 'text-red-400'}`}>{formatCurrency(valorConta(conta))}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
                                         <tfoot>
                                             <tr className="font-semibold text-white bg-white/5">
-                                                <td colSpan={6} className="px-6 py-3 text-right">Total</td>
+                                                <td colSpan={7} className="px-6 py-3 text-right">Total</td>
                                                 <td className="px-6 py-3 text-right font-mono">{formatCurrency(totalGeral)}</td>
                                             </tr>
                                         </tfoot>

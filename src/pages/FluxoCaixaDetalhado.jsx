@@ -82,13 +82,13 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
         if (item?.tipoNorm && item.tipoNorm !== 'entrada') return 0;
         const status = item?.statusNorm ?? getLancamentoStatus(item, todayStr);
         const valor = Number(item?.valor) || 0;
+        const descPontual = Number(item?.desc_pontual);
         if (status === STATUS.A_VENCER) {
-          const descPontual = Number(item?.desc_pontual);
           return Number.isFinite(descPontual) ? descPontual : valor;
         }
         if (status === STATUS.ATRASADO) {
           const valorAberto = Number(item?.valor_aberto);
-          return Number.isFinite(valorAberto) ? valorAberto : valor;
+          return Number.isFinite(descPontual) ? descPontual : (Number.isFinite(valorAberto) ? valorAberto : valor);
         }
         return valor;
       };

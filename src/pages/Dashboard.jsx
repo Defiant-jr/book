@@ -358,7 +358,7 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
         .reduce((sum, c) => sum + getValorPagar(c), 0) + pagarAtrasadoAnterior;
       const totalPagarPendente = pagarAberto + pagarAtrasado;
 
-      const resultadoOperacional = totalReceberPendente - totalPagar;
+      const resultadoOperacional = totalReceberPendente - totalPagarPendente;
       const resultadoOperacionalComAjustes = resultadoOperacional;
     
       const summaryCards = [
@@ -380,7 +380,7 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
         },
         {
           title: 'Total a Pagar',
-          value: formatCurrency(totalPagar),
+          value: formatCurrency(totalPagarPendente),
           icon: TrendingDown,
           color: 'from-red-500 to-red-600',
           bgColor: 'bg-red-500/10',
