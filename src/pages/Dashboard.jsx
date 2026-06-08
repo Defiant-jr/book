@@ -106,17 +106,9 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
           const todayStr = new Date().toISOString().split('T')[0];
           const getStatus = (conta) => getLancamentoStatus(conta, todayStr);
           const getValorReceber = (conta) => {
-            const status = getStatus(conta);
             const valor = Number(conta?.valor) || 0;
-            const valorAberto = Number.isFinite(conta?.valor_aberto) ? Number(conta?.valor_aberto) : valor;
             const descPontual = Number(conta?.desc_pontual);
-            if (status === STATUS.A_VENCER) {
-              return Number.isFinite(descPontual) ? descPontual : valor;
-            }
-            if (status === STATUS.ATRASADO) {
-              return Number.isFinite(descPontual) ? descPontual : valorAberto;
-            }
-            return valor;
+            return Number.isFinite(descPontual) ? descPontual : valor;
           };
           const getValorPagar = (conta) => {
             const status = getStatus(conta);
@@ -287,17 +279,9 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
 
       const getValorBase = (lancamento) => Number(lancamento?.valor) || 0;
       const getValorReceber = (lancamento) => {
-        const status = getStatus(lancamento);
         const valor = Number(lancamento?.valor) || 0;
-        const valorAberto = Number.isFinite(lancamento?.valor_aberto) ? Number(lancamento?.valor_aberto) : valor;
         const descPontual = Number(lancamento?.desc_pontual);
-        if (status === STATUS.A_VENCER) {
-          return Number.isFinite(descPontual) ? descPontual : valor;
-        }
-        if (status === STATUS.ATRASADO) {
-          return Number.isFinite(descPontual) ? descPontual : valorAberto;
-        }
-        return valor;
+        return Number.isFinite(descPontual) ? descPontual : valor;
       };
       const getJurosReceber = (lancamento) => {
         if (getStatus(lancamento) !== STATUS.ATRASADO) return 0;

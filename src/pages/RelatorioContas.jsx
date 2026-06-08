@@ -121,17 +121,12 @@ import { getLancamentoStatus, normalizeTipo, STATUS, STATUS_LABELS, STATUS_OPTIO
             const valorAbertoRaw = Number(conta?.valor_aberto);
             const valorAberto = Number.isFinite(valorAbertoRaw) ? valorAbertoRaw : valor;
             const descPontual = Number(conta?.desc_pontual);
+            if (tipoNorm === 'entrada') {
+                return Number.isFinite(descPontual) ? descPontual : valor;
+            }
             const status = getStatus(conta);
             if (status === STATUS.ATRASADO) {
-                if (tipoNorm === 'entrada' && Number.isFinite(descPontual)) {
-                    return descPontual;
-                }
                 return valorAberto;
-            }
-            if (tipoNorm === 'entrada') {
-                if (status === STATUS.A_VENCER) {
-                    return Number.isFinite(descPontual) ? descPontual : valor;
-                }
             }
             return valor;
         };

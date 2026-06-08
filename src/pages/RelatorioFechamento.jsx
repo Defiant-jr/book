@@ -50,19 +50,19 @@ const RelatorioFechamento = () => {
     const amount = Number(value || 0);
     return amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   };
+  const formatValorAberto = (value) => {
+    const amount = Number(value || 0);
+    return amount !== 0 ? formatCurrency(amount) : '';
+  };
   const todayStr = new Date().toISOString().split('T')[0];
   const valorReceber = (item) => {
-    const status = getLancamentoStatus(item, todayStr);
     const valor = Number(item?.valor) || 0;
-    const valorAberto = Number.isFinite(item?.valor_aberto) ? Number(item?.valor_aberto) : valor;
-    if (status === STATUS.A_VENCER) {
-      const descPontual = Number(item?.desc_pontual);
-      return Number.isFinite(descPontual) ? descPontual : valor;
-    }
-    if (status === STATUS.ATRASADO) {
-      return valorAberto;
-    }
-    return valor;
+    const descPontual = Number(item?.desc_pontual);
+    return Number.isFinite(descPontual) ? descPontual : valor;
+  };
+  const valorAbertoRelatorio = (item) => {
+    const valorAberto = Number(item?.valor_aberto);
+    return Number.isFinite(valorAberto) ? valorAberto : 0;
   };
   const valorPagar = (item) => {
     const status = getLancamentoStatus(item, todayStr);
@@ -113,9 +113,17 @@ const RelatorioFechamento = () => {
     () => entries.reduce((sum, item) => sum + valorReceber(item), 0),
     [entries]
   );
+  const totalEntriesOpen = useMemo(
+    () => entries.reduce((sum, item) => sum + valorAbertoRelatorio(item), 0),
+    [entries]
+  );
 
   const totalExits = useMemo(
     () => exits.reduce((sum, item) => sum + valorPagar(item), 0),
+    [exits]
+  );
+  const totalExitsOpen = useMemo(
+    () => exits.reduce((sum, item) => sum + valorAbertoRelatorio(item), 0),
     [exits]
   );
 
@@ -254,13 +262,14 @@ const RelatorioFechamento = () => {
       const tableStartY = cursorY + 8;
       doc.autoTable({
         startY: tableStartY,
-        head: [['Nome', 'Contato', 'Aluno', 'Vencimento', 'Unidade', 'Valor']],
+        head: [['Nome', 'Contato', 'Aluno', 'Vencimento', 'Unidade', 'Valor Aberto', 'Valor']],
         body: items.map((item) => [
           item.cliente_fornecedor || '-',
           item.contato || '-',
           item.aluno || '-',
           formatDate(item.data),
           item.unidade || '-',
+          formatValorAberto(valorAbertoRelatorio(item)),
           formatCurrency(getValor(item)),
         ]),
         theme: 'grid',
@@ -268,6 +277,8 @@ const RelatorioFechamento = () => {
         headStyles: { fillColor: [37, 99, 235], fontSize: fontSize + 1 },
         columnStyles: {
           3: { halign: 'right' },
+          5: { halign: 'right', textColor: [220, 38, 38] },
+          6: { halign: 'right' },
         },
         didParseCell: (data) => {
           if (data.section !== 'body') return;
@@ -320,6 +331,10 @@ const RelatorioFechamento = () => {
     if (entries.length) {
       buildTable('Entradas em aberto e a vencer', entries, valorReceber, { fontSize: 8, cellPadding: 3 });
       cursorY += 18;
+      doc.setTextColor(220, 38, 38);
+      doc.text(`Total valor aberto entradas: ${formatValorAberto(totalEntriesOpen)}`, marginLeft, cursorY);
+      doc.setTextColor(0, 0, 0);
+      cursorY += 14;
       doc.text(`Total de entradas: ${formatCurrency(totalEntries)}`, marginLeft, cursorY);
     } else {
       cursorY += 24;
@@ -330,6 +345,10 @@ const RelatorioFechamento = () => {
       cursorY += 32;
       buildTable('Saidas em atraso e em aberto', exits, valorPagar, { fontSize: 8, cellPadding: 3 });
       cursorY += 18;
+      doc.setTextColor(220, 38, 38);
+      doc.text(`Total valor aberto saidas: ${formatValorAberto(totalExitsOpen)}`, marginLeft, cursorY);
+      doc.setTextColor(0, 0, 0);
+      cursorY += 14;
       doc.text(`Total de saidas: ${formatCurrency(totalExits)}`, marginLeft, cursorY);
     } else {
       cursorY += 32;
@@ -337,7 +356,9 @@ const RelatorioFechamento = () => {
     }
 
     const summaryRows = [
+      { label: 'Valor Aberto Entradas', value: formatValorAberto(totalEntriesOpen), color: [220, 38, 38] },
       { label: 'Total de Entradas', value: formatCurrency(totalEntries), color: [22, 163, 74] },
+      { label: 'Valor Aberto Saidas', value: formatValorAberto(totalExitsOpen), color: [220, 38, 38] },
       { label: 'Total de Saidas', value: formatCurrency(totalExits), color: [220, 38, 38] },
       { label: 'Saldo do Fechamento', value: formatCurrency(saldoFechamento), color: saldoFechamento >= 0 ? [22, 163, 74] : [220, 38, 38] },
     ];
@@ -499,6 +520,7 @@ const RelatorioFechamento = () => {
                           <th className="px-4 py-3">Aluno</th>
                           <th className="px-4 py-3">Vencimento</th>
                           <th className="px-4 py-3">Unidade</th>
+                          <th className="px-4 py-3 text-right">Valor Aberto</th>
                           <th className="px-4 py-3 text-right">Valor</th>
                         </tr>
                       </thead>
@@ -513,6 +535,7 @@ const RelatorioFechamento = () => {
                             <td className="px-4 py-3">{item.aluno || '-'}</td>
                             <td className="px-4 py-3">{formatDate(item.data)}</td>
                             <td className="px-4 py-3">{item.unidade || '-'}</td>
+                            <td className="px-4 py-3 text-right font-medium text-red-400">{formatValorAberto(valorAbertoRelatorio(item))}</td>
                             <td className="px-4 py-3 text-right font-medium text-green-300">{formatCurrency(valorReceber(item))}</td>
                           </tr>
                         ))}
@@ -520,6 +543,7 @@ const RelatorioFechamento = () => {
                       <tfoot>
                         <tr>
                           <td colSpan={5} className="px-4 py-3 text-right font-semibold text-gray-300">Total de entradas</td>
+                          <td className="px-4 py-3 text-right font-semibold text-red-400">{formatValorAberto(totalEntriesOpen)}</td>
                           <td className="px-4 py-3 text-right font-semibold text-green-300">{formatCurrency(totalEntries)}</td>
                         </tr>
                       </tfoot>
@@ -547,6 +571,7 @@ const RelatorioFechamento = () => {
                           <th className="px-4 py-3">Aluno</th>
                           <th className="px-4 py-3">Vencimento</th>
                           <th className="px-4 py-3">Unidade</th>
+                          <th className="px-4 py-3 text-right">Valor Aberto</th>
                           <th className="px-4 py-3 text-right">Valor</th>
                         </tr>
                       </thead>
@@ -561,6 +586,7 @@ const RelatorioFechamento = () => {
                             <td className="px-4 py-3">{item.aluno || '-'}</td>
                             <td className="px-4 py-3">{formatDate(item.data)}</td>
                             <td className="px-4 py-3">{item.unidade || '-'}</td>
+                            <td className="px-4 py-3 text-right font-medium text-red-400">{formatValorAberto(valorAbertoRelatorio(item))}</td>
                             <td className="px-4 py-3 text-right font-medium text-red-300">{formatCurrency(valorPagar(item))}</td>
                           </tr>
                         ))}
@@ -568,6 +594,7 @@ const RelatorioFechamento = () => {
                       <tfoot>
                         <tr>
                           <td colSpan={5} className="px-4 py-3 text-right font-semibold text-gray-300">Total de saidas</td>
+                          <td className="px-4 py-3 text-right font-semibold text-red-400">{formatValorAberto(totalExitsOpen)}</td>
                           <td className="px-4 py-3 text-right font-semibold text-red-300">{formatCurrency(totalExits)}</td>
                         </tr>
                       </tfoot>
@@ -581,8 +608,16 @@ const RelatorioFechamento = () => {
                   <h4 className="text-lg font-semibold text-white mb-4">Resumo dos Totais</h4>
                   <dl className="space-y-3 text-sm">
                     <div className="flex items-center justify-between">
+                      <dt className="text-gray-400 font-medium">Valor Aberto Entradas</dt>
+                      <dd className="text-red-400 font-semibold">{formatValorAberto(totalEntriesOpen)}</dd>
+                    </div>
+                    <div className="flex items-center justify-between">
                       <dt className="text-gray-400 font-medium">Total de Entradas</dt>
                       <dd className="text-green-300 font-semibold">{formatCurrency(totalEntries)}</dd>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <dt className="text-gray-400 font-medium">Valor Aberto Saidas</dt>
+                      <dd className="text-red-400 font-semibold">{formatValorAberto(totalExitsOpen)}</dd>
                     </div>
                     <div className="flex items-center justify-between">
                       <dt className="text-gray-400 font-medium">Total de Saidas</dt>
