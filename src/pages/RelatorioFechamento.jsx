@@ -64,6 +64,8 @@ const RelatorioFechamento = () => {
     const valorAberto = Number(item?.valor_aberto);
     return Number.isFinite(valorAberto) ? valorAberto : 0;
   };
+  const isSaida = (item) => String(item?.tipo || '').trim().toLowerCase() === 'saida';
+  const formatValorAbertoItem = (item) => (isSaida(item) ? '' : formatValorAberto(valorAbertoRelatorio(item)));
   const valorPagar = (item) => {
     const status = getLancamentoStatus(item, todayStr);
     const valor = Number(item?.valor) || 0;
@@ -78,6 +80,20 @@ const RelatorioFechamento = () => {
     if (!value) return '-';
     const parsed = new Date(`${value}T00:00:00`);
     return Number.isNaN(parsed.getTime()) ? '-' : format(parsed, 'dd/MM/yyyy');
+  };
+  const formatDateWithWeekday = (value) => {
+    if (!value) return '-';
+    const parsed = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(parsed.getTime())) return '-';
+    const weekday = parsed.toLocaleDateString('pt-BR', { weekday: 'long', timeZone: 'UTC' });
+    return `${formatDate(value)} - ${weekday}`;
+  };
+  const isWeekendDate = (value) => {
+    if (!value) return false;
+    const parsed = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(parsed.getTime())) return false;
+    const day = parsed.getUTCDay();
+    return day === 0 || day === 6;
   };
 
   const isAtrasado = (item) => getLancamentoStatus(item, todayStr) === STATUS.ATRASADO;
@@ -267,9 +283,9 @@ const RelatorioFechamento = () => {
           item.cliente_fornecedor || '-',
           item.contato || '-',
           item.aluno || '-',
-          formatDate(item.data),
+          formatDateWithWeekday(item.data),
           item.unidade || '-',
-          formatValorAberto(valorAbertoRelatorio(item)),
+          formatValorAbertoItem(item),
           formatCurrency(getValor(item)),
         ]),
         theme: 'grid',
@@ -286,6 +302,9 @@ const RelatorioFechamento = () => {
           if (!rowItem) return;
           if (isAtrasado(rowItem)) {
             data.cell.styles.fillColor = [230, 230, 230];
+          }
+          if (data.column.index === 3 && isWeekendDate(rowItem.data)) {
+            data.cell.styles.textColor = [248, 113, 113];
           }
         },
       });
@@ -533,9 +552,9 @@ const RelatorioFechamento = () => {
                             <td className="px-4 py-3">{item.cliente_fornecedor || '-'}</td>
                             <td className="px-4 py-3">{item.contato || '-'}</td>
                             <td className="px-4 py-3">{item.aluno || '-'}</td>
-                            <td className="px-4 py-3">{formatDate(item.data)}</td>
+                            <td className={`px-4 py-3 ${isWeekendDate(item.data) ? 'text-red-400' : ''}`}>{formatDateWithWeekday(item.data)}</td>
                             <td className="px-4 py-3">{item.unidade || '-'}</td>
-                            <td className="px-4 py-3 text-right font-medium text-red-400">{formatValorAberto(valorAbertoRelatorio(item))}</td>
+                            <td className="px-4 py-3 text-right font-medium text-red-400">{formatValorAbertoItem(item)}</td>
                             <td className="px-4 py-3 text-right font-medium text-green-300">{formatCurrency(valorReceber(item))}</td>
                           </tr>
                         ))}
@@ -584,9 +603,9 @@ const RelatorioFechamento = () => {
                             <td className="px-4 py-3">{item.cliente_fornecedor || '-'}</td>
                             <td className="px-4 py-3">{item.contato || '-'}</td>
                             <td className="px-4 py-3">{item.aluno || '-'}</td>
-                            <td className="px-4 py-3">{formatDate(item.data)}</td>
+                            <td className={`px-4 py-3 ${isWeekendDate(item.data) ? 'text-red-400' : ''}`}>{formatDateWithWeekday(item.data)}</td>
                             <td className="px-4 py-3">{item.unidade || '-'}</td>
-                            <td className="px-4 py-3 text-right font-medium text-red-400">{formatValorAberto(valorAbertoRelatorio(item))}</td>
+                            <td className="px-4 py-3 text-right font-medium text-red-400">{formatValorAbertoItem(item)}</td>
                             <td className="px-4 py-3 text-right font-medium text-red-300">{formatCurrency(valorPagar(item))}</td>
                           </tr>
                         ))}
@@ -594,7 +613,7 @@ const RelatorioFechamento = () => {
                       <tfoot>
                         <tr>
                           <td colSpan={5} className="px-4 py-3 text-right font-semibold text-gray-300">Total de saidas</td>
-                          <td className="px-4 py-3 text-right font-semibold text-red-400">{formatValorAberto(totalExitsOpen)}</td>
+                          <td className="px-4 py-3 text-right font-semibold text-red-400"></td>
                           <td className="px-4 py-3 text-right font-semibold text-red-300">{formatCurrency(totalExits)}</td>
                         </tr>
                       </tfoot>

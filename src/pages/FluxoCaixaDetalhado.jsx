@@ -23,7 +23,7 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
       const [currentDate, setCurrentDate] = useState(new Date());
       const [loading, setLoading] = useState(false);
       const [unidadeFiltro, setUnidadeFiltro] = useState('todas');
-      const [viewType, setViewType] = useState('sintetico');
+      const [viewType, setViewType] = useState('analitico');
       const [expandedRows, setExpandedRows] = useState({});
       const [reportGenerated, setReportGenerated] = useState(false);
       const [generatedAt, setGeneratedAt] = useState(null);
@@ -110,12 +110,18 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
           }
         };
 
-        let fluxo = daysInMonth.map(day => ({
-          dia: format(day, 'dd'),
-          receber: 0,
-          pagar: 0,
-          details: { receber: [], pagar: [] }
-        }));
+        let fluxo = daysInMonth.map((day) => {
+          const dia = format(day, 'dd');
+          const weekday = day.toLocaleDateString('pt-BR', { weekday: 'long' });
+          return {
+            dia,
+            diaLabel: `${dia} - ${weekday}`,
+            isWeekend: day.getDay() === 0 || day.getDay() === 6,
+            receber: 0,
+            pagar: 0,
+            details: { receber: [], pagar: [] }
+          };
+        });
 
         const normalizedData = allData
           .map((item) => ({
@@ -168,6 +174,7 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
 
         const dia00 = {
           dia: '00',
+          diaLabel: 'Atrasados',
           receber: totalReceberAtrasado,
           pagar: atrasadosPagar.reduce((acc, i) => acc + getValorPagar(i), 0),
           details: {
@@ -217,7 +224,9 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
 
         monthData.forEach(item => {
           const rowData = [
-            item.dia === '00' ? 'Atrasados' : item.dia,
+            item.isWeekend
+              ? { content: item.diaLabel, styles: { textColor: [248, 113, 113] } }
+              : item.diaLabel || item.dia,
             formatCurrency(item.receber),
             formatCurrency(item.pagar),
             formatCurrency(item.saldoDia),
@@ -369,7 +378,7 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
                                     </Button>
                                   )}
                                 </td>
-                                <td className={cn('p-3 font-medium', dia.dia === '00' && 'text-yellow-400')}>{dia.dia === '00' ? 'Atrasados' : dia.dia}</td>
+                                <td className={cn('p-3 font-medium', dia.dia === '00' && 'text-yellow-400', dia.dia !== '00' && dia.isWeekend && 'text-red-400')}>{dia.diaLabel || dia.dia}</td>
                                 <td className="p-3 text-right font-mono text-green-400">{formatCurrency(dia.receber)}</td>
                                 <td className="p-3 text-right font-mono text-red-400">{formatCurrency(dia.pagar)}</td>
                                 <td className={cn('p-3 text-right font-mono', dia.saldoDia >= 0 ? 'text-blue-300' : 'text-orange-400')}>{formatCurrency(dia.saldoDia)}</td>

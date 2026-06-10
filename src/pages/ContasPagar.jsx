@@ -96,6 +96,18 @@ const ContasPagar = () => {
 
       const formatCurrency = (value) => (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
       const formatDate = (dateString) => new Date(dateString + 'T00:00:00').toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+      const formatDateWithWeekday = (dateString) => {
+        const date = new Date(dateString + 'T00:00:00');
+        if (Number.isNaN(date.getTime())) return '-';
+        const weekday = date.toLocaleDateString('pt-BR', { weekday: 'long', timeZone: 'UTC' });
+        return `${formatDate(dateString)} - ${weekday}`;
+      };
+      const isWeekendDate = (dateString) => {
+        const date = new Date(dateString + 'T00:00:00');
+        if (Number.isNaN(date.getTime())) return false;
+        const day = date.getUTCDay();
+        return day === 0 || day === 6;
+      };
       const todayStr = new Date().toISOString().split('T')[0];
 
       const valoresParaFiltro = (conta) => {
@@ -257,7 +269,7 @@ const ContasPagar = () => {
             {loading ? <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div></div>
               : Object.entries(groupedContas).map(([date, contasData], index) => (
                 <Card key={date} className="glass-card">
-                  <CardHeader><div className="flex justify-between items-center"><CardTitle className="text-white flex items-center gap-2"><Calendar className="w-5 h-5" />{formatDate(date)}</CardTitle><div className="text-lg font-bold text-red-400">{formatCurrency(contasData.reduce((s, c) => s + getValorConsiderado(c, todayStr), 0))}</div></div></CardHeader>
+                  <CardHeader><div className="flex justify-between items-center"><CardTitle className="text-white flex items-center gap-2"><Calendar className="w-5 h-5" /><span className={isWeekendDate(date) ? 'text-red-400' : undefined}>{formatDateWithWeekday(date)}</span></CardTitle><div className="text-lg font-bold text-red-400">{formatCurrency(contasData.reduce((s, c) => s + getValorConsiderado(c, todayStr), 0))}</div></div></CardHeader>
                   <CardContent>
                     <div className="space-y-3">
                       {contasData.map((conta) => {

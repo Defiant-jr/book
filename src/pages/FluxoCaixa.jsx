@@ -31,7 +31,7 @@ const FluxoCaixa = () => {
       const [currentDate, setCurrentDate] = useState(new Date());
       const [loading, setLoading] = useState(false);
       const [unidadeFiltro, setUnidadeFiltro] = useState('todas');
-      const [viewType, setViewType] = useState('sintetico');
+      const [viewType, setViewType] = useState('analitico');
       const [expandedRows, setExpandedRows] = useState({});
       const [financialAdjustments, , adjustmentsLoading] = useFinanceAdjustments();
 
@@ -163,12 +163,18 @@ const FluxoCaixa = () => {
           });
         }
 
-        const fluxo = daysInMonth.map((day) => ({
-          dia: format(day, 'dd'),
-          receber: 0,
-          pagar: 0,
-          details: { receber: [], pagar: [] }
-        }));
+        const fluxo = daysInMonth.map((day) => {
+          const dia = format(day, 'dd');
+          const weekday = day.toLocaleDateString('pt-BR', { weekday: 'long' });
+          return {
+            dia,
+            diaLabel: `${dia} - ${weekday}`,
+            isWeekend: day.getDay() === 0 || day.getDay() === 6,
+            receber: 0,
+            pagar: 0,
+            details: { receber: [], pagar: [] }
+          };
+        });
 
         const monthDataFiltered = normalizedData.filter(
           (item) => !isAtrasadoItem(item) && item.dataStr >= startStr && item.dataStr <= endStr
@@ -189,6 +195,7 @@ const FluxoCaixa = () => {
         const fullFluxo = [
           {
             dia: '00',
+            diaLabel: 'Atrasados',
             receber: totalAtrasadoReceber,
             pagar: totalAtrasadoPagar,
             details: { receber: receberDetails, pagar: atrasadosPagar }
@@ -314,7 +321,7 @@ const FluxoCaixa = () => {
                                   </Button>
                                 )}
                               </td>
-                              <td className={cn('p-3 font-medium', dia.dia === '00' && 'text-yellow-400')}>{dia.dia === '00' ? 'Atrasados' : dia.dia}</td>
+                              <td className={cn('p-3 font-medium', dia.dia === '00' && 'text-yellow-400', dia.dia !== '00' && dia.isWeekend && 'text-red-400')}>{dia.diaLabel || dia.dia}</td>
                               <td className="p-3 text-right font-mono text-green-400">{formatCurrency(dia.receber)}</td>
                               <td className="p-3 text-right font-mono text-red-400">{formatCurrency(dia.pagar)}</td>
                               <td className={cn('p-3 text-right font-mono', dia.saldoDia >= 0 ? 'text-blue-300' : 'text-orange-400')}>{formatCurrency(dia.saldoDia)}</td>

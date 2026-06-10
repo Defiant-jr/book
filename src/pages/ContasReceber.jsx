@@ -69,6 +69,7 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
           valor_aberto: null,
           desc_pontual: null,
           unidade: item?.unidade || null,
+          aluno: item?.aluno || null,
           pago_por: item?.pago_por || null,
         };
       });
@@ -121,6 +122,22 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
         const date = new Date(`${normalized}T00:00:00`);
         if (Number.isNaN(date.getTime())) return '-';
         return date.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+      };
+      const formatDateWithWeekday = (dateString) => {
+        const normalized = normalizeDateOnly(dateString);
+        if (!normalized) return '-';
+        const date = new Date(`${normalized}T00:00:00`);
+        if (Number.isNaN(date.getTime())) return '-';
+        const weekday = date.toLocaleDateString('pt-BR', { weekday: 'long', timeZone: 'UTC' });
+        return `${formatDate(normalized)} - ${weekday}`;
+      };
+      const isWeekendDate = (dateString) => {
+        const normalized = normalizeDateOnly(dateString);
+        if (!normalized) return false;
+        const date = new Date(`${normalized}T00:00:00`);
+        if (Number.isNaN(date.getTime())) return false;
+        const day = date.getUTCDay();
+        return day === 0 || day === 6;
       };
       const valorParaReceber = (conta) => {
         const status = getStatus(conta);
@@ -396,7 +413,7 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
             {loading ? <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div></div>
               : Object.entries(groupedContas).map(([date, contasData], index) => (
                 <Card key={date} className="glass-card">
-                  <CardHeader><div className="flex justify-between items-center"><CardTitle className="text-white flex items-center gap-2"><Calendar className="w-5 h-5" />{formatDate(date)}</CardTitle><div className="text-lg font-bold text-green-400">{formatCurrency(contasData.reduce((s, c) => s + valorParaReceber(c), 0))}</div></div></CardHeader>
+                  <CardHeader><div className="flex justify-between items-center"><CardTitle className="text-white flex items-center gap-2"><Calendar className="w-5 h-5" /><span className={isWeekendDate(date) ? 'text-red-400' : undefined}>{formatDateWithWeekday(date)}</span></CardTitle><div className="text-lg font-bold text-green-400">{formatCurrency(contasData.reduce((s, c) => s + valorParaReceber(c), 0))}</div></div></CardHeader>
                   <CardContent>
                     <div className="space-y-3">
                       {contasData.map((conta) => {
@@ -411,6 +428,7 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
                                 <h3 className="font-medium text-white">{conta.cliente_fornecedor}</h3>
                                 <p className="text-sm text-gray-400">{conta.descricao}</p>
                                 <p className="text-xs text-gray-500">Unidade: {conta.unidade || 'Nao informado'}</p>
+                                <p className="text-xs text-gray-500">Aluno: {conta.aluno || 'Nao informado'}</p>
                                 {conta.pago_por && (
                                   <p className="text-xs text-gray-500">Pago por: {conta.pago_por}</p>
                                 )}

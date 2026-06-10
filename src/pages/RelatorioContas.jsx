@@ -14,6 +14,9 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { getLancamentoStatus, normalizeTipo, STATUS, STATUS_LABELS, STATUS_OPTIONS } from '@/lib/lancamentoStatus';
 
+const STATUS_ABERTO = 'em_aberto';
+const STATUS_ABERTO_LABEL = 'Em Aberto';
+
     const RelatorioContas = () => {
         const RELATORIOS_CONTAS_REF = 83000;
         const navigate = useNavigate();
@@ -22,7 +25,7 @@ import { getLancamentoStatus, normalizeTipo, STATUS, STATUS_LABELS, STATUS_OPTIO
         const [loading, setLoading] = useState(false);
         const [filters, setFilters] = useState({
             tipo: 'todos',
-            status: 'todos',
+            status: STATUS_ABERTO,
             unidade: 'todas',
             dataInicio: '',
             dataFim: ''
@@ -79,7 +82,11 @@ import { getLancamentoStatus, normalizeTipo, STATUS, STATUS_LABELS, STATUS_OPTIO
             const filtered = contas.filter((c) => {
                 const statusAtual = getStatus(c);
                 const tipoOk = tipoFiltro === 'todos' || normalizeTipo(c.tipo) === tipoFiltro;
-                const statusOk = filters.status === 'todos' || statusAtual === filters.status;
+                const statusOk =
+                    filters.status === 'todos' ||
+                    (filters.status === STATUS_ABERTO
+                        ? statusAtual === STATUS.A_VENCER || statusAtual === STATUS.ATRASADO
+                        : statusAtual === filters.status);
                 const unidadeOk = filters.unidade === 'todas' || (c.unidade || '').trim() === unidadeFiltro;
                 const dataInicioOk = !filters.dataInicio || new Date(c.data + 'T00:00:00') >= new Date(filters.dataInicio + 'T00:00:00');
                 const dataFimOk = !filters.dataFim || new Date(c.data + 'T00:00:00') <= new Date(filters.dataFim + 'T00:00:00');
@@ -131,6 +138,13 @@ import { getLancamentoStatus, normalizeTipo, STATUS, STATUS_LABELS, STATUS_OPTIO
             return valor;
         };
         const formatDate = (dateString) => dateString ? format(new Date(dateString + 'T00:00:00'), 'dd/MM/yyyy') : '-';
+        const formatDateWithWeekday = (dateString) => {
+            if (!dateString) return '-';
+            const date = new Date(dateString + 'T00:00:00');
+            if (Number.isNaN(date.getTime())) return '-';
+            const weekday = date.toLocaleDateString('pt-BR', { weekday: 'long', timeZone: 'UTC' });
+            return `${formatDate(dateString)} - ${weekday}`;
+        };
         const formatStatusDisplay = (status) => STATUS_LABELS[status] || status;
         const totalGeral = useMemo(() => {
             const tipoFiltro = normalizeTipo(filters.tipo);
@@ -150,7 +164,7 @@ import { getLancamentoStatus, normalizeTipo, STATUS, STATUS_LABELS, STATUS_OPTIO
             doc.autoTable({
                 head: [['Data', 'Tipo', 'Cliente/Fornecedor', 'Descrição', 'Unidade', 'Status', 'Valor Aberto', 'Valor']],
                 body: filteredAndSortedContas.map(c => [
-                    formatDate(c.data), c.tipo, c.cliente_fornecedor, c.descricao, c.unidade, formatStatusDisplay(getStatus(c)), formatOptionalCurrency(valorAbertoConta(c)), formatCurrency(valorConta(c))
+                    formatDateWithWeekday(c.data), c.tipo, c.cliente_fornecedor, c.descricao, c.unidade, formatStatusDisplay(getStatus(c)), formatOptionalCurrency(valorAbertoConta(c)), formatCurrency(valorConta(c))
                 ]),
                 startY: 20,
                 theme: 'grid',
@@ -204,6 +218,7 @@ import { getLancamentoStatus, normalizeTipo, STATUS, STATUS_LABELS, STATUS_OPTIO
                                     <SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="todos">Todos</SelectItem>
+                                        <SelectItem value={STATUS_ABERTO}>{STATUS_ABERTO_LABEL}</SelectItem>
                                         {STATUS_OPTIONS.map((option) => (
                                             <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                                         ))}
@@ -289,7 +304,7 @@ import { getLancamentoStatus, normalizeTipo, STATUS, STATUS_LABELS, STATUS_OPTIO
                                         <tbody>
                                             {filteredAndSortedContas.map(conta => (
                                                 <tr key={conta.id} className="border-b border-gray-700 hover:bg-white/10">
-                                                    <td className="px-6 py-4">{formatDate(conta.data)}</td>
+                                                    <td className="px-6 py-4">{formatDateWithWeekday(conta.data)}</td>
                                                     <td className="px-6 py-4"><span className={`px-2 py-1 rounded-full text-xs ${conta.tipo === 'Entrada' ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}`}>{conta.tipo}</span></td>
                                                     <td className="px-6 py-4 font-medium text-white">{conta.cliente_fornecedor}</td>
                                                     <td className="px-6 py-4">{conta.descricao}</td>
