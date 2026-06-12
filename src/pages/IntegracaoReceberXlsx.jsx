@@ -189,7 +189,7 @@ const mapRowsToLancamentos = (rows, headerIndex, unidadeLabel, dataStartIndex) =
 };
 
 const IntegracaoReceberXlsx = () => {
-  const INTEGRACAO_REF = 62300;
+  const INTEGRACAO_REF = 62500;
   const navigate = useNavigate();
   const { toast } = useToast();
   const [file, setFile] = useState(null);

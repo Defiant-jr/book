@@ -17,6 +17,7 @@ import {
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import {
   createGoogleTask,
@@ -66,6 +67,8 @@ const AdministrativoTarefas = () => {
   const { toast } = useToast();
   const [tarefas, setTarefas] = useState([]);
   const [novaTarefa, setNovaTarefa] = useState('');
+  const [novaTarefaDetalhes, setNovaTarefaDetalhes] = useState('');
+  const [novaTarefaData, setNovaTarefaData] = useState('');
   const [busca, setBusca] = useState('');
   const [loadingTarefas, setLoadingTarefas] = useState(false);
   const [savingTarefa, setSavingTarefa] = useState(false);
@@ -160,7 +163,7 @@ const AdministrativoTarefas = () => {
     const text = busca.trim().toLowerCase();
     if (!text) return activeView.tasks;
     return activeView.tasks.filter((tarefa) =>
-      String(tarefa.tarefa || '').toLowerCase().includes(text),
+      `${tarefa.tarefa || ''} ${tarefa.detalhes || ''}`.toLowerCase().includes(text),
     );
   }, [activeView, busca]);
 
@@ -173,9 +176,15 @@ const AdministrativoTarefas = () => {
 
     setSavingTarefa(true);
     try {
-      const createdTask = await createGoogleTask({ title: tarefa, due: null });
+      const createdTask = await createGoogleTask({
+        title: tarefa,
+        notes: novaTarefaDetalhes.trim() || null,
+        due: novaTarefaData || null,
+      });
       setTarefas((prev) => [createdTask, ...prev]);
       setNovaTarefa('');
+      setNovaTarefaDetalhes('');
+      setNovaTarefaData('');
       toast({ title: 'Tarefa criada', description: 'A tarefa foi adicionada ao Google Tasks.' });
     } catch (error) {
       toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
@@ -350,6 +359,9 @@ const AdministrativoTarefas = () => {
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-white">{tarefa.tarefa}</p>
+                    {tarefa.detalhes && (
+                      <p className="mt-1 line-clamp-2 text-xs text-slate-300">{tarefa.detalhes}</p>
+                    )}
                     <p className="text-xs text-slate-400">{formatTaskDate(tarefa.data)}</p>
                   </div>
                   {tarefa.concluida !== 'S' && (
@@ -439,25 +451,40 @@ const AdministrativoTarefas = () => {
 
       <section className="rounded-xl border border-white/20 bg-white/10 p-4 shadow-xl shadow-black/10 backdrop-blur-lg">
         <p className="text-xs font-bold uppercase text-slate-400">Adicao rapida</p>
-        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+        <div className="mt-3 grid grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_180px_auto]">
           <Input
             value={novaTarefa}
             onChange={(event) => setNovaTarefa(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === 'Enter') handleAdd();
             }}
-            placeholder="Digite uma nova tarefa..."
-            className="h-11 border-white/20 bg-white/10 text-white placeholder:text-slate-400 focus-visible:ring-blue-400"
+            placeholder="Titulo da tarefa..."
+            className="h-11 rounded-xl border-white/20 bg-white/10 text-white placeholder:text-slate-400 focus-visible:ring-blue-400"
+            disabled={savingTarefa}
+          />
+          <Input
+            type="date"
+            value={novaTarefaData}
+            onChange={(event) => setNovaTarefaData(event.target.value)}
+            aria-label="Data da tarefa"
+            className="h-11 rounded-xl border-white/20 bg-white/10 text-white [color-scheme:dark] focus-visible:ring-blue-400"
             disabled={savingTarefa}
           />
           <Button
             onClick={handleAdd}
             disabled={savingTarefa}
-            className="h-11 gap-2 bg-blue-600 px-5 text-white hover:bg-blue-500"
+            className="h-11 gap-2 rounded-xl bg-blue-600 px-5 text-white hover:bg-blue-500"
           >
             <Plus className="h-4 w-4" />
             {savingTarefa ? 'Adicionando...' : 'Adicionar'}
           </Button>
+          <Textarea
+            value={novaTarefaDetalhes}
+            onChange={(event) => setNovaTarefaDetalhes(event.target.value)}
+            placeholder="Detalhes da tarefa..."
+            className="min-h-[86px] rounded-xl border-white/20 bg-white/10 text-white placeholder:text-slate-400 focus-visible:ring-blue-400 lg:col-span-3"
+            disabled={savingTarefa}
+          />
         </div>
       </section>
 
@@ -500,6 +527,9 @@ const AdministrativoTarefas = () => {
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-white">{tarefa.tarefa}</p>
+                    {tarefa.detalhes && (
+                      <p className="mt-1 line-clamp-2 text-xs text-slate-300">{tarefa.detalhes}</p>
+                    )}
                     <p className="text-xs text-slate-400">{formatTaskDate(tarefa.data)}</p>
                   </div>
                   <Button

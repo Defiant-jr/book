@@ -20,8 +20,10 @@ import Login from '@/pages/Login';
 import MapaMensal from '@/pages/MapaMensal';
 import EmissaoDuplicata from '@/pages/EmissaoDuplicata';
 import Integracao from '@/pages/Integracao';
+import IntegracaoAlunos from '@/pages/IntegracaoAlunos';
 import IntegracaoOperacoes from '@/pages/IntegracaoOperacoes';
 import IntegracaoReceberXlsx from '@/pages/IntegracaoReceberXlsx';
+import IntegracaoTurmas from '@/pages/IntegracaoTurmas';
 import Operacional from '@/pages/Operacional';
 import OperacoesCadastroAluno from '@/pages/OperacoesCadastroAluno';
 import OperacoesCadastroRateio from '@/pages/OperacoesCadastroRateio';
@@ -341,6 +343,22 @@ function App() {
 							element={
 								<PrivateRoute>
 									<IntegracaoReceberXlsx />
+								</PrivateRoute>
+							}
+						/>
+						<Route
+							path="/operacional/integracao/turmas"
+							element={
+								<PrivateRoute>
+									<IntegracaoTurmas />
+								</PrivateRoute>
+							}
+						/>
+						<Route
+							path="/operacional/integracao/alunos"
+							element={
+								<PrivateRoute>
+									<IntegracaoAlunos />
 								</PrivateRoute>
 							}
 						/>

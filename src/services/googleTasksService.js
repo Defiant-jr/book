@@ -17,11 +17,11 @@ export const listGoogleTasks = async () => {
   return Array.isArray(payload.tasks) ? payload.tasks : [];
 };
 
-export const createGoogleTask = async ({ title, due }) => {
+export const createGoogleTask = async ({ title, due, notes }) => {
   const response = await fetch(TASKS_ENDPOINT, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title, due })
+    body: JSON.stringify({ title, due, notes })
   });
   const payload = await parseResponse(response);
   return payload.task;

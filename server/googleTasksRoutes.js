@@ -88,6 +88,7 @@ const normalizeTaskDate = (value) => {
 const mapGoogleTask = (task) => ({
   id: task.id,
   tarefa: task.title || '',
+  detalhes: task.notes || '',
   data: task.due || null,
   concluida: task.status === 'completed' ? 'S' : 'N',
   status: task.status || 'needsAction',
@@ -123,6 +124,7 @@ export const registerGoogleTasksRoutes = (app) => {
 
   app.post('/api/google-tasks/tasks', async (req, res) => {
     const title = String(req.body?.title || '').trim();
+    const notes = String(req.body?.notes || '').trim();
     const due = normalizeTaskDate(req.body?.due);
 
     if (!title) {
@@ -137,6 +139,7 @@ export const registerGoogleTasksRoutes = (app) => {
         method: 'POST',
         body: {
           title,
+          ...(notes ? { notes } : {}),
           ...(due ? { due } : {})
         }
       });
@@ -168,6 +171,9 @@ export const registerGoogleTasksRoutes = (app) => {
     }
     if (Object.prototype.hasOwnProperty.call(req.body || {}, 'due')) {
       updates.due = normalizeTaskDate(req.body.due);
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, 'notes')) {
+      updates.notes = String(req.body.notes || '').trim();
     }
     if (Object.prototype.hasOwnProperty.call(req.body || {}, 'status')) {
       updates.status = req.body.status === 'completed' ? 'completed' : 'needsAction';

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Download, RefreshCcw } from 'lucide-react';
+import { ArrowLeft, Download, RefreshCcw, School, Users } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -67,7 +67,7 @@ const Integracao = () => {
       description: 'Importa lançamentos a receber a partir de planilha Excel.',
       icon: RefreshCcw,
       action: () => navigate('/operacional/integracao/a-receber-xlsx'),
-      ref: 62300,
+      ref: 62500,
     },
     {
       title: 'Operações',
@@ -75,6 +75,20 @@ const Integracao = () => {
       icon: RefreshCcw,
       action: () => navigate('/operacional/integracao/operacoes'),
       ref: 62200,
+    },
+    {
+      title: 'Turmas',
+      description: 'Importa turmas a partir de uma planilha Excel.',
+      icon: School,
+      action: () => navigate('/operacional/integracao/turmas'),
+      ref: 62300,
+    },
+    {
+      title: 'Alunos',
+      description: 'Importa alunos a partir de uma planilha Excel.',
+      icon: Users,
+      action: () => navigate('/operacional/integracao/alunos'),
+      ref: 62400,
     },
   ];
 
@@ -111,7 +125,7 @@ const Integracao = () => {
           <span className="text-xs text-gray-400">Inclui o fluxo de importação de A Receber.</span>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
             {integrationCards.map((option) => {
               const Icon = option.icon;
               const isLoading = option.loading;
