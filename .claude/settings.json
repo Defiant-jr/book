@@ -1,0 +1,11 @@
+{
+  "effortLevel": "medium",
+  "model": "haiku",
+  "permissions": {
+    "bash": ["npm", "git", "node"],
+    "powershell": ["npm", "git", "node"],
+    "read": ["**/*"],
+    "edit": ["src/**/*", "server/**/*", "*.js", "*.json", "*.md"],
+    "write": ["src/**/*", "server/**/*", ".claude/**/*", "*.md"]
+  }
+}
