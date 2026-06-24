@@ -288,11 +288,10 @@ const RelatorioFechamento = () => {
           formatValorAbertoItem(item),
           formatCurrency(getValor(item)),
         ]),
-        theme: 'grid',
+        theme: 'plain',
         styles: { fontSize, cellPadding },
-        headStyles: { fillColor: [37, 99, 235], fontSize: fontSize + 1 },
+        headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255], fontSize: fontSize + 1 },
         columnStyles: {
-          3: { halign: 'right' },
           5: { halign: 'right', textColor: [220, 38, 38] },
           6: { halign: 'right' },
         },
