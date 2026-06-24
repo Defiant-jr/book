@@ -3,7 +3,7 @@ import React from 'react';
     import { useNavigate } from 'react-router-dom';
     import { Helmet } from 'react-helmet';
     import { motion } from 'framer-motion';
-import { BarChart3, PieChart, TrendingUp, ArrowLeft, FileClock, Printer, CalendarRange, FileSignature, FolderKanban, FileText, DollarSign } from 'lucide-react';
+import { BarChart3, PieChart, TrendingUp, ArrowLeft, FileClock, Printer, CalendarRange, FileSignature, FolderKanban, FileText, ClipboardList } from 'lucide-react';
     
     import { Button } from '@/components/ui/button';
     import { Card, CardContent } from '@/components/ui/card';
@@ -97,11 +97,11 @@ import { BarChart3, PieChart, TrendingUp, ArrowLeft, FileClock, Printer, Calenda
                 implemented: true,
             },
             {
-                title: "Custo",
-                icon: DollarSign,
-                description: "Relatório de custos para análise futura.",
-                action: () => handleNavigation('/relatorios/custo', false),
-                implemented: false,
+                title: "Mapa de Tarefas",
+                icon: ClipboardList,
+                description: "Mapa de acompanhamento das tarefas pendentes e concluidas.",
+                action: () => handleNavigation('/relatorios/mapa-tarefas'),
+                implemented: true,
             },
         ];
     

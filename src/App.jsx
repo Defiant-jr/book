@@ -18,6 +18,7 @@ import ImpressaoDoc from '@/pages/ImpressaoDoc';
 import Lancamentos from '@/pages/Lancamentos';
 import Login from '@/pages/Login';
 import MapaMensal from '@/pages/MapaMensal';
+import MapaTarefas from '@/pages/MapaTarefas';
 import EmissaoDuplicata from '@/pages/EmissaoDuplicata';
 import Integracao from '@/pages/Integracao';
 import IntegracaoAlunos from '@/pages/IntegracaoAlunos';
@@ -311,6 +312,14 @@ function App() {
 							element={
 								<PrivateRoute>
 									<EmissaoDuplicata />
+								</PrivateRoute>
+							}
+						/>
+						<Route
+							path="/relatorios/mapa-tarefas"
+							element={
+								<PrivateRoute>
+									<MapaTarefas />
 								</PrivateRoute>
 							}
 						/>
