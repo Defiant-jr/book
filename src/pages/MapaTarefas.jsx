@@ -171,7 +171,8 @@ const MapaTarefas = () => {
     const margin = 24;
     const headerY = margin;
     const summaryY = headerY + 18;
-    const gridStartY = summaryY + 26;
+    const weekdayHeaderY = summaryY + 28;
+    const gridStartY = weekdayHeaderY + 14;
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const cellWidth = (pageWidth - margin * 2) / 7;
@@ -194,6 +195,14 @@ const MapaTarefas = () => {
       margin,
       summaryY,
     );
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(120, 130, 145);
+    weekdayLabels.forEach((day, index) => {
+      doc.text(day, margin + index * cellWidth + cellWidth / 2, weekdayHeaderY, { align: 'center' });
+    });
+    doc.setTextColor(0);
 
     cellsWithPlaceholders.forEach((cell, index) => {
       const row = Math.floor(index / 7);

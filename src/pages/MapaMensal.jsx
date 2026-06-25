@@ -227,7 +227,8 @@ const calendarCells = useMemo(() => {
     const headerY = margin;
     const summaryStartY = headerY + 18;
     const summaryGap = 11;
-    const gridStartY = summaryStartY + summaryGap * 2 + 12;
+    const weekdayHeaderY = summaryStartY + summaryGap * 2 + 14;
+    const gridStartY = weekdayHeaderY + 14;
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const cellsPerRow = 7;
@@ -263,6 +264,14 @@ const calendarCells = useMemo(() => {
       margin,
       summaryStartY + summaryGap,
     );
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(mutedColor.r, mutedColor.g, mutedColor.b);
+    weekdayLabels.forEach((day, index) => {
+      doc.text(day, margin + index * cellWidth + cellWidth / 2, weekdayHeaderY, { align: 'center' });
+    });
+    doc.setTextColor(0);
 
     cellsWithPlaceholders.forEach((cell, index) => {
       const row = Math.floor(index / cellsPerRow);
