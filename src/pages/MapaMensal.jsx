@@ -21,7 +21,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { getLancamentoStatus, normalizeTipo, STATUS } from '@/lib/lancamentoStatus';
 
-const weekdayLabels = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'SÃ¡b', 'Dom'];
+const weekdayLabels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 const MapaMensal = () => {
   const RELATORIOS_MAPA_MENSAL_REF = 86000;
@@ -208,16 +208,14 @@ const calendarCells = useMemo(() => {
 
   const leadingEmptyCells = useMemo(() => {
     if (!calendarCells.length) return 0;
-    // Ajuste para iniciar a semana na segunda-feira
-    const dayIndex = getDay(calendarCells[0].date) || 7; // domingo vira 7
-    return dayIndex - 1;
+    return getDay(calendarCells[0].date);
   }, [calendarCells]);
 
   const handleDownloadPdf = () => {
     if (!reportGenerated) {
       toast({
-        title: 'Gere o relatÃ³rio primeiro',
-        description: 'Clique em "Gerar relatÃ³rio" para carregar os dados.',
+        title: 'Gere o relatório primeiro',
+        description: 'Clique em "Gerar relatório" para carregar os dados.',
         variant: 'destructive',
       });
       return;
@@ -273,7 +271,7 @@ const calendarCells = useMemo(() => {
       const y = gridStartY + row * cellHeight;
 
       if (!cell) {
-        // cÃ©lulas vazias do inÃ­cio do mÃªs
+        // células vazias do início do mês
         doc.setLineDash([2, 2], 0);
         doc.setDrawColor(mutedColor.r, mutedColor.g, mutedColor.b);
         doc.rect(x, y, cellWidth, cellHeight);
@@ -312,7 +310,7 @@ const calendarCells = useMemo(() => {
         const itemLineHeight = 8;
         const maxItems = 7;
         doc.setFontSize(itemFontSize);
-        const nameWidth = cellWidth - padding * 2 - 58; // deixa espaÃ§o para o valor Ã  direita
+        const nameWidth = cellWidth - padding * 2 - 58; // deixa espaco para o valor a direita
         cell.despesas.slice(0, maxItems).forEach((despesa) => {
           if (cursorY > listMaxY) return;
           const name = despesa.cliente_fornecedor || despesa.descricao || 'Despesa';
@@ -354,7 +352,7 @@ const calendarCells = useMemo(() => {
         <title>Mapa Mensal - BooK+</title>
         <meta
           name="description"
-          content="Visualize o calendÃ¡rio mensal com despesas por dia e somatÃ³rio de entradas."
+          content="Visualize o calendário mensal com despesas por dia e somatório de entradas."
         />
       </Helmet>
 
@@ -371,7 +369,7 @@ const calendarCells = useMemo(() => {
             </Button>
             <div>
               <h1 className="text-3xl font-bold gradient-text">Mapa Mensal</h1>
-              <p className="text-sm text-gray-300">CalendÃ¡rio das despesas diÃ¡rias e entradas por dia.</p>
+              <p className="text-sm text-gray-300">Calendário das despesas diárias e entradas por dia.</p>
             </div>
           </div>
           <div className="flex flex-col items-end gap-2">
@@ -394,13 +392,13 @@ const calendarCells = useMemo(() => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-white">
               <CalendarRange className="w-5 h-5" />
-              ConfiguraÃ§Ã£o do relatÃ³rio
+              Configuração do relatório
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-col md:flex-row gap-4 md:items-end md:justify-between">
               <div className="flex flex-col gap-2 w-full md:w-72">
-                <label className="text-sm text-gray-300">CompetÃªncia</label>
+                <label className="text-sm text-gray-300">Competência</label>
                 <Input
                   type="month"
                   value={selectedMonth}
@@ -411,7 +409,7 @@ const calendarCells = useMemo(() => {
               <div className="flex flex-col sm:flex-row gap-3">
                 <Button onClick={handleGenerateReport} disabled={loading || adjustmentsLoading} className="bg-blue-600 hover:bg-blue-700 text-white">
                   {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  {loading ? 'Gerando...' : adjustmentsLoading ? 'Carregando ajustes...' : 'Gerar relatÃ³rio'}
+                  {loading ? 'Gerando...' : adjustmentsLoading ? 'Carregando ajustes...' : 'Gerar relatório'}
                 </Button>
                 <Button
                   onClick={handleDownloadPdf}
@@ -441,7 +439,7 @@ const calendarCells = useMemo(() => {
         ) : (
         <Card className="glass-card">
           <CardHeader>
-            <CardTitle className="text-white">Resumo do mÃªs</CardTitle>
+            <CardTitle className="text-white">Resumo do mês</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 lg:grid-cols-3 gap-5 text-white">
             <div className="rounded-xl border border-white/15 bg-[#344b92]/70 p-6">
@@ -534,7 +532,7 @@ const calendarCells = useMemo(() => {
         {!adjustmentsLoading && (
         <Card className="glass-card">
           <CardHeader>
-            <CardTitle className="text-white">CalendÃ¡rio do mÃªs</CardTitle>
+            <CardTitle className="text-white">Calendário do mês</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-7 gap-2 text-center text-gray-300 text-sm">
@@ -580,7 +578,7 @@ const calendarCells = useMemo(() => {
               ))}
             </div>
             {!calendarCells.length && (
-              <p className="text-center text-gray-400">Nenhum dado para este mÃªs.</p>
+              <p className="text-center text-gray-400">Nenhum dado para este mês.</p>
             )}
           </CardContent>
         </Card>
