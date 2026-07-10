@@ -9,6 +9,7 @@ import DeclaracaoIR from '@/pages/DeclaracaoIR';
 import DreGerencial from '@/pages/DreGerencial';
 import AreaSelection from '@/pages/AreaSelection';
 import Administrativo from '@/pages/Administrativo';
+import AdministrativoAgenda from '@/pages/AdministrativoAgenda';
 import AdministrativoRelatorios from '@/pages/AdministrativoRelatorios';
 import AdministrativoTarefas from '@/pages/AdministrativoTarefas';
 import Financeiro from '@/pages/Financeiro';
@@ -128,6 +129,14 @@ function App() {
 							element={
 								<PrivateRoute>
 									<AdministrativoRelatorios />
+								</PrivateRoute>
+							}
+						/>
+						<Route
+							path="/administrativo/agenda"
+							element={
+								<PrivateRoute>
+									<AdministrativoAgenda />
 								</PrivateRoute>
 							}
 						/>

@@ -122,6 +122,7 @@ const Administrativo = () => {
   const navButtons = [
     { label: 'Dashboard', path: '/administrativo', icon: LayoutDashboard },
     { label: 'Tarefas', path: '/administrativo/tarefas', icon: ClipboardList },
+    { label: 'Agenda', path: '/administrativo/agenda', icon: Calendar },
   ];
 
   return (
