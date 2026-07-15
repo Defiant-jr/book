@@ -64,6 +64,11 @@ GOOGLE_TASKS_CLIENT_ID=...
 GOOGLE_TASKS_CLIENT_SECRET=...
 GOOGLE_TASKS_REFRESH_TOKEN=...
 GOOGLE_TASKS_LIST_ID=@default
+GOOGLE_CALENDAR_CLIENT_ID=...
+GOOGLE_CALENDAR_CLIENT_SECRET=...
+GOOGLE_CALENDAR_REFRESH_TOKEN=...
+GOOGLE_CALENDAR_ID=primary
+GOOGLE_CALENDAR_TIME_ZONE=America/Sao_Paulo
 ```
 > ⚠️ Os arquivos atuais usam chaves hardcoded apenas para desenvolvimento. Remova-as antes de distribuir ou publicar o projeto.
 
@@ -112,6 +117,10 @@ DefFinance-v1/
   - Endpoints `/api/google-tasks/tasks` no backend Express listam, criam, atualizam, concluem e removem tarefas usando OAuth.
   - As telas Administrativo (`10000`) e Tarefas Administrativas (`11000`) consomem o Google Tasks diretamente e deixam de gravar na tabela `postit`.
   - Configure `GOOGLE_TASKS_CLIENT_ID`, `GOOGLE_TASKS_CLIENT_SECRET`, `GOOGLE_TASKS_REFRESH_TOKEN` e, opcionalmente, `GOOGLE_TASKS_LIST_ID` (`@default` quando omitido). Como alternativa temporaria, `GOOGLE_TASKS_ACCESS_TOKEN` tambem e aceito, mas expira.
+- **Google Calendar API v3**:
+  - Endpoints `/api/google-calendar/events` no backend Express listam, criam, atualizam e removem compromissos usando OAuth.
+  - A tela Agenda Administrativa (`12000`) grava compromissos diretamente na agenda com `Titulo`, `Detalhe`, `Data`, `Hora Inicio` e `Hora Fim`.
+  - Configure `GOOGLE_CALENDAR_CLIENT_ID`, `GOOGLE_CALENDAR_CLIENT_SECRET`, `GOOGLE_CALENDAR_REFRESH_TOKEN` e, opcionalmente, `GOOGLE_CALENDAR_ID` (`primary` quando omitido) e `GOOGLE_CALENDAR_TIME_ZONE` (`America/Sao_Paulo` quando omitido). Voce pode usar o mesmo OAuth Client das tarefas, mas o refresh token da agenda precisa ter escopo do Google Calendar.
 - **Bibliotecas principais**: Radix UI, lucide-react (ícones), Framer Motion, Recharts, Tailwind Merge, React Day Picker, date-fns, html2canvas, jspdf/jspdf-autotable, class-variance-authority.
 
 ## Padrões de código e UI

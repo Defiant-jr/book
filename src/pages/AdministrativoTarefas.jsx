@@ -13,6 +13,7 @@ import {
   ListChecks,
   Plus,
   RefreshCw,
+  X,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -60,6 +61,90 @@ const PageHeader = ({ title, refCode, onBack }) => (
   </div>
 );
 
+const emptyTask = {
+  title: '',
+  notes: '',
+  due: '',
+};
+
+const TaskForm = ({ task, onCancel, onSave, saving }) => {
+  const [draft, setDraft] = useState(task || emptyTask);
+
+  const update = (field, value) => setDraft((current) => ({ ...current, [field]: value }));
+
+  const submit = (event) => {
+    event.preventDefault();
+    if (!draft.title.trim()) return;
+    onSave({
+      title: draft.title.trim(),
+      notes: draft.notes.trim(),
+      due: draft.due,
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+      <form onSubmit={submit} className="w-full max-w-2xl rounded-lg border border-white/10 bg-slate-950 p-5 shadow-2xl">
+        <div className="mb-5 flex items-center justify-between gap-4">
+          <h2 className="text-xl font-bold text-white">Nova tarefa</h2>
+          <Button type="button" variant="ghost" size="icon" onClick={onCancel} className="text-slate-300 hover:bg-white/10">
+            <X className="h-4 w-4" />
+            <span className="sr-only">Fechar</span>
+          </Button>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="md:col-span-2">
+            <label className="mb-2 block text-xs font-semibold uppercase text-slate-400" htmlFor="task-title">Titulo</label>
+            <Input
+              id="task-title"
+              value={draft.title}
+              onChange={(event) => update('title', event.target.value)}
+              className="border-white/15 bg-white/10 text-white"
+              placeholder="Adicionar titulo"
+              autoFocus
+              disabled={saving}
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-xs font-semibold uppercase text-slate-400" htmlFor="task-due">Data</label>
+            <Input
+              id="task-due"
+              type="date"
+              value={draft.due}
+              onChange={(event) => update('due', event.target.value)}
+              className="border-white/15 bg-white/10 text-white [color-scheme:dark]"
+              disabled={saving}
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="mb-2 block text-xs font-semibold uppercase text-slate-400" htmlFor="task-notes">Detalhe</label>
+            <Textarea
+              id="task-notes"
+              value={draft.notes}
+              onChange={(event) => update('notes', event.target.value)}
+              className="min-h-[110px] border-white/15 bg-white/10 text-white"
+              placeholder="Adicionar detalhe"
+              disabled={saving}
+            />
+          </div>
+        </div>
+
+        <div className="mt-6 flex justify-end gap-2">
+          <Button type="button" variant="outline" onClick={onCancel} className="border-white/15 text-slate-200 hover:bg-white/10" disabled={saving}>
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={saving} className="bg-blue-600 text-white hover:bg-blue-500">
+            {saving ? 'Salvando...' : 'Salvar'}
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+};
+
 const AdministrativoTarefas = () => {
   const ADMINISTRATIVO_TAREFAS_REF = 11000;
   const navigate = useNavigate();
@@ -72,6 +157,7 @@ const AdministrativoTarefas = () => {
   const [busca, setBusca] = useState('');
   const [loadingTarefas, setLoadingTarefas] = useState(false);
   const [savingTarefa, setSavingTarefa] = useState(false);
+  const [showTaskForm, setShowTaskForm] = useState(false);
 
   const hojeKey = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const refAtual = searchParams.get('ref');
@@ -167,8 +253,8 @@ const AdministrativoTarefas = () => {
     );
   }, [activeView, busca]);
 
-  const handleAdd = async () => {
-    const tarefa = novaTarefa.trim();
+  const handleAdd = async (task = null) => {
+    const tarefa = (task?.title ?? novaTarefa).trim();
     if (!tarefa) {
       toast({ title: 'Informe a tarefa', description: 'Digite uma descricao valida.' });
       return;
@@ -178,16 +264,19 @@ const AdministrativoTarefas = () => {
     try {
       const createdTask = await createGoogleTask({
         title: tarefa,
-        notes: novaTarefaDetalhes.trim() || null,
-        due: novaTarefaData || null,
+        notes: (task?.notes ?? novaTarefaDetalhes).trim() || null,
+        due: task?.due || novaTarefaData || null,
       });
       setTarefas((prev) => [createdTask, ...prev]);
       setNovaTarefa('');
       setNovaTarefaDetalhes('');
       setNovaTarefaData('');
+      setShowTaskForm(false);
       toast({ title: 'Tarefa criada', description: 'A tarefa foi adicionada ao Google Tasks.' });
+      return createdTask;
     } catch (error) {
       toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
+      return null;
     } finally {
       setSavingTarefa(false);
     }
@@ -304,7 +393,7 @@ const AdministrativoTarefas = () => {
           </div>
           <div className="flex items-center gap-3">
             <Button
-              onClick={activeView.action || (() => navigate('/administrativo/tarefas'))}
+              onClick={activeView.action || (() => setShowTaskForm(true))}
               className="h-10 gap-2 bg-blue-600 px-5 text-white hover:bg-blue-500"
               variant={activeView.action ? 'outline' : 'default'}
               disabled={loadingTarefas && Boolean(activeView.action)}
@@ -343,7 +432,7 @@ const AdministrativoTarefas = () => {
                 <p className="mt-2 text-sm">{activeView.emptyDescription}</p>
               )}
               <Button
-                onClick={() => navigate('/administrativo/tarefas')}
+                onClick={() => setShowTaskForm(true)}
                 className="mt-4 h-10 gap-2 bg-blue-600 px-5 text-white hover:bg-blue-500"
               >
                 <Plus className="h-4 w-4" />
@@ -380,6 +469,14 @@ const AdministrativoTarefas = () => {
             </div>
           )}
         </section>
+        {showTaskForm && (
+          <TaskForm
+            task={emptyTask}
+            onCancel={() => setShowTaskForm(false)}
+            onSave={handleAdd}
+            saving={savingTarefa}
+          />
+        )}
       </motion.div>
     );
   }
@@ -511,7 +608,7 @@ const AdministrativoTarefas = () => {
               <ClipboardList className="h-8 w-8" />
               <p className="mt-4 text-sm font-semibold">Nenhuma tarefa pendente</p>
               <Button
-                onClick={() => navigate('/administrativo/tarefas')}
+                onClick={() => setShowTaskForm(true)}
                 className="mt-4 h-10 gap-2 bg-blue-600 px-5 text-white hover:bg-blue-500"
               >
                 <Plus className="h-4 w-4" />
@@ -547,6 +644,14 @@ const AdministrativoTarefas = () => {
           )}
         </div>
       </section>
+      {showTaskForm && (
+        <TaskForm
+          task={emptyTask}
+          onCancel={() => setShowTaskForm(false)}
+          onSave={handleAdd}
+          saving={savingTarefa}
+        />
+      )}
     </motion.div>
   );
 };

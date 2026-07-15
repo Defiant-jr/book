@@ -12,6 +12,7 @@ Ative a API:
 Vá em APIs & Services > Library
 Procure Google Tasks API
 Clique em Enable
+Para usar a agenda administrativa, procure tambem Google Calendar API e clique em Enable.
 Configure a tela OAuth:
 
 Vá em APIs & Services > OAuth consent screen
@@ -48,6 +49,33 @@ GOOGLE_TASKS_CLIENT_SECRET="seu-client-secret"
 GOOGLE_TASKS_REFRESH_TOKEN="seu-refresh-token"
 GOOGLE_TASKS_LIST_ID="@default"
 Depois reinicie o sistema.
+
+Para gravar compromissos na agenda administrativa (ref 12000):
+
+Gere um refresh token com o escopo:
+https://www.googleapis.com/auth/calendar.events
+
+Voce pode gerar um token separado e preencher:
+
+GOOGLE_CALENDAR_CLIENT_ID="seu-client-id"
+GOOGLE_CALENDAR_CLIENT_SECRET="seu-client-secret"
+GOOGLE_CALENDAR_REFRESH_TOKEN="seu-refresh-token-com-calendar"
+GOOGLE_CALENDAR_ID="primary"
+GOOGLE_CALENDAR_TIME_ZONE="America/Sao_Paulo"
+
+Ou pode gerar um unico refresh token com os dois escopos no OAuth Playground:
+https://www.googleapis.com/auth/tasks
+https://www.googleapis.com/auth/calendar.events
+
+Nesse caso, o mesmo refresh token pode ser usado nas variaveis GOOGLE_TASKS_REFRESH_TOKEN e GOOGLE_CALENDAR_REFRESH_TOKEN.
+Mesmo usando o mesmo token, preencha explicitamente GOOGLE_CALENDAR_REFRESH_TOKEN no .env.local; a agenda nao usa GOOGLE_TASKS_REFRESH_TOKEN como fallback.
+
+Se aparecer invalid_grant ou Bad Request ao carregar a agenda:
+- confira se marcou Use your own OAuth credentials no OAuth Playground;
+- use exatamente o mesmo GOOGLE_CALENDAR_CLIENT_ID e GOOGLE_CALENDAR_CLIENT_SECRET que estao no .env.local;
+- copie o Refresh token, nao o Access token nem o authorization code;
+- gere novamente o token se ele foi revogado, expirou ou foi emitido para outro OAuth Client;
+- se a tela OAuth estiver em modo Testing, adicione seu e-mail como usuario de teste.
 
 Referências oficiais:
 

@@ -27,11 +27,10 @@ import {
   ChevronRight,
   Clock,
   Edit3,
-  MapPin,
   Plus,
+  RefreshCw,
   Search,
   Trash2,
-  Users,
   X,
 } from 'lucide-react';
 
@@ -40,8 +39,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/components/ui/use-toast';
+import {
+  createGoogleCalendarEvent,
+  deleteGoogleCalendarEvent,
+  listGoogleCalendarEvents,
+  updateGoogleCalendarEvent,
+} from '@/services/googleCalendarService';
 
-const STORAGE_KEY = 'book-administrativo-agenda-events';
 const ADMINISTRATIVO_AGENDA_REF = 12000;
 
 const categories = [
@@ -57,10 +62,7 @@ const emptyEvent = {
   date: format(new Date(), 'yyyy-MM-dd'),
   startTime: '09:00',
   endTime: '10:00',
-  allDay: false,
   category: 'administrativo',
-  location: '',
-  guests: '',
   notes: '',
 };
 
@@ -68,50 +70,10 @@ const getCategory = (value) => categories.find((category) => category.value === 
 const dateKey = (date) => format(date, 'yyyy-MM-dd');
 const parseLocalDate = (value) => parseISO(`${value}T00:00:00`);
 
-const seedEvents = () => [
-  {
-    id: crypto.randomUUID(),
-    title: 'Reuniao administrativa',
-    date: format(new Date(), 'yyyy-MM-dd'),
-    startTime: '09:00',
-    endTime: '10:00',
-    allDay: false,
-    category: 'reuniao',
-    location: 'Sala principal',
-    guests: 'Equipe administrativa',
-    notes: 'Acompanhamento semanal de prioridades.',
-  },
-  {
-    id: crypto.randomUUID(),
-    title: 'Fechamento financeiro',
-    date: format(addDays(new Date(), 2), 'yyyy-MM-dd'),
-    startTime: '14:00',
-    endTime: '15:30',
-    allDay: false,
-    category: 'financeiro',
-    location: '',
-    guests: '',
-    notes: '',
-  },
-];
-
-const loadEvents = () => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return seedEvents();
-    const parsed = JSON.parse(stored);
-    return Array.isArray(parsed) ? parsed : seedEvents();
-  } catch {
-    return seedEvents();
-  }
-};
-
 const sortEvents = (events) =>
   [...events].sort((a, b) => {
     const dateCompare = a.date.localeCompare(b.date);
     if (dateCompare !== 0) return dateCompare;
-    if (a.allDay && !b.allDay) return -1;
-    if (!a.allDay && b.allDay) return 1;
     return String(a.startTime || '').localeCompare(String(b.startTime || ''));
   });
 
@@ -127,27 +89,23 @@ const EventPill = ({ event, compact = false, onClick }) => {
       className={`w-full truncate rounded border px-2 py-1 text-left text-xs ${category.soft} hover:border-white/40`}
       title={event.title}
     >
-      {!compact && !event.allDay && <span className="mr-1 font-mono">{event.startTime}</span>}
+      {!compact && <span className="mr-1 font-mono">{event.startTime}</span>}
       <span className="font-semibold">{event.title}</span>
     </button>
   );
 };
 
 const EventDetails = ({ event, onEdit, onDelete, onClose }) => {
-  const category = getCategory(event.category);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <div className="w-full max-w-lg rounded-lg border border-white/10 bg-slate-950 p-5 shadow-2xl">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <div className="mb-3 flex items-center gap-2">
-              <span className={`h-3 w-3 rounded-full ${category.color}`} />
-              <span className="text-xs font-semibold uppercase text-slate-400">{category.label}</span>
-            </div>
+            <div className="mb-3 text-xs font-semibold uppercase text-slate-400">Compromisso</div>
             <h2 className="break-words text-2xl font-bold text-white">{event.title}</h2>
             <p className="mt-2 text-sm text-slate-300">
               {format(parseLocalDate(event.date), "EEEE, dd 'de' MMMM", { locale: ptBR })}
-              {event.allDay ? ' - Dia todo' : ` - ${event.startTime} ate ${event.endTime}`}
+              {` - ${event.startTime} ate ${event.endTime}`}
             </p>
           </div>
           <Button type="button" variant="ghost" size="icon" onClick={onClose} className="text-slate-300 hover:bg-white/10">
@@ -157,12 +115,6 @@ const EventDetails = ({ event, onEdit, onDelete, onClose }) => {
         </div>
 
         <div className="mt-5 space-y-3 text-sm text-slate-300">
-          {event.location && (
-            <p className="flex items-center gap-2"><MapPin className="h-4 w-4 text-slate-400" />{event.location}</p>
-          )}
-          {event.guests && (
-            <p className="flex items-center gap-2"><Users className="h-4 w-4 text-slate-400" />{event.guests}</p>
-          )}
           {event.notes && <p className="whitespace-pre-wrap rounded-md bg-white/5 p-3 leading-relaxed">{event.notes}</p>}
         </div>
 
@@ -181,7 +133,7 @@ const EventDetails = ({ event, onEdit, onDelete, onClose }) => {
   );
 };
 
-const EventForm = ({ event, onCancel, onSave }) => {
+const EventForm = ({ event, onCancel, onSave, saving }) => {
   const [draft, setDraft] = useState(event || emptyEvent);
 
   const update = (field, value) => setDraft((current) => ({ ...current, [field]: value }));
@@ -192,11 +144,9 @@ const EventForm = ({ event, onCancel, onSave }) => {
     onSave({
       ...draft,
       title: draft.title.trim(),
-      location: draft.location.trim(),
-      guests: draft.guests.trim(),
       notes: draft.notes.trim(),
-      startTime: draft.allDay ? '00:00' : draft.startTime,
-      endTime: draft.allDay ? '23:59' : draft.endTime,
+      startTime: draft.startTime,
+      endTime: draft.endTime,
     });
   };
 
@@ -204,7 +154,7 @@ const EventForm = ({ event, onCancel, onSave }) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <form onSubmit={submit} className="w-full max-w-2xl rounded-lg border border-white/10 bg-slate-950 p-5 shadow-2xl">
         <div className="mb-5 flex items-center justify-between gap-4">
-          <h2 className="text-xl font-bold text-white">{draft.id ? 'Editar evento' : 'Novo evento'}</h2>
+          <h2 className="text-xl font-bold text-white">{draft.id ? 'Editar compromisso' : 'Novo compromisso'}</h2>
           <Button type="button" variant="ghost" size="icon" onClick={onCancel} className="text-slate-300 hover:bg-white/10">
             <X className="h-4 w-4" />
             <span className="sr-only">Fechar</span>
@@ -236,78 +186,35 @@ const EventForm = ({ event, onCancel, onSave }) => {
           </div>
 
           <div>
-            <label className="mb-2 block text-xs font-semibold uppercase text-slate-400">Categoria</label>
-            <Select value={draft.category} onValueChange={(value) => update('category', value)}>
-              <SelectTrigger className="border-white/15 bg-white/10 text-white">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map((category) => (
-                  <SelectItem key={category.value} value={category.value}>{category.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <label className="flex items-center gap-2 text-sm text-slate-300">
-            <input
-              type="checkbox"
-              checked={draft.allDay}
-              onChange={(inputEvent) => update('allDay', inputEvent.target.checked)}
-              className="h-4 w-4 rounded border-white/20 bg-white/10"
-            />
-            Dia todo
-          </label>
-
-          {!draft.allDay && (
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                type="time"
-                value={draft.startTime}
-                onChange={(inputEvent) => update('startTime', inputEvent.target.value)}
-                className="border-white/15 bg-white/10 text-white"
-                aria-label="Hora inicial"
-              />
-              <Input
-                type="time"
-                value={draft.endTime}
-                onChange={(inputEvent) => update('endTime', inputEvent.target.value)}
-                className="border-white/15 bg-white/10 text-white"
-                aria-label="Hora final"
-              />
-            </div>
-          )}
-
-          <div>
-            <label className="mb-2 block text-xs font-semibold uppercase text-slate-400" htmlFor="agenda-location">Local</label>
+            <label className="mb-2 block text-xs font-semibold uppercase text-slate-400" htmlFor="agenda-start-time">Hora Inicio</label>
             <Input
-              id="agenda-location"
-              value={draft.location}
-              onChange={(inputEvent) => update('location', inputEvent.target.value)}
+              id="agenda-start-time"
+              type="time"
+              value={draft.startTime}
+              onChange={(inputEvent) => update('startTime', inputEvent.target.value)}
               className="border-white/15 bg-white/10 text-white"
-              placeholder="Adicionar local"
             />
           </div>
 
           <div>
-            <label className="mb-2 block text-xs font-semibold uppercase text-slate-400" htmlFor="agenda-guests">Convidados</label>
+            <label className="mb-2 block text-xs font-semibold uppercase text-slate-400" htmlFor="agenda-end-time">Hora Fim</label>
             <Input
-              id="agenda-guests"
-              value={draft.guests}
-              onChange={(inputEvent) => update('guests', inputEvent.target.value)}
+              id="agenda-end-time"
+              type="time"
+              value={draft.endTime}
+              onChange={(inputEvent) => update('endTime', inputEvent.target.value)}
               className="border-white/15 bg-white/10 text-white"
-              placeholder="Adicionar convidados"
             />
           </div>
 
           <div className="md:col-span-2">
-            <label className="mb-2 block text-xs font-semibold uppercase text-slate-400" htmlFor="agenda-notes">Descricao</label>
+            <label className="mb-2 block text-xs font-semibold uppercase text-slate-400" htmlFor="agenda-notes">Detalhe</label>
             <Textarea
               id="agenda-notes"
               value={draft.notes}
               onChange={(inputEvent) => update('notes', inputEvent.target.value)}
               className="min-h-[110px] border-white/15 bg-white/10 text-white"
-              placeholder="Adicionar descricao"
+              placeholder="Adicionar detalhe"
             />
           </div>
         </div>
@@ -316,8 +223,8 @@ const EventForm = ({ event, onCancel, onSave }) => {
           <Button type="button" variant="outline" onClick={onCancel} className="border-white/15 text-slate-200 hover:bg-white/10">
             Cancelar
           </Button>
-          <Button type="submit" className="bg-blue-600 text-white hover:bg-blue-500">
-            Salvar
+          <Button type="submit" disabled={saving} className="bg-blue-600 text-white hover:bg-blue-500">
+            {saving ? 'Salvando...' : 'Salvar'}
           </Button>
         </div>
       </form>
@@ -365,23 +272,39 @@ const MiniCalendar = ({ currentDate, selectedDate, onSelect }) => {
 
 const AdministrativoAgenda = () => {
   const navigate = useNavigate();
-  const [events, setEvents] = useState(loadEvents);
+  const { toast } = useToast();
+  const [events, setEvents] = useState([]);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [view, setView] = useState('month');
+  const [view, setView] = useState('week');
   const [query, setQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('todas');
   const [editingEvent, setEditingEvent] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [quickEvent, setQuickEvent] = useState(emptyEvent);
+  const [loadingEvents, setLoadingEvents] = useState(false);
+  const [savingEvent, setSavingEvent] = useState(false);
+
+  const loadEvents = async ({ force = false } = {}) => {
+    setLoadingEvents(true);
+    try {
+      const data = await listGoogleCalendarEvents({ force });
+      setEvents(Array.isArray(data) ? data : []);
+    } catch (error) {
+      toast({ title: 'Erro ao carregar agenda', description: error.message, variant: 'destructive' });
+    } finally {
+      setLoadingEvents(false);
+    }
+  };
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
-  }, [events]);
+    loadEvents();
+  }, []);
 
   const filteredEvents = useMemo(() => {
     const text = query.trim().toLowerCase();
     return sortEvents(events).filter((event) => {
       const matchesCategory = categoryFilter === 'todas' || event.category === categoryFilter;
-      const matchesText = !text || `${event.title} ${event.location} ${event.guests} ${event.notes}`.toLowerCase().includes(text);
+      const matchesText = !text || `${event.title || ''} ${event.notes || ''}`.toLowerCase().includes(text);
       return matchesCategory && matchesText;
     });
   }, [events, query, categoryFilter]);
@@ -394,21 +317,76 @@ const AdministrativoAgenda = () => {
     setEditingEvent({ ...emptyEvent, date: dateKey(date) });
   };
 
-  const saveEvent = (event) => {
-    setEvents((current) => {
-      if (event.id) {
-        return current.map((item) => (item.id === event.id ? event : item));
-      }
-      return [...current, { ...event, id: crypto.randomUUID() }];
-    });
-    setEditingEvent(null);
-    setSelectedEvent(null);
+  const saveEvent = async (event) => {
+    const payload = {
+      title: event.title.trim(),
+      notes: event.notes?.trim() || '',
+      date: event.date,
+      startTime: event.startTime,
+      endTime: event.endTime,
+    };
+
+    setSavingEvent(true);
+    try {
+      const savedEvent = event.id
+        ? await updateGoogleCalendarEvent(event.id, payload)
+        : await createGoogleCalendarEvent(payload);
+
+      setEvents((current) => {
+        if (event.id) {
+          return current.map((item) => (item.id === event.id ? savedEvent : item));
+        }
+        return [savedEvent, ...current];
+      });
+      setEditingEvent(null);
+      setSelectedEvent(null);
+      toast({ title: event.id ? 'Compromisso atualizado' : 'Compromisso criado', description: 'A agenda foi gravada no Google Calendar.' });
+      return savedEvent;
+    } catch (error) {
+      toast({ title: 'Erro ao salvar agenda', description: error.message, variant: 'destructive' });
+      return null;
+    } finally {
+      setSavingEvent(false);
+    }
   };
 
-  const deleteEvent = (id) => {
-    setEvents((current) => current.filter((event) => event.id !== id));
-    setSelectedEvent(null);
-    setEditingEvent(null);
+  const updateQuickEvent = (field, value) => {
+    setQuickEvent((current) => ({ ...current, [field]: value }));
+  };
+
+  const addQuickEvent = async () => {
+    const title = quickEvent.title.trim();
+    if (!title) {
+      toast({ title: 'Informe o titulo', description: 'Digite um titulo valido para o compromisso.' });
+      return;
+    }
+
+    const savedEvent = await saveEvent({
+      ...quickEvent,
+      title,
+      notes: quickEvent.notes.trim(),
+      category: 'administrativo',
+    });
+    if (savedEvent) {
+      setQuickEvent({
+        ...emptyEvent,
+        date: quickEvent.date || format(new Date(), 'yyyy-MM-dd'),
+        startTime: quickEvent.startTime || emptyEvent.startTime,
+        endTime: quickEvent.endTime || emptyEvent.endTime,
+      });
+    }
+  };
+
+  const deleteEvent = async (id) => {
+    try {
+      await deleteGoogleCalendarEvent(id);
+      setEvents((current) => current.filter((event) => event.id !== id));
+      setSelectedEvent(null);
+      setEditingEvent(null);
+      toast({ title: 'Compromisso excluido', description: 'O compromisso foi removido do Google Calendar.' });
+    } catch (error) {
+      toast({ title: 'Erro ao excluir agenda', description: error.message, variant: 'destructive' });
+    }
   };
 
   const movePrevious = () => {
@@ -507,7 +485,7 @@ const AdministrativoAgenda = () => {
             <CalendarDays className="h-10 w-10" />
             <Button type="button" onClick={() => openNewEvent(currentDate)} className="mt-4 gap-2 bg-blue-600 text-white hover:bg-blue-500">
               <Plus className="h-4 w-4" />
-              Criar evento
+              Criar compromisso
             </Button>
           </div>
         ) : (
@@ -515,12 +493,11 @@ const AdministrativoAgenda = () => {
             const category = getCategory(event.category);
             return (
               <button key={event.id} type="button" onClick={() => setSelectedEvent(event)} className="flex w-full items-start gap-4 p-4 text-left hover:bg-white/[0.06]">
-                <div className="w-20 shrink-0 text-sm text-slate-400">{event.allDay ? 'Dia todo' : event.startTime}</div>
+                <div className="w-20 shrink-0 text-sm text-slate-400">{event.startTime}</div>
                 <span className={`mt-1 h-3 w-3 rounded-full ${category.color}`} />
                 <div className="min-w-0">
                   <p className="font-semibold text-white">{event.title}</p>
-                  <p className="text-sm text-slate-400">{event.allDay ? category.label : `${event.startTime} - ${event.endTime} · ${category.label}`}</p>
-                  {event.location && <p className="mt-1 text-sm text-slate-400">{event.location}</p>}
+                  <p className="text-sm text-slate-400">{`${event.startTime} - ${event.endTime} · ${category.label}`}</p>
                 </div>
               </button>
             );
@@ -569,6 +546,10 @@ const AdministrativoAgenda = () => {
           <Button type="button" variant="outline" onClick={() => setCurrentDate(new Date())} className="border-white/15 text-slate-200 hover:bg-white/10">
             Hoje
           </Button>
+          <Button type="button" variant="outline" onClick={() => loadEvents({ force: true })} disabled={loadingEvents} className="gap-2 border-white/15 text-slate-200 hover:bg-white/10">
+            <RefreshCw className={`h-4 w-4 ${loadingEvents ? 'animate-spin' : ''}`} />
+            Atualizar
+          </Button>
           <div className="flex overflow-hidden rounded-md border border-white/15">
             <Button type="button" variant="ghost" size="icon" onClick={movePrevious} className="rounded-none text-slate-200 hover:bg-white/10">
               <ChevronLeft className="h-4 w-4" />
@@ -593,6 +574,62 @@ const AdministrativoAgenda = () => {
           </Button>
         </div>
       </motion.div>
+
+      <section className="rounded-xl border border-white/20 bg-white/10 p-4 shadow-xl shadow-black/10 backdrop-blur-lg">
+        <p className="text-xs font-bold uppercase text-slate-400">Insercao de compromisso</p>
+        <div className="mt-3 grid grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_170px_140px_140px_auto]">
+          <Input
+            value={quickEvent.title}
+            onChange={(event) => updateQuickEvent('title', event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') addQuickEvent();
+            }}
+            placeholder="Titulo"
+            className="h-11 rounded-xl border-white/20 bg-white/10 text-white placeholder:text-slate-400 focus-visible:ring-blue-400"
+            disabled={savingEvent}
+          />
+          <Input
+            type="date"
+            value={quickEvent.date}
+            onChange={(event) => updateQuickEvent('date', event.target.value)}
+            aria-label="Data"
+            className="h-11 rounded-xl border-white/20 bg-white/10 text-white [color-scheme:dark] focus-visible:ring-blue-400"
+            disabled={savingEvent}
+          />
+          <Input
+            type="time"
+            value={quickEvent.startTime}
+            onChange={(event) => updateQuickEvent('startTime', event.target.value)}
+            aria-label="Hora Inicio"
+            className="h-11 rounded-xl border-white/20 bg-white/10 text-white [color-scheme:dark] focus-visible:ring-blue-400"
+            disabled={savingEvent}
+          />
+          <Input
+            type="time"
+            value={quickEvent.endTime}
+            onChange={(event) => updateQuickEvent('endTime', event.target.value)}
+            aria-label="Hora Fim"
+            className="h-11 rounded-xl border-white/20 bg-white/10 text-white [color-scheme:dark] focus-visible:ring-blue-400"
+            disabled={savingEvent}
+          />
+          <Button
+            type="button"
+            onClick={addQuickEvent}
+            disabled={savingEvent}
+            className="h-11 gap-2 rounded-xl bg-blue-600 px-5 text-white hover:bg-blue-500"
+          >
+            <Plus className="h-4 w-4" />
+            {savingEvent ? 'Adicionando...' : 'Adicionar'}
+          </Button>
+          <Textarea
+            value={quickEvent.notes}
+            onChange={(event) => updateQuickEvent('notes', event.target.value)}
+            placeholder="Detalhe"
+            className="min-h-[86px] rounded-xl border-white/20 bg-white/10 text-white placeholder:text-slate-400 focus-visible:ring-blue-400 lg:col-span-5"
+            disabled={savingEvent}
+          />
+        </div>
+      </section>
 
       <div className="grid gap-5 xl:grid-cols-[280px_1fr]">
         <aside className="space-y-4">
@@ -637,7 +674,12 @@ const AdministrativoAgenda = () => {
                 <h2 className="text-sm font-semibold">Hoje</h2>
               </div>
               <div className="space-y-2">
-                {todayEvents.length === 0 ? (
+                {loadingEvents ? (
+                  <div className="flex items-center gap-2 text-sm text-slate-500">
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    Carregando...
+                  </div>
+                ) : todayEvents.length === 0 ? (
                   <p className="text-sm text-slate-500">Nenhum evento para hoje.</p>
                 ) : (
                   todayEvents.map((event) => <EventPill key={event.id} event={event} onClick={setSelectedEvent} />)
@@ -648,14 +690,23 @@ const AdministrativoAgenda = () => {
         </aside>
 
         <main>
-          {view === 'month' && renderMonth()}
-          {view === 'week' && renderWeek()}
-          {view === 'day' && renderDay()}
+          {loadingEvents ? (
+            <div className="flex min-h-[320px] flex-col items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-slate-400">
+              <RefreshCw className="h-8 w-8 animate-spin" />
+              <p className="mt-3 text-sm font-semibold">Carregando agenda...</p>
+            </div>
+          ) : (
+            <>
+              {view === 'month' && renderMonth()}
+              {view === 'week' && renderWeek()}
+              {view === 'day' && renderDay()}
+            </>
+          )}
         </main>
       </div>
 
       {editingEvent && (
-        <EventForm event={editingEvent} onCancel={() => setEditingEvent(null)} onSave={saveEvent} />
+        <EventForm event={editingEvent} onCancel={() => setEditingEvent(null)} onSave={saveEvent} saving={savingEvent} />
       )}
       {selectedEvent && (
         <EventDetails

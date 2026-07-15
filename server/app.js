@@ -6,6 +6,7 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { registerGoogleCalendarRoutes } from './googleCalendarRoutes.js';
 import { registerGoogleTasksRoutes } from './googleTasksRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -92,6 +93,7 @@ export async function createApp(options = {}) {
     }
   });
 
+  registerGoogleCalendarRoutes(app);
   registerGoogleTasksRoutes(app);
 
   if (!withFrontend) {
