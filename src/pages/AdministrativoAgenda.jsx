@@ -69,6 +69,7 @@ const emptyEvent = {
 const getCategory = (value) => categories.find((category) => category.value === value) || categories[0];
 const dateKey = (date) => format(date, 'yyyy-MM-dd');
 const parseLocalDate = (value) => parseISO(`${value}T00:00:00`);
+const getEventKey = (event) => event.key || `${event.calendarId || 'default'}:${event.id || event.title}`;
 
 const sortEvents = (events) =>
   [...events].sort((a, b) => {
@@ -87,7 +88,8 @@ const EventPill = ({ event, compact = false, onClick }) => {
         onClick(event);
       }}
       className={`w-full truncate rounded border px-2 py-1 text-left text-xs ${category.soft} hover:border-white/40`}
-      title={event.title}
+      style={event.calendarColor ? { borderColor: event.calendarColor } : undefined}
+      title={event.calendarSummary ? `${event.title} - ${event.calendarSummary}` : event.title}
     >
       {!compact && <span className="mr-1 font-mono">{event.startTime}</span>}
       <span className="font-semibold">{event.title}</span>
@@ -107,6 +109,9 @@ const EventDetails = ({ event, onEdit, onDelete, onClose }) => {
               {format(parseLocalDate(event.date), "EEEE, dd 'de' MMMM", { locale: ptBR })}
               {` - ${event.startTime} ate ${event.endTime}`}
             </p>
+            {event.calendarSummary && (
+              <p className="mt-1 text-xs font-semibold uppercase text-slate-500">{event.calendarSummary}</p>
+            )}
           </div>
           <Button type="button" variant="ghost" size="icon" onClick={onClose} className="text-slate-300 hover:bg-white/10">
             <X className="h-4 w-4" />
@@ -118,16 +123,18 @@ const EventDetails = ({ event, onEdit, onDelete, onClose }) => {
           {event.notes && <p className="whitespace-pre-wrap rounded-md bg-white/5 p-3 leading-relaxed">{event.notes}</p>}
         </div>
 
-        <div className="mt-6 flex flex-wrap justify-end gap-2">
-          <Button type="button" variant="outline" onClick={() => onDelete(event.id)} className="gap-2 border-red-400/30 text-red-200 hover:bg-red-500/10">
-            <Trash2 className="h-4 w-4" />
-            Excluir
-          </Button>
-          <Button type="button" onClick={() => onEdit(event)} className="gap-2 bg-blue-600 text-white hover:bg-blue-500">
-            <Edit3 className="h-4 w-4" />
-            Editar
-          </Button>
-        </div>
+        {event.canEdit && (
+          <div className="mt-6 flex flex-wrap justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => onDelete(event)} className="gap-2 border-red-400/30 text-red-200 hover:bg-red-500/10">
+              <Trash2 className="h-4 w-4" />
+              Excluir
+            </Button>
+            <Button type="button" onClick={() => onEdit(event)} className="gap-2 bg-blue-600 text-white hover:bg-blue-500">
+              <Edit3 className="h-4 w-4" />
+              Editar
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -324,6 +331,7 @@ const AdministrativoAgenda = () => {
       date: event.date,
       startTime: event.startTime,
       endTime: event.endTime,
+      calendarId: event.calendarId,
     };
 
     setSavingEvent(true);
@@ -334,7 +342,7 @@ const AdministrativoAgenda = () => {
 
       setEvents((current) => {
         if (event.id) {
-          return current.map((item) => (item.id === event.id ? savedEvent : item));
+          return current.map((item) => (getEventKey(item) === getEventKey(event) ? savedEvent : item));
         }
         return [savedEvent, ...current];
       });
@@ -377,10 +385,10 @@ const AdministrativoAgenda = () => {
     }
   };
 
-  const deleteEvent = async (id) => {
+  const deleteEvent = async (event) => {
     try {
-      await deleteGoogleCalendarEvent(id);
-      setEvents((current) => current.filter((event) => event.id !== id));
+      await deleteGoogleCalendarEvent(event.id, { calendarId: event.calendarId });
+      setEvents((current) => current.filter((item) => getEventKey(item) !== getEventKey(event)));
       setSelectedEvent(null);
       setEditingEvent(null);
       toast({ title: 'Compromisso excluido', description: 'O compromisso foi removido do Google Calendar.' });
@@ -437,7 +445,7 @@ const AdministrativoAgenda = () => {
               </span>
               <div className="mt-2 space-y-1">
                 {dayEvents.slice(0, 3).map((event) => (
-                  <EventPill key={event.id} event={event} onClick={setSelectedEvent} />
+                  <EventPill key={getEventKey(event)} event={event} onClick={setSelectedEvent} />
                 ))}
                 {dayEvents.length > 3 && <p className="text-xs font-semibold text-slate-400">+{dayEvents.length - 3} eventos</p>}
               </div>
@@ -460,7 +468,7 @@ const AdministrativoAgenda = () => {
                 <p className={`mt-1 text-2xl font-semibold ${isSameDay(day, new Date()) ? 'text-blue-300' : 'text-white'}`}>{format(day, 'd')}</p>
               </button>
               <div className="space-y-2 p-3">
-                {dayEvents.map((event) => <EventPill key={event.id} event={event} onClick={setSelectedEvent} />)}
+                {dayEvents.map((event) => <EventPill key={getEventKey(event)} event={event} onClick={setSelectedEvent} />)}
                 <Button type="button" variant="ghost" onClick={() => openNewEvent(day)} className="h-8 w-full justify-start gap-2 text-xs text-slate-400 hover:bg-white/10">
                   <Plus className="h-3 w-3" />
                   Criar
@@ -492,12 +500,12 @@ const AdministrativoAgenda = () => {
           selectedDateEvents.map((event) => {
             const category = getCategory(event.category);
             return (
-              <button key={event.id} type="button" onClick={() => setSelectedEvent(event)} className="flex w-full items-start gap-4 p-4 text-left hover:bg-white/[0.06]">
+              <button key={getEventKey(event)} type="button" onClick={() => setSelectedEvent(event)} className="flex w-full items-start gap-4 p-4 text-left hover:bg-white/[0.06]">
                 <div className="w-20 shrink-0 text-sm text-slate-400">{event.startTime}</div>
                 <span className={`mt-1 h-3 w-3 rounded-full ${category.color}`} />
                 <div className="min-w-0">
                   <p className="font-semibold text-white">{event.title}</p>
-                  <p className="text-sm text-slate-400">{`${event.startTime} - ${event.endTime} · ${category.label}`}</p>
+                  <p className="text-sm text-slate-400">{`${event.startTime} - ${event.endTime} - ${event.calendarSummary || category.label}`}</p>
                 </div>
               </button>
             );
@@ -682,7 +690,7 @@ const AdministrativoAgenda = () => {
                 ) : todayEvents.length === 0 ? (
                   <p className="text-sm text-slate-500">Nenhum evento para hoje.</p>
                 ) : (
-                  todayEvents.map((event) => <EventPill key={event.id} event={event} onClick={setSelectedEvent} />)
+                  todayEvents.map((event) => <EventPill key={getEventKey(event)} event={event} onClick={setSelectedEvent} />)
                 )}
               </div>
             </CardContent>
@@ -724,3 +732,5 @@ const AdministrativoAgenda = () => {
 };
 
 export default AdministrativoAgenda;
+
+

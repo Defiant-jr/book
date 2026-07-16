@@ -52,7 +52,10 @@ Depois reinicie o sistema.
 
 Para gravar compromissos na agenda administrativa (ref 12000):
 
-Gere um refresh token com o escopo:
+A tela de agenda carrega eventos de todas as agendas disponiveis na conta Google. Novos eventos continuam sendo gravados apenas na agenda alvo configurada por GOOGLE_CALENDAR_ID ou GOOGLE_CALENDAR_NAME.
+
+Gere um refresh token com os escopos:
+https://www.googleapis.com/auth/calendar
 https://www.googleapis.com/auth/calendar.events
 
 Voce pode gerar um token separado e preencher:
@@ -61,10 +64,14 @@ GOOGLE_CALENDAR_CLIENT_ID="seu-client-id"
 GOOGLE_CALENDAR_CLIENT_SECRET="seu-client-secret"
 GOOGLE_CALENDAR_REFRESH_TOKEN="seu-refresh-token-com-calendar"
 GOOGLE_CALENDAR_ID="primary"
+GOOGLE_CALENDAR_NAME="Feriados do Brasil"
 GOOGLE_CALENDAR_TIME_ZONE="America/Sao_Paulo"
+
+Se voce informar GOOGLE_CALENDAR_ID, inclusive como "primary", ele tem prioridade sobre GOOGLE_CALENDAR_NAME e o sistema nao tenta procurar/criar agenda por nome.
 
 Ou pode gerar um unico refresh token com os dois escopos no OAuth Playground:
 https://www.googleapis.com/auth/tasks
+https://www.googleapis.com/auth/calendar
 https://www.googleapis.com/auth/calendar.events
 
 Nesse caso, o mesmo refresh token pode ser usado nas variaveis GOOGLE_TASKS_REFRESH_TOKEN e GOOGLE_CALENDAR_REFRESH_TOKEN.
@@ -85,3 +92,7 @@ OAuth 2.0 Playground:
 https://developers.google.com/oauthplayground/
 OAuth 2.0 Google APIs: 
 https://developers.google.com/identity/protocols/oauth2
+
+
+
+

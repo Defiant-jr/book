@@ -2,6 +2,7 @@ const CALENDAR_ENDPOINT = '/api/google-calendar/events';
 const EVENTS_CACHE_MS = 15000;
 
 let eventsCache = null;
+let calendarsCache = null;
 let eventsCacheExpiresAt = 0;
 let eventsRequestPromise = null;
 
@@ -29,6 +30,7 @@ export const listGoogleCalendarEvents = async ({ force = false } = {}) => {
     const response = await fetch(CALENDAR_ENDPOINT);
     const payload = await parseResponse(response);
     const events = Array.isArray(payload.events) ? payload.events : [];
+    calendarsCache = Array.isArray(payload.calendars) ? payload.calendars : [];
     eventsCache = events;
     eventsCacheExpiresAt = Date.now() + EVENTS_CACHE_MS;
     return events;
@@ -43,6 +45,7 @@ export const listGoogleCalendarEvents = async ({ force = false } = {}) => {
 
 const clearEventsCache = () => {
   eventsCache = null;
+  calendarsCache = null;
   eventsCacheExpiresAt = 0;
 };
 
@@ -68,10 +71,13 @@ export const updateGoogleCalendarEvent = async (eventId, updates) => {
   return payload.event;
 };
 
-export const deleteGoogleCalendarEvent = async (eventId) => {
-  const response = await fetch(`${CALENDAR_ENDPOINT}/${encodeURIComponent(eventId)}`, {
+export const deleteGoogleCalendarEvent = async (eventId, { calendarId } = {}) => {
+  const query = calendarId ? `?calendarId=${encodeURIComponent(calendarId)}` : '';
+  const response = await fetch(`${CALENDAR_ENDPOINT}/${encodeURIComponent(eventId)}${query}`, {
     method: 'DELETE'
   });
   await parseResponse(response);
   clearEventsCache();
 };
+
+export const listGoogleCalendarCalendars = () => calendarsCache || [];

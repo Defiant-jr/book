@@ -68,6 +68,7 @@ GOOGLE_CALENDAR_CLIENT_ID=...
 GOOGLE_CALENDAR_CLIENT_SECRET=...
 GOOGLE_CALENDAR_REFRESH_TOKEN=...
 GOOGLE_CALENDAR_ID=primary
+GOOGLE_CALENDAR_NAME=Feriados do Brasil
 GOOGLE_CALENDAR_TIME_ZONE=America/Sao_Paulo
 ```
 > ⚠️ Os arquivos atuais usam chaves hardcoded apenas para desenvolvimento. Remova-as antes de distribuir ou publicar o projeto.
@@ -118,9 +119,9 @@ DefFinance-v1/
   - As telas Administrativo (`10000`) e Tarefas Administrativas (`11000`) consomem o Google Tasks diretamente e deixam de gravar na tabela `postit`.
   - Configure `GOOGLE_TASKS_CLIENT_ID`, `GOOGLE_TASKS_CLIENT_SECRET`, `GOOGLE_TASKS_REFRESH_TOKEN` e, opcionalmente, `GOOGLE_TASKS_LIST_ID` (`@default` quando omitido). Como alternativa temporaria, `GOOGLE_TASKS_ACCESS_TOKEN` tambem e aceito, mas expira.
 - **Google Calendar API v3**:
-  - Endpoints `/api/google-calendar/events` no backend Express listam, criam, atualizam e removem compromissos usando OAuth.
-  - A tela Agenda Administrativa (`12000`) grava compromissos diretamente na agenda com `Titulo`, `Detalhe`, `Data`, `Hora Inicio` e `Hora Fim`.
-  - Configure `GOOGLE_CALENDAR_CLIENT_ID`, `GOOGLE_CALENDAR_CLIENT_SECRET`, `GOOGLE_CALENDAR_REFRESH_TOKEN` e, opcionalmente, `GOOGLE_CALENDAR_ID` (`primary` quando omitido) e `GOOGLE_CALENDAR_TIME_ZONE` (`America/Sao_Paulo` quando omitido). Voce pode usar o mesmo OAuth Client das tarefas, mas o refresh token da agenda precisa ter escopo do Google Calendar.
+  - Endpoints `/api/google-calendar/events` no backend Express listam compromissos de todas as agendas disponiveis e criam, atualizam e removem compromissos usando OAuth.
+  - A tela Agenda Administrativa (`12000`) exibe eventos de todas as agendas acessiveis e grava novos compromissos na agenda alvo configurada com `Titulo`, `Detalhe`, `Data`, `Hora Inicio` e `Hora Fim`.
+  - Configure `GOOGLE_CALENDAR_CLIENT_ID`, `GOOGLE_CALENDAR_CLIENT_SECRET`, `GOOGLE_CALENDAR_REFRESH_TOKEN` e, opcionalmente, `GOOGLE_CALENDAR_ID` (`primary` quando omitido), `GOOGLE_CALENDAR_NAME` (procura/cria uma agenda gravavel com esse titulo, como `Feriados do Brasil`) e `GOOGLE_CALENDAR_TIME_ZONE` (`America/Sao_Paulo` quando omitido). Se `GOOGLE_CALENDAR_ID` estiver preenchido, inclusive como `primary`, ele tem prioridade sobre o nome. Para usar `GOOGLE_CALENDAR_NAME`, gere o token com os escopos `https://www.googleapis.com/auth/calendar` e `https://www.googleapis.com/auth/calendar.events`.
 - **Bibliotecas principais**: Radix UI, lucide-react (ícones), Framer Motion, Recharts, Tailwind Merge, React Day Picker, date-fns, html2canvas, jspdf/jspdf-autotable, class-variance-authority.
 
 ## Padrões de código e UI
@@ -139,3 +140,6 @@ DefFinance-v1/
 2. Documentar o schema das tabelas Supabase (campos, tipos, relacionamentos) e automatizar migrações.
 3. Adicionar testes de frontend (ex.: fluxos de login e dashboard) e cobertura para importação de planilhas.
 4. Configurar CI para lint, testes e build automatizados antes de deploy.
+
+
+

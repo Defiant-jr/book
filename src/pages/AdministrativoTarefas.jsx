@@ -14,6 +14,7 @@ import {
   Plus,
   RefreshCw,
   X,
+  Trash2,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -22,6 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import {
   createGoogleTask,
+  deleteGoogleTask,
   listGoogleTasks,
   updateGoogleTask,
 } from '@/services/googleTasksService';
@@ -291,6 +293,15 @@ const AdministrativoTarefas = () => {
       toast({ title: 'Erro ao concluir', description: error.message, variant: 'destructive' });
     }
   };
+  const handleExcluir = async (tarefa) => {
+    try {
+      await deleteGoogleTask(tarefa.id);
+      setTarefas((prev) => prev.filter((item) => item.id !== tarefa.id));
+      toast({ title: 'Tarefa excluida', description: 'A tarefa foi removida do Google Tasks.' });
+    } catch (error) {
+      toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' });
+    }
+  };
 
   const stats = [
     {
@@ -453,16 +464,33 @@ const AdministrativoTarefas = () => {
                     )}
                     <p className="text-xs text-slate-400">{formatTaskDate(tarefa.data)}</p>
                   </div>
-                  {tarefa.concluida !== 'S' && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleConcluir(tarefa)}
-                      className="gap-2 text-emerald-300 hover:bg-emerald-400/10 hover:text-emerald-200"
-                    >
-                      <CheckCircle2 className="h-4 w-4" />
-                      Concluir
-                    </Button>
+                  {(tarefa.concluida !== 'S' || activeView.ref === '11300') && (
+                    <div className="flex items-center gap-2">
+                      {tarefa.concluida !== 'S' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleConcluir(tarefa)}
+                          className="gap-2 text-emerald-300 hover:bg-emerald-400/10 hover:text-emerald-200"
+                        >
+                          <CheckCircle2 className="h-4 w-4" />
+                          Concluir
+                        </Button>
+                      )}
+                      {activeView.ref === '11300' && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleExcluir(tarefa)}
+                          className="h-9 w-9 text-red-300 hover:bg-red-400/10 hover:text-red-200"
+                          aria-label="Excluir tarefa"
+                          title="Excluir tarefa"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   )}
                 </div>
               ))}
@@ -629,15 +657,28 @@ const AdministrativoTarefas = () => {
                     )}
                     <p className="text-xs text-slate-400">{formatTaskDate(tarefa.data)}</p>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleConcluir(tarefa)}
-                    className="gap-2 text-emerald-300 hover:bg-emerald-400/10 hover:text-emerald-200"
-                  >
-                    <CheckCircle2 className="h-4 w-4" />
-                    Concluir
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleConcluir(tarefa)}
+                      className="gap-2 text-emerald-300 hover:bg-emerald-400/10 hover:text-emerald-200"
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+                      Concluir
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleExcluir(tarefa)}
+                      className="h-9 w-9 text-red-300 hover:bg-red-400/10 hover:text-red-200"
+                      aria-label="Excluir tarefa"
+                      title="Excluir tarefa"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -657,3 +698,4 @@ const AdministrativoTarefas = () => {
 };
 
 export default AdministrativoTarefas;
+

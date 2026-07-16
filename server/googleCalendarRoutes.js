@@ -1,9 +1,13 @@
+const DEFAULT_GOOGLE_CALENDAR_ID = 'primary';
+const configuredGoogleCalendarId = String(process.env.GOOGLE_CALENDAR_ID || '').trim();
+
 const googleCalendarConfig = {
   accessToken: process.env.GOOGLE_CALENDAR_ACCESS_TOKEN,
   clientId: process.env.GOOGLE_CALENDAR_CLIENT_ID || process.env.GOOGLE_TASKS_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CALENDAR_CLIENT_SECRET || process.env.GOOGLE_TASKS_CLIENT_SECRET,
   refreshToken: process.env.GOOGLE_CALENDAR_REFRESH_TOKEN,
-  calendarId: process.env.GOOGLE_CALENDAR_ID || 'primary',
+  calendarId: configuredGoogleCalendarId || DEFAULT_GOOGLE_CALENDAR_ID,
+  calendarName: process.env.GOOGLE_CALENDAR_NAME,
   timeZone: process.env.GOOGLE_CALENDAR_TIME_ZONE || 'America/Sao_Paulo'
 };
 
@@ -11,8 +15,12 @@ let cachedGoogleCalendarAccessToken = null;
 let cachedGoogleCalendarAccessTokenExpiresAt = 0;
 let cachedGoogleCalendarAuthError = null;
 let cachedGoogleCalendarAuthErrorExpiresAt = 0;
+let cachedGoogleCalendarId = null;
+let cachedGoogleCalendarList = null;
+let cachedGoogleCalendarListExpiresAt = 0;
 
 const encodeCalendarId = (calendarId) => encodeURIComponent(calendarId).replace(/%40/g, '@');
+const calendarEventsPathFor = (calendarId) => `calendars/${encodeCalendarId(calendarId)}/events`;
 
 const getGoogleCalendarAccessToken = async () => {
   if (googleCalendarConfig.accessToken) {
@@ -45,7 +53,7 @@ const getGoogleCalendarAccessToken = async () => {
   const payload = await response.json().catch(() => null);
   if (!response.ok || !payload?.access_token) {
     if (payload?.error === 'invalid_grant') {
-      cachedGoogleCalendarAuthError = new Error('GOOGLE_CALENDAR_REFRESH_TOKEN invalido, expirado, revogado ou gerado para outro OAuth Client. Gere um novo refresh token no OAuth Playground usando o mesmo GOOGLE_CALENDAR_CLIENT_ID/SECRET e o escopo https://www.googleapis.com/auth/calendar.events.');
+      cachedGoogleCalendarAuthError = new Error('GOOGLE_CALENDAR_REFRESH_TOKEN invalido, expirado, revogado ou gerado para outro OAuth Client. Gere um novo refresh token no OAuth Playground usando o mesmo GOOGLE_CALENDAR_CLIENT_ID/SECRET e os escopos https://www.googleapis.com/auth/calendar e https://www.googleapis.com/auth/calendar.events.');
       cachedGoogleCalendarAuthErrorExpiresAt = now + 30000;
       throw cachedGoogleCalendarAuthError;
     }
@@ -90,7 +98,7 @@ const googleCalendarRequest = async (pathname, options = {}) => {
   if (!response.ok) {
     const message = payload?.error?.message || `Google Calendar request failed: ${response.status}`;
     if (/insufficient authentication scopes/i.test(message)) {
-      throw new Error('Token sem permissao para Google Calendar. Gere um GOOGLE_CALENDAR_REFRESH_TOKEN com o escopo https://www.googleapis.com/auth/calendar.events.');
+      throw new Error('Token sem permissao para Google Calendar. Gere um GOOGLE_CALENDAR_REFRESH_TOKEN com os escopos https://www.googleapis.com/auth/calendar e https://www.googleapis.com/auth/calendar.events.');
     }
     throw new Error(message);
   }
@@ -108,15 +116,122 @@ const normalizeTime = (value) => {
 };
 
 const buildDateTime = (date, time) => `${date}T${time}:00`;
-
 const hasValidTimeRange = (startTime, endTime) => startTime < endTime;
 
-const mapGoogleCalendarEvent = (event) => {
+const normalizeCalendarName = (value) =>
+  String(value || '')
+    .trim()
+    .toLocaleLowerCase('pt-BR');
+
+const isWritableCalendar = (calendar) => ['owner', 'writer'].includes(calendar?.accessRole);
+
+const mapGoogleCalendar = (calendar) => ({
+  id: calendar.id,
+  summary: calendar.summary || calendar.id,
+  description: calendar.description || '',
+  backgroundColor: calendar.backgroundColor || null,
+  foregroundColor: calendar.foregroundColor || null,
+  accessRole: calendar.accessRole || 'reader',
+  primary: Boolean(calendar.primary),
+  selected: calendar.selected !== false,
+  canWrite: isWritableCalendar(calendar)
+});
+
+const listAvailableGoogleCalendars = async ({ force = false } = {}) => {
+  const now = Date.now();
+  if (!force && cachedGoogleCalendarList && cachedGoogleCalendarListExpiresAt > now) {
+    return cachedGoogleCalendarList;
+  }
+
+  const calendars = [];
+  let pageToken = null;
+  do {
+    const payload = await googleCalendarRequest('users/me/calendarList', {
+      searchParams: {
+        maxResults: 250,
+        minAccessRole: 'reader',
+        showDeleted: false,
+        showHidden: true,
+        pageToken
+      }
+    });
+    calendars.push(...(payload?.items || []).map(mapGoogleCalendar));
+    pageToken = payload?.nextPageToken || null;
+  } while (pageToken);
+
+  cachedGoogleCalendarList = calendars;
+  cachedGoogleCalendarListExpiresAt = now + 60000;
+  return calendars;
+};
+
+const findOrCreateGoogleCalendarByName = async (calendarName) => {
+  const normalizedCalendarName = normalizeCalendarName(calendarName);
+  if (!normalizedCalendarName) {
+    return googleCalendarConfig.calendarId;
+  }
+  if (cachedGoogleCalendarId) {
+    return cachedGoogleCalendarId;
+  }
+
+  const calendarList = await listAvailableGoogleCalendars();
+  const matchingCalendars = calendarList.filter(
+    (calendar) => normalizeCalendarName(calendar.summary) === normalizedCalendarName
+  );
+  const writableCalendar = matchingCalendars.find(isWritableCalendar);
+
+  if (writableCalendar?.id) {
+    cachedGoogleCalendarId = writableCalendar.id;
+    return cachedGoogleCalendarId;
+  }
+
+  const createdCalendar = await googleCalendarRequest('calendars', {
+    method: 'POST',
+    body: {
+      summary: calendarName.trim(),
+      timeZone: googleCalendarConfig.timeZone
+    }
+  });
+
+  cachedGoogleCalendarId = createdCalendar.id;
+  cachedGoogleCalendarList = null;
+  cachedGoogleCalendarListExpiresAt = 0;
+  return cachedGoogleCalendarId;
+};
+
+const hasExplicitGoogleCalendarId = () => Boolean(configuredGoogleCalendarId);
+
+const getTargetGoogleCalendarId = async () => {
+  if (hasExplicitGoogleCalendarId()) {
+    return googleCalendarConfig.calendarId;
+  }
+  if (googleCalendarConfig.calendarName) {
+    return findOrCreateGoogleCalendarByName(googleCalendarConfig.calendarName);
+  }
+  return googleCalendarConfig.calendarId;
+};
+
+const getCalendarById = async (calendarId) => {
+  const calendars = await listAvailableGoogleCalendars();
+  return calendars.find((calendar) => calendar.id === calendarId) || {
+    id: calendarId,
+    summary: calendarId,
+    accessRole: 'owner',
+    canWrite: true
+  };
+};
+
+const mapGoogleCalendarEvent = (event, calendar = {}) => {
   const startValue = event?.start?.dateTime || (event?.start?.date ? `${event.start.date}T00:00:00` : '');
   const endValue = event?.end?.dateTime || (event?.end?.date ? `${event.end.date}T23:59:00` : '');
 
   return {
     id: event.id,
+    key: `${calendar.id || googleCalendarConfig.calendarId}:${event.id}`,
+    calendarId: calendar.id || googleCalendarConfig.calendarId,
+    calendarSummary: calendar.summary || '',
+    calendarColor: calendar.backgroundColor || null,
+    calendarAccessRole: calendar.accessRole || 'reader',
+    canEdit: isWritableCalendar(calendar),
     title: event.summary || '',
     notes: event.description || '',
     date: startValue.slice(0, 10),
@@ -141,7 +256,12 @@ const buildCalendarEventPayload = ({ title, notes, date, startTime, endTime }) =
   }
 });
 
-const calendarEventsPath = () => `calendars/${encodeCalendarId(googleCalendarConfig.calendarId)}/events`;
+const calendarEventsPath = async () => calendarEventsPathFor(await getTargetGoogleCalendarId());
+
+const getCalendarIdFromRequest = async (req) => {
+  const calendarId = String(req.body?.calendarId || req.query?.calendarId || '').trim();
+  return calendarId || getTargetGoogleCalendarId();
+};
 
 export const registerGoogleCalendarRoutes = (app) => {
   app.get('/api/google-calendar/events', async (_req, res) => {
@@ -149,21 +269,33 @@ export const registerGoogleCalendarRoutes = (app) => {
       const now = new Date();
       const timeMin = new Date(Date.UTC(now.getUTCFullYear() - 1, 0, 1)).toISOString();
       const timeMax = new Date(Date.UTC(now.getUTCFullYear() + 2, 11, 31, 23, 59, 59)).toISOString();
+      const calendars = await listAvailableGoogleCalendars();
+      const warnings = [];
 
-      const payload = await googleCalendarRequest(calendarEventsPath(), {
-        searchParams: {
-          singleEvents: true,
-          orderBy: 'startTime',
-          showDeleted: false,
-          maxResults: 2500,
-          timeMin,
-          timeMax
+      const eventGroups = await Promise.all(calendars.map(async (calendar) => {
+        try {
+          const payload = await googleCalendarRequest(calendarEventsPathFor(calendar.id), {
+            searchParams: {
+              singleEvents: true,
+              orderBy: 'startTime',
+              showDeleted: false,
+              maxResults: 2500,
+              timeMin,
+              timeMax
+            }
+          });
+          return (payload?.items || []).map((event) => mapGoogleCalendarEvent(event, calendar));
+        } catch (error) {
+          warnings.push({ calendarId: calendar.id, calendarSummary: calendar.summary, message: error.message });
+          return [];
         }
-      });
+      }));
 
       return res.json({
         success: true,
-        events: (payload?.items || []).map(mapGoogleCalendarEvent)
+        calendars,
+        warnings,
+        events: eventGroups.flat()
       });
     } catch (error) {
       console.error('[server] Google Calendar list failed', error);
@@ -195,14 +327,18 @@ export const registerGoogleCalendarRoutes = (app) => {
     }
 
     try {
-      const event = await googleCalendarRequest(calendarEventsPath(), {
+      const calendarId = await getTargetGoogleCalendarId();
+      const calendar = hasExplicitGoogleCalendarId()
+        ? { id: calendarId, summary: calendarId, accessRole: 'owner' }
+        : await getCalendarById(calendarId);
+      const event = await googleCalendarRequest(calendarEventsPathFor(calendarId), {
         method: 'POST',
         body: buildCalendarEventPayload({ title, notes, date, startTime, endTime })
       });
 
       return res.status(201).json({
         success: true,
-        event: mapGoogleCalendarEvent(event)
+        event: mapGoogleCalendarEvent(event, calendar)
       });
     } catch (error) {
       console.error('[server] Google Calendar create failed', error);
@@ -234,14 +370,16 @@ export const registerGoogleCalendarRoutes = (app) => {
     }
 
     try {
-      const event = await googleCalendarRequest(`${calendarEventsPath()}/${encodeURIComponent(req.params.eventId)}`, {
+      const calendarId = await getCalendarIdFromRequest(req);
+      const calendar = { id: calendarId, summary: calendarId, accessRole: 'owner' };
+      const event = await googleCalendarRequest(`${calendarEventsPathFor(calendarId)}/${encodeURIComponent(req.params.eventId)}`, {
         method: 'PATCH',
         body: buildCalendarEventPayload({ title, notes, date, startTime, endTime })
       });
 
       return res.json({
         success: true,
-        event: mapGoogleCalendarEvent(event)
+        event: mapGoogleCalendarEvent(event, calendar)
       });
     } catch (error) {
       console.error('[server] Google Calendar update failed', error);
@@ -254,7 +392,8 @@ export const registerGoogleCalendarRoutes = (app) => {
 
   app.delete('/api/google-calendar/events/:eventId', async (req, res) => {
     try {
-      await googleCalendarRequest(`${calendarEventsPath()}/${encodeURIComponent(req.params.eventId)}`, {
+      const calendarId = await getCalendarIdFromRequest(req);
+      await googleCalendarRequest(`${calendarEventsPathFor(calendarId)}/${encodeURIComponent(req.params.eventId)}`, {
         method: 'DELETE'
       });
 
@@ -268,3 +407,6 @@ export const registerGoogleCalendarRoutes = (app) => {
     }
   });
 };
+
+
+
