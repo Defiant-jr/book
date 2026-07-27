@@ -15,6 +15,20 @@ import { getValorConsiderado } from '@/lib/lancamentoValor';
 import { fetchAllPaginated } from '@/lib/supabasePagination';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import cnaLogoUrl from '../../docs/Imagens/CNA.jpeg';
+
+const loadImageAsDataUrl = async (url) => {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('Não foi possível carregar o logotipo.');
+
+  const blob = await response.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('Não foi possível processar o logotipo.'));
+    reader.readAsDataURL(blob);
+  });
+};
 
 const CalculoCancelamento = () => {
   const CALCULO_CANCELAMENTO_REF = 63100;
@@ -115,7 +129,7 @@ const CalculoCancelamento = () => {
     const { data, error } = await fetchAllPaginated((from, to) =>
       supabase
         .from('lancamentos')
-        .select('id, data, descricao, valor, valor_aberto, desc_pontual, status, datapag')
+        .select('id, data, descricao, aluno, valor, valor_aberto, desc_pontual, status, datapag')
         .eq('cliente_fornecedor', responsavel)
         .eq('tipo', 'Entrada')
         .order('data', { ascending: true })
@@ -141,17 +155,29 @@ const CalculoCancelamento = () => {
         ...item,
         valorAtrasado: Number(item.valor_aberto) || 0,
       }));
-    const aVencer = emAberto.filter((item) => getLancamentoStatus(item) === STATUS.A_VENCER);
+    const aVencer = emAberto
+      .filter((item) => getLancamentoStatus(item) === STATUS.A_VENCER)
+      .map((item) => ({
+        ...item,
+        valorAVencer: getValorConsiderado(item),
+      }));
     const totalAtrasado = atrasados.reduce((total, item) => total + item.valorAtrasado, 0);
     const totalAVencer = aVencer.reduce(
-      (total, item) => total + getValorConsiderado(item),
+      (total, item) => total + item.valorAVencer,
       0,
     );
     const valorPercentualBase = totalAVencer * (percentual / 100);
     const totalCancelamento = totalAtrasado + valorPercentualBase + taxa;
+    const alunos = [...new Set(
+      (data || [])
+        .map((item) => item.aluno?.trim())
+        .filter(Boolean),
+    )].sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
     setResultado({
       atrasados,
+      aVencer,
+      aluno: alunos.join(', ') || '-',
       totalAtrasado,
       totalAVencer,
       percentual,
@@ -161,16 +187,33 @@ const CalculoCancelamento = () => {
     });
   };
 
-  const handlePdf = () => {
+  const handlePdf = async () => {
     if (!resultado) return;
 
+    let cnaLogo;
+    try {
+      cnaLogo = await loadImageAsDataUrl(cnaLogoUrl);
+    } catch (error) {
+      toast({
+        title: 'Erro ao gerar PDF',
+        description: error.message,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    doc.addImage(cnaLogo, 'JPEG', (pageWidth - 130) / 2, 0, 130, 130);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(16);
-    doc.text('Cálculo de Cancelamento', 40, 42);
+    doc.text('Cálculo de Cancelamento', pageWidth / 2, 118, {
+      align: 'center',
+    });
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
-    doc.text(`Responsável: ${responsavel}`, 40, 62);
+    doc.text(`Responsável: ${responsavel}`, 40, 152);
+    doc.text(`Aluno: ${resultado.aluno}`, 40, 168);
 
     const linhasAtrasadas = resultado.atrasados.length
       ? resultado.atrasados.map((item) => [
@@ -181,7 +224,7 @@ const CalculoCancelamento = () => {
       : [['-', 'Nenhum valor em atraso', formatCurrency(0)]];
 
     doc.autoTable({
-      startY: 78,
+      startY: 186,
       head: [['Vencimento', 'Descrição', 'Valor em atraso']],
       body: linhasAtrasadas,
       foot: [['', 'Total em atraso', formatCurrency(resultado.totalAtrasado)]],
@@ -197,8 +240,28 @@ const CalculoCancelamento = () => {
 
     doc.autoTable({
       startY: doc.lastAutoTable.finalY + 18,
+      head: [['Vencimento', 'Descrição', 'Valor a vencer']],
+      body: resultado.aVencer.length
+        ? resultado.aVencer.map((item) => [
+            formatDate(item.data),
+            item.descricao || '-',
+            formatCurrency(item.valorAVencer),
+          ])
+        : [['-', 'Nenhum valor a vencer', formatCurrency(0)]],
+      foot: [['', 'Total a vencer', formatCurrency(resultado.totalAVencer)]],
+      theme: 'grid',
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [37, 99, 235] },
+      columnStyles: {
+        0: { halign: 'center' },
+        2: { halign: 'right' },
+      },
+      footStyles: { halign: 'right', fillColor: [241, 245, 249], textColor: [15, 23, 42] },
+    });
+
+    doc.autoTable({
+      startY: doc.lastAutoTable.finalY + 18,
       body: [
-        ['Total a vencer', formatCurrency(resultado.totalAVencer)],
         [`% Base (${resultado.percentual.toLocaleString('pt-BR')}%)`, formatCurrency(resultado.valorPercentualBase)],
         ['Tx Adm', formatCurrency(resultado.taxa)],
         ['Total do cancelamento', formatCurrency(resultado.totalCancelamento)],
@@ -210,11 +273,30 @@ const CalculoCancelamento = () => {
         1: { halign: 'right' },
       },
       didParseCell: (data) => {
-        if (data.row.index === 3) {
+        if (data.row.index === 2) {
           data.cell.styles.fontStyle = 'bold';
           data.cell.styles.fillColor = [241, 245, 249];
         }
       },
+    });
+
+    const dataAtual = new Date().toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    });
+    let localDataY = doc.lastAutoTable.finalY + 32;
+    const pageHeight = doc.internal.pageSize.getHeight();
+
+    if (localDataY > pageHeight - 40) {
+      doc.addPage();
+      localDataY = 40;
+    }
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text(`Angra dos Reis, ${dataAtual}.`, pageWidth - 40, localDataY, {
+      align: 'right',
     });
 
     const nomeArquivo = responsavel
@@ -359,6 +441,9 @@ const CalculoCancelamento = () => {
                 <div className="mt-1 text-sm text-slate-600">
                   Responsável: <strong>{responsavel}</strong>
                 </div>
+                <div className="mt-1 text-sm text-slate-600">
+                  Aluno: <strong>{resultado.aluno}</strong>
+                </div>
               </div>
 
               <div className="overflow-x-auto">
@@ -415,15 +500,59 @@ const CalculoCancelamento = () => {
 
               <div className="mt-6 overflow-x-auto">
                 <table className="min-w-full border border-slate-300 text-sm">
-                  <tbody>
+                  <thead className="bg-slate-100">
                     <tr>
-                      <td className="border border-slate-300 px-3 py-2 font-medium">
+                      <th className="border border-slate-300 px-3 py-2 text-center font-semibold">
+                        Vencimento
+                      </th>
+                      <th className="border border-slate-300 px-3 py-2 text-left font-semibold">
+                        Descrição
+                      </th>
+                      <th className="border border-slate-300 px-3 py-2 text-right font-semibold">
+                        Valor a vencer
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {resultado.aVencer.length > 0 ? (
+                      resultado.aVencer.map((item) => (
+                        <tr key={item.id}>
+                          <td className="border border-slate-300 px-3 py-2 text-center">
+                            {formatDate(item.data)}
+                          </td>
+                          <td className="border border-slate-300 px-3 py-2">
+                            {item.descricao || '-'}
+                          </td>
+                          <td className="border border-slate-300 px-3 py-2 text-right">
+                            {formatCurrency(item.valorAVencer)}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td
+                          colSpan={3}
+                          className="border border-slate-300 px-3 py-4 text-center text-slate-500"
+                        >
+                          Nenhum valor a vencer.
+                        </td>
+                      </tr>
+                    )}
+                    <tr className="bg-slate-50 font-semibold">
+                      <td colSpan={2} className="border border-slate-300 px-3 py-2">
                         Total a vencer
                       </td>
                       <td className="border border-slate-300 px-3 py-2 text-right">
                         {formatCurrency(resultado.totalAVencer)}
                       </td>
                     </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="mt-6 overflow-x-auto">
+                <table className="min-w-full border border-slate-300 text-sm">
+                  <tbody>
                     <tr>
                       <td className="border border-slate-300 px-3 py-2 font-medium">
                         % Base ({resultado.percentual.toLocaleString('pt-BR')}%)
