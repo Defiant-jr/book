@@ -27,6 +27,8 @@ import IntegracaoOperacoes from '@/pages/IntegracaoOperacoes';
 import IntegracaoReceberXlsx from '@/pages/IntegracaoReceberXlsx';
 import IntegracaoTurmas from '@/pages/IntegracaoTurmas';
 import Operacional from '@/pages/Operacional';
+import Calculos from '@/pages/Calculos';
+import CalculoCancelamento from '@/pages/CalculoCancelamento';
 import OperacoesCadastroAluno from '@/pages/OperacoesCadastroAluno';
 import OperacoesCadastroRateio from '@/pages/OperacoesCadastroRateio';
 import OperacoesCadastroTurma from '@/pages/OperacoesCadastroTurma';
@@ -106,6 +108,22 @@ function App() {
 							element={
 								<PrivateRoute>
 									<Operacional />
+								</PrivateRoute>
+							}
+						/>
+						<Route
+							path="/operacional/calculos"
+							element={
+								<PrivateRoute>
+									<Calculos />
+								</PrivateRoute>
+							}
+						/>
+						<Route
+							path="/operacional/calculos/cancelamento"
+							element={
+								<PrivateRoute>
+									<CalculoCancelamento />
 								</PrivateRoute>
 							}
 						/>

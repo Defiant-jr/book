@@ -2,7 +2,7 @@ import React from 'react';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Download, LayoutDashboard, UserPlus } from 'lucide-react';
+import { ArrowLeft, Calculator, Download, LayoutDashboard, UserPlus } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -15,6 +15,7 @@ const Operacional = () => {
     { label: 'Dashboard', path: '/operacional', icon: LayoutDashboard },
     { label: 'Cadastro', path: '/cadastros', icon: UserPlus },
     { label: 'Integracao', path: '/operacional/integracao', icon: Download },
+    { label: 'Cálculos', path: '/operacional/calculos', icon: Calculator },
   ];
 
   return (
