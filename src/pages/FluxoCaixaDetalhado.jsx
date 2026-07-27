@@ -268,7 +268,7 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="space-y-8"
+            className="screen-size-ref-12000 space-y-8"
           >
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div className="flex items-center gap-4">

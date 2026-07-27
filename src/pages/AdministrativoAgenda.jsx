@@ -522,7 +522,7 @@ const AdministrativoAgenda = () => {
       : `${format(weekDays[0], 'dd MMM', { locale: ptBR })} - ${format(weekDays[6], 'dd MMM yyyy', { locale: ptBR })}`;
 
   return (
-    <div className="space-y-6">
+    <div className="screen-size-ref-12000 space-y-6">
       <Helmet>
         <title>Agenda - BooK+</title>
         <meta name="description" content="Agenda administrativa" />
