@@ -229,10 +229,13 @@ export default defineConfig({
 		...(isDev ? [inlineEditPlugin(), editModeDevPlugin(), iframeRouteRestorationPlugin()] : []),
 		...(isDev ? [apiMiddlewarePlugin] : []),
 		react(),
-		addTransformIndexHtml
+		addTransformIndexHtml,
 	],
 	server: {
 		cors: true,
+		// Evita que oscilações do servidor de desenvolvimento recarreguem
+		// automaticamente qualquer página aberta do sistema.
+		hmr: false,
 		headers: {
 			'Cross-Origin-Embedder-Policy': 'credentialless',
 		},

@@ -43,6 +43,7 @@ import Estatisticas from '@/pages/Estatisticas';
 import FichaCustos from '@/pages/FichaCustos';
 import CustoAluno from '@/pages/CustoAluno';
 import CustoTurma from '@/pages/CustoTurma';
+import Crm from '@/pages/Crm';
 import { Helmet } from 'react-helmet';
 import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom';
 
@@ -105,6 +106,22 @@ function App() {
 							element={
 								<PrivateRoute>
 									<Operacional />
+								</PrivateRoute>
+							}
+						/>
+						<Route
+							path="/crm"
+							element={
+								<PrivateRoute>
+									<Crm />
+								</PrivateRoute>
+							}
+						/>
+						<Route
+							path="/crm/drive"
+							element={
+								<PrivateRoute>
+									<Crm />
 								</PrivateRoute>
 							}
 						/>

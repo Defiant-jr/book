@@ -137,6 +137,14 @@ function ensureDirectoryExists(dirPath) {
   }
 }
 
+function writeFileIfChanged(filePath, content) {
+  if (fs.existsSync(filePath) && fs.readFileSync(filePath, 'utf8') === content) {
+    return;
+  }
+
+  fs.writeFileSync(filePath, content, 'utf8');
+}
+
 function processPageFile(filePath, routes) {
   try {
     const content = fs.readFileSync(filePath, 'utf8');
@@ -174,7 +182,7 @@ function main() {
   const outputPath = path.join(process.cwd(), 'public', 'llms.txt');
   
   ensureDirectoryExists(path.dirname(outputPath));
-  fs.writeFileSync(outputPath, llmsTxtContent, 'utf8');
+  writeFileIfChanged(outputPath, llmsTxtContent);
 }
 
 const isMainModule = import.meta.url === `file://${process.argv[1]}`;

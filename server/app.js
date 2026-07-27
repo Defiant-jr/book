@@ -7,6 +7,7 @@ import fs from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { registerGoogleCalendarRoutes } from './googleCalendarRoutes.js';
+import { registerGoogleDriveRoutes } from './googleDriveRoutes.js';
 import { registerGoogleTasksRoutes } from './googleTasksRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -94,6 +95,7 @@ export async function createApp(options = {}) {
   });
 
   registerGoogleCalendarRoutes(app);
+  registerGoogleDriveRoutes(app);
   registerGoogleTasksRoutes(app);
 
   if (!withFrontend) {
@@ -144,6 +146,10 @@ export async function createApp(options = {}) {
         const templatePath = path.join(projectRoot, 'index.html');
         let template = await fs.readFile(templatePath, 'utf-8');
         template = await vite.transformIndexHtml(url, template);
+        template = template.replace(
+          /\s*<script\s+type=["']module["']\s+src=["']\/@vite\/client["']><\/script>/i,
+          ''
+        );
 
         res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
       } catch (error) {

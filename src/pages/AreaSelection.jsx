@@ -73,10 +73,11 @@ const AreaSelection = () => {
     },
     {
       title: 'CRM',
-      description: 'Relacionamento com clientes e gestão comercial para implementação futura.',
+      description: 'Relacionamento com clientes e gestão comercial.',
       icon: Users,
+      action: () => navigate('/crm'),
       sortKey: 'crm',
-      status: 'Em breve',
+      status: 'Disponível',
     },
     {
       title: 'Parametros',
