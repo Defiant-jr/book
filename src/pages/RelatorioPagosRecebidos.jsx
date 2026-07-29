@@ -227,7 +227,7 @@ const RelatorioPagosRecebidos = () => {
   };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="screen-size-ref-12000 space-y-8">
       <Helmet><title>Contas Pagas/Recebidas - BooK+</title></Helmet>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">

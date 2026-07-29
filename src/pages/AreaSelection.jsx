@@ -120,7 +120,7 @@ const AreaSelection = () => {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-10"
+      className="screen-size-ref-12000 space-y-10"
     >
       <Helmet>
         <title>Selecione uma área - BooK+</title>

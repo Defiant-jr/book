@@ -46,11 +46,26 @@ import FichaCustos from '@/pages/FichaCustos';
 import CustoAluno from '@/pages/CustoAluno';
 import CustoTurma from '@/pages/CustoTurma';
 import Crm from '@/pages/Crm';
+import { useEffect } from 'react';
 import { Helmet } from 'react-helmet';
-import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 
 const PrivateRoute = ({ children }) => {
 	const { user, loading } = useAuth();
+	const location = useLocation();
+	const navigate = useNavigate();
+
+	useEffect(() => {
+		if (!user) return undefined;
+
+		const handleEscape = (event) => {
+			if (event.key !== 'Escape' || event.repeat || location.pathname === '/') return;
+			navigate(-1);
+		};
+
+		window.addEventListener('keydown', handleEscape);
+		return () => window.removeEventListener('keydown', handleEscape);
+	}, [location.pathname, navigate, user]);
 
 	if (loading) {
 		return (
@@ -60,7 +75,7 @@ const PrivateRoute = ({ children }) => {
 		);
 	}
 
-	return user ? children : <Navigate to="/login" />;
+	return user ? <div className="screen-size-ref-12000">{children}</div> : <Navigate to="/login" />;
 };
 
 function App() {

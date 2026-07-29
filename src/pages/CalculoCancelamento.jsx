@@ -30,6 +30,16 @@ const loadImageAsDataUrl = async (url) => {
   });
 };
 
+const FINANCIAL_CONDITIONS_TITLE = 'Descritivo das condições Financeiras';
+const CANCELLATION_VALIDITY_NOTICE =
+  'OBSERVAÇÃO: Os valores monstrados neste documento são válidos apenas para a data da solicitação impressa nesse documento e estão sujeitos  a alteração caso o cancelamento não seja realizado ne mesma data.';
+const formatCurrentLongDate = () =>
+  new Date().toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  });
+
 const CalculoCancelamento = () => {
   const CALCULO_CANCELAMENTO_REF = 63100;
   const navigate = useNavigate();
@@ -214,6 +224,9 @@ const CalculoCancelamento = () => {
     doc.setFontSize(10);
     doc.text(`Responsável: ${responsavel}`, 40, 152);
     doc.text(`Aluno: ${resultado.aluno}`, 40, 168);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text(FINANCIAL_CONDITIONS_TITLE, 40, 188);
 
     const linhasAtrasadas = resultado.atrasados.length
       ? resultado.atrasados.map((item) => [
@@ -224,7 +237,7 @@ const CalculoCancelamento = () => {
       : [['-', 'Nenhum valor em atraso', formatCurrency(0)]];
 
     doc.autoTable({
-      startY: 186,
+      startY: 202,
       head: [['Vencimento', 'Descrição', 'Valor em atraso']],
       body: linhasAtrasadas,
       foot: [['', 'Total em atraso', formatCurrency(resultado.totalAtrasado)]],
@@ -280,23 +293,55 @@ const CalculoCancelamento = () => {
       },
     });
 
-    const dataAtual = new Date().toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-    });
-    let localDataY = doc.lastAutoTable.finalY + 32;
+    const dataAtual = formatCurrentLongDate();
     const pageHeight = doc.internal.pageSize.getHeight();
+    const noticeLines = doc.splitTextToSize(CANCELLATION_VALIDITY_NOTICE, pageWidth - 80);
+    const noticeLineHeight = 13;
+    const signatureBlockHeight = 96;
+    let noticeY = doc.lastAutoTable.finalY + 30;
+    const requiredHeight = noticeLines.length * noticeLineHeight + signatureBlockHeight;
 
-    if (localDataY > pageHeight - 40) {
+    if (noticeY + requiredHeight > pageHeight - 40) {
       doc.addPage();
-      localDataY = 40;
+      noticeY = 50;
     }
 
     doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text(noticeLines, 40, noticeY, {
+      align: 'justify',
+      maxWidth: pageWidth - 80,
+      lineHeightFactor: 1.35,
+    });
+
+    const localDataY = noticeY + noticeLines.length * noticeLineHeight + 20;
     doc.setFontSize(10);
     doc.text(`Angra dos Reis, ${dataAtual}.`, pageWidth - 40, localDataY, {
       align: 'right',
+    });
+
+    const signatureLineY = localDataY + 55;
+    const signatureWidth = 190;
+    const studentSignatureCenter = pageWidth * 0.28;
+    const schoolSignatureCenter = pageWidth * 0.72;
+
+    doc.line(
+      studentSignatureCenter - signatureWidth / 2,
+      signatureLineY,
+      studentSignatureCenter + signatureWidth / 2,
+      signatureLineY,
+    );
+    doc.line(
+      schoolSignatureCenter - signatureWidth / 2,
+      signatureLineY,
+      schoolSignatureCenter + signatureWidth / 2,
+      signatureLineY,
+    );
+    doc.text('Aluno / Responsável', studentSignatureCenter, signatureLineY + 15, {
+      align: 'center',
+    });
+    doc.text('CNA Angra dos Reis', schoolSignatureCenter, signatureLineY + 15, {
+      align: 'center',
     });
 
     const nomeArquivo = responsavel
@@ -444,6 +489,9 @@ const CalculoCancelamento = () => {
                 <div className="mt-1 text-sm text-slate-600">
                   Aluno: <strong>{resultado.aluno}</strong>
                 </div>
+                <div className="mt-4 text-base font-semibold text-slate-900">
+                  {FINANCIAL_CONDITIONS_TITLE}
+                </div>
               </div>
 
               <div className="overflow-x-auto">
@@ -579,6 +627,19 @@ const CalculoCancelamento = () => {
                     </tr>
                   </tbody>
                 </table>
+              </div>
+
+              <p className="mt-8 text-justify text-sm leading-6 text-slate-700">
+                {CANCELLATION_VALIDITY_NOTICE}
+              </p>
+
+              <div className="mt-6 text-right text-sm text-slate-700">
+                Angra dos Reis, {formatCurrentLongDate()}.
+              </div>
+
+              <div className="mt-16 grid grid-cols-1 gap-12 text-center text-sm sm:grid-cols-2 sm:gap-10">
+                <div className="border-t border-slate-500 pt-3">Aluno / Responsável</div>
+                <div className="border-t border-slate-500 pt-3">CNA Angra dos Reis</div>
               </div>
             </div>
           </CardContent>
