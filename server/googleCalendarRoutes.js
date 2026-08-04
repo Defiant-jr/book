@@ -115,6 +115,16 @@ const normalizeTime = (value) => {
   return /^\d{2}:\d{2}$/.test(text) ? text : null;
 };
 
+const recurrenceFrequencies = {
+  daily: 'DAILY',
+  weekly: 'WEEKLY',
+  monthly: 'MONTHLY',
+  yearly: 'YEARLY'
+};
+
+const normalizeRecurrenceFrequency = (value) =>
+  recurrenceFrequencies[String(value || '').toLowerCase()] || null;
+
 const buildDateTime = (date, time) => `${date}T${time}:00`;
 const hasValidTimeRange = (startTime, endTime) => startTime < endTime;
 
@@ -243,7 +253,15 @@ const mapGoogleCalendarEvent = (event, calendar = {}) => {
   };
 };
 
-const buildCalendarEventPayload = ({ title, notes, date, startTime, endTime }) => ({
+const buildCalendarEventPayload = ({
+  title,
+  notes,
+  date,
+  startTime,
+  endTime,
+  recurrenceFrequency,
+  recurrenceEndDate
+}) => ({
   summary: title,
   description: notes || undefined,
   start: {
@@ -253,7 +271,18 @@ const buildCalendarEventPayload = ({ title, notes, date, startTime, endTime }) =
   end: {
     dateTime: buildDateTime(date, endTime),
     timeZone: googleCalendarConfig.timeZone
-  }
+  },
+  ...(recurrenceFrequency && recurrenceEndDate
+    ? {
+        recurrence: [
+          'RRULE:FREQ='
+            + recurrenceFrequency
+            + ';UNTIL='
+            + recurrenceEndDate.replaceAll('-', '')
+            + 'T235959Z'
+        ]
+      }
+    : {})
 });
 
 const calendarEventsPath = async () => calendarEventsPathFor(await getTargetGoogleCalendarId());
@@ -312,6 +341,13 @@ export const registerGoogleCalendarRoutes = (app) => {
     const date = normalizeDate(req.body?.date);
     const startTime = normalizeTime(req.body?.startTime);
     const endTime = normalizeTime(req.body?.endTime);
+    const isRecurring = req.body?.isRecurring === true;
+    const recurrenceFrequency = isRecurring
+      ? normalizeRecurrenceFrequency(req.body?.recurrenceFrequency)
+      : null;
+    const recurrenceEndDate = isRecurring
+      ? normalizeDate(req.body?.recurrenceEndDate)
+      : null;
 
     if (!title || !date || !startTime || !endTime) {
       return res.status(400).json({
@@ -325,6 +361,18 @@ export const registerGoogleCalendarRoutes = (app) => {
         message: 'Hora Fim deve ser maior que Hora Inicio.'
       });
     }
+    if (isRecurring && (!recurrenceFrequency || !recurrenceEndDate)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Informe Periodicidade e Data de Termino da recorrencia.'
+      });
+    }
+    if (isRecurring && recurrenceEndDate < date) {
+      return res.status(400).json({
+        success: false,
+        message: 'Data de Termino deve ser igual ou posterior a Data inicial.'
+      });
+    }
 
     try {
       const calendarId = await getTargetGoogleCalendarId();
@@ -333,7 +381,15 @@ export const registerGoogleCalendarRoutes = (app) => {
         : await getCalendarById(calendarId);
       const event = await googleCalendarRequest(calendarEventsPathFor(calendarId), {
         method: 'POST',
-        body: buildCalendarEventPayload({ title, notes, date, startTime, endTime })
+        body: buildCalendarEventPayload({
+          title,
+          notes,
+          date,
+          startTime,
+          endTime,
+          recurrenceFrequency,
+          recurrenceEndDate
+        })
       });
 
       return res.status(201).json({

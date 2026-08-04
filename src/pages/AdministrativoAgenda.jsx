@@ -25,7 +25,7 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
-  Clock,
+  ClipboardList,
   Edit3,
   Plus,
   RefreshCw,
@@ -46,6 +46,7 @@ import {
   listGoogleCalendarEvents,
   updateGoogleCalendarEvent,
 } from '@/services/googleCalendarService';
+import { listGoogleTasks, updateGoogleTask } from '@/services/googleTasksService';
 
 const ADMINISTRATIVO_AGENDA_REF = 12000;
 
@@ -64,12 +65,25 @@ const emptyEvent = {
   endTime: '10:00',
   category: 'administrativo',
   notes: '',
+  isRecurring: false,
+  recurrenceFrequency: '',
+  recurrenceEndDate: '',
 };
 
 const getCategory = (value) => categories.find((category) => category.value === value) || categories[0];
 const dateKey = (date) => format(date, 'yyyy-MM-dd');
 const parseLocalDate = (value) => parseISO(`${value}T00:00:00`);
 const getEventKey = (event) => event.key || `${event.calendarId || 'default'}:${event.id || event.title}`;
+
+const getTaskDateKey = (value) => (value ? String(value).slice(0, 10) : null);
+const formatTaskDate = (value) => {
+  const taskDate = getTaskDateKey(value);
+  return taskDate
+    ? format(parseLocalDate(taskDate), 'dd/MM/yyyy')
+    : 'Sem data';
+};
+const getTaskScheduleDateKey = (task) =>
+  getTaskDateKey(task.data) || dateKey(startOfWeek(new Date(), { weekStartsOn: 1 }));
 
 const sortEvents = (events) =>
   [...events].sort((a, b) => {
@@ -96,6 +110,21 @@ const EventPill = ({ event, compact = false, onClick }) => {
     </button>
   );
 };
+
+const TaskPill = ({ task, onClick }) => (
+  <button
+    type="button"
+    onClick={(clickEvent) => {
+      clickEvent.stopPropagation();
+      onClick();
+    }}
+    className="flex w-full items-center gap-1.5 truncate rounded border border-violet-400/30 bg-violet-500/15 px-2 py-1 text-left text-xs text-violet-100 hover:border-violet-300/60"
+    title={task.detalhes ? `${task.tarefa} - ${task.detalhes}` : task.tarefa}
+  >
+    <ClipboardList className="h-3 w-3 shrink-0" />
+    <span className="truncate font-semibold">{task.tarefa}</span>
+  </button>
+);
 
 const EventDetails = ({ event, onEdit, onDelete, onClose }) => {
   return (
@@ -239,6 +268,90 @@ const EventForm = ({ event, onCancel, onSave, saving }) => {
   );
 };
 
+const TaskEditForm = ({ task, onCancel, onSave, saving }) => {
+  const [draft, setDraft] = useState({
+    title: task.tarefa || '',
+    notes: task.detalhes || '',
+    due: getTaskDateKey(task.data) || '',
+  });
+
+  const submit = (submitEvent) => {
+    submitEvent.preventDefault();
+    if (!draft.title.trim()) return;
+    onSave({
+      title: draft.title.trim(),
+      notes: draft.notes.trim(),
+      due: draft.due || null,
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+      <form onSubmit={submit} className="w-full max-w-xl rounded-lg border border-white/10 bg-slate-950 p-5 shadow-2xl">
+        <div className="mb-5 flex items-center justify-between gap-4">
+          <h2 className="text-xl font-bold text-white">Editar tarefa</h2>
+          <Button type="button" variant="ghost" size="icon" onClick={onCancel} className="text-slate-300 hover:bg-white/10">
+            <X className="h-4 w-4" />
+            <span className="sr-only">Fechar</span>
+          </Button>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="mb-2 block text-xs font-semibold uppercase text-slate-400" htmlFor="agenda-task-title">
+              Tarefa
+            </label>
+            <Input
+              id="agenda-task-title"
+              value={draft.title}
+              onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))}
+              className="border-white/15 bg-white/10 text-white"
+              autoFocus
+              disabled={saving}
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-xs font-semibold uppercase text-slate-400" htmlFor="agenda-task-due">
+              Data
+            </label>
+            <Input
+              id="agenda-task-due"
+              type="date"
+              value={draft.due}
+              onChange={(event) => setDraft((current) => ({ ...current, due: event.target.value }))}
+              className="border-white/15 bg-white/10 text-white [color-scheme:dark]"
+              disabled={saving}
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-xs font-semibold uppercase text-slate-400" htmlFor="agenda-task-notes">
+              Detalhes
+            </label>
+            <Textarea
+              id="agenda-task-notes"
+              value={draft.notes}
+              onChange={(event) => setDraft((current) => ({ ...current, notes: event.target.value }))}
+              className="min-h-[110px] border-white/15 bg-white/10 text-white"
+              disabled={saving}
+            />
+          </div>
+        </div>
+
+        <div className="mt-6 flex justify-end gap-2">
+          <Button type="button" variant="outline" onClick={onCancel} disabled={saving} className="border-white/15 text-slate-200 hover:bg-white/10">
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={saving} className="bg-blue-600 text-white hover:bg-blue-500">
+            {saving ? 'Salvando...' : 'Salvar alteracoes'}
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+};
+
 const MiniCalendar = ({ currentDate, selectedDate, onSelect }) => {
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -281,15 +394,19 @@ const AdministrativoAgenda = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [events, setEvents] = useState([]);
+  const [tasks, setTasks] = useState([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState('week');
   const [query, setQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('todas');
   const [editingEvent, setEditingEvent] = useState(null);
+  const [editingTask, setEditingTask] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [quickEvent, setQuickEvent] = useState(emptyEvent);
   const [loadingEvents, setLoadingEvents] = useState(false);
+  const [loadingTasks, setLoadingTasks] = useState(false);
   const [savingEvent, setSavingEvent] = useState(false);
+  const [savingTask, setSavingTask] = useState(false);
 
   const loadEvents = async ({ force = false } = {}) => {
     setLoadingEvents(true);
@@ -303,8 +420,21 @@ const AdministrativoAgenda = () => {
     }
   };
 
+  const loadTasks = async () => {
+    setLoadingTasks(true);
+    try {
+      const data = await listGoogleTasks();
+      setTasks(Array.isArray(data) ? data : []);
+    } catch (error) {
+      toast({ title: 'Erro ao carregar tarefas', description: error.message, variant: 'destructive' });
+    } finally {
+      setLoadingTasks(false);
+    }
+  };
+
   useEffect(() => {
     loadEvents();
+    loadTasks();
   }, []);
 
   const filteredEvents = useMemo(() => {
@@ -316,12 +446,51 @@ const AdministrativoAgenda = () => {
     });
   }, [events, query, categoryFilter]);
 
-  const todayEvents = filteredEvents.filter((event) => isSameDay(parseLocalDate(event.date), new Date()));
   const selectedDateEvents = filteredEvents.filter((event) => isSameDay(parseLocalDate(event.date), currentDate));
+  const pendingTasks = useMemo(() => {
+    const text = query.trim().toLowerCase();
+    return tasks
+      .filter((task) => task.concluida !== 'S')
+      .filter((task) => !text || `${task.tarefa || ''} ${task.detalhes || ''}`.toLowerCase().includes(text))
+      .sort((a, b) => {
+        const aDate = getTaskDateKey(a.data) || '9999-12-31';
+        const bDate = getTaskDateKey(b.data) || '9999-12-31';
+        return aDate.localeCompare(bDate);
+      });
+  }, [tasks, query]);
+  const tasksForDate = (day) =>
+    pendingTasks.filter((task) => getTaskScheduleDateKey(task) === dateKey(day));
+  const selectedDateTasks = tasksForDate(currentDate);
 
   const openNewEvent = (date = currentDate) => {
     setSelectedEvent(null);
     setEditingEvent({ ...emptyEvent, date: dateKey(date) });
+  };
+
+  const openEventEditor = (event) => {
+    if (event.canEdit === false) {
+      setSelectedEvent(event);
+      return;
+    }
+    setSelectedEvent(null);
+    setEditingEvent(event);
+  };
+
+  const saveTask = async (updates) => {
+    if (!editingTask?.id) return;
+
+    setSavingTask(true);
+    try {
+      const updatedTask = await updateGoogleTask(editingTask.id, updates);
+      setTasks((current) =>
+        current.map((task) => (task.id === editingTask.id ? updatedTask : task)));
+      setEditingTask(null);
+      toast({ title: 'Tarefa atualizada', description: 'As alteracoes foram salvas no Google Tasks.' });
+    } catch (error) {
+      toast({ title: 'Erro ao editar tarefa', description: error.message, variant: 'destructive' });
+    } finally {
+      setSavingTask(false);
+    }
   };
 
   const saveEvent = async (event) => {
@@ -332,6 +501,9 @@ const AdministrativoAgenda = () => {
       startTime: event.startTime,
       endTime: event.endTime,
       calendarId: event.calendarId,
+      isRecurring: Boolean(event.isRecurring),
+      recurrenceFrequency: event.recurrenceFrequency || '',
+      recurrenceEndDate: event.recurrenceEndDate || '',
     };
 
     setSavingEvent(true);
@@ -340,12 +512,16 @@ const AdministrativoAgenda = () => {
         ? await updateGoogleCalendarEvent(event.id, payload)
         : await createGoogleCalendarEvent(payload);
 
-      setEvents((current) => {
-        if (event.id) {
-          return current.map((item) => (getEventKey(item) === getEventKey(event) ? savedEvent : item));
-        }
-        return [savedEvent, ...current];
-      });
+      if (event.isRecurring && !event.id) {
+        await loadEvents({ force: true });
+      } else {
+        setEvents((current) => {
+          if (event.id) {
+            return current.map((item) => (getEventKey(item) === getEventKey(event) ? savedEvent : item));
+          }
+          return [savedEvent, ...current];
+        });
+      }
       setEditingEvent(null);
       setSelectedEvent(null);
       toast({ title: event.id ? 'Compromisso atualizado' : 'Compromisso criado', description: 'A agenda foi gravada no Google Calendar.' });
@@ -366,6 +542,22 @@ const AdministrativoAgenda = () => {
     const title = quickEvent.title.trim();
     if (!title) {
       toast({ title: 'Informe o titulo', description: 'Digite um titulo valido para o compromisso.' });
+      return;
+    }
+
+    if (quickEvent.isRecurring && (!quickEvent.recurrenceFrequency || !quickEvent.recurrenceEndDate)) {
+      toast({
+        title: 'Recorrencia incompleta',
+        description: 'Selecione a periodicidade e a data de termino.',
+      });
+      return;
+    }
+
+    if (quickEvent.isRecurring && quickEvent.recurrenceEndDate < quickEvent.date) {
+      toast({
+        title: 'Data de termino invalida',
+        description: 'A recorrencia deve terminar na data inicial ou depois dela.',
+      });
       return;
     }
 
@@ -428,6 +620,7 @@ const AdministrativoAgenda = () => {
       <div className="grid grid-cols-1 sm:grid-cols-7">
         {monthDays.map((day) => {
           const dayEvents = filteredEvents.filter((event) => isSameDay(parseLocalDate(event.date), day));
+          const dayTasks = tasksForDate(day);
           const isToday = isSameDay(day, new Date());
           return (
             <button
@@ -444,10 +637,21 @@ const AdministrativoAgenda = () => {
                 {format(day, 'd')}
               </span>
               <div className="mt-2 space-y-1">
-                {dayEvents.slice(0, 3).map((event) => (
-                  <EventPill key={getEventKey(event)} event={event} onClick={setSelectedEvent} />
+                {dayEvents.slice(0, 2).map((event) => (
+                  <EventPill key={getEventKey(event)} event={event} onClick={openEventEditor} />
                 ))}
-                {dayEvents.length > 3 && <p className="text-xs font-semibold text-slate-400">+{dayEvents.length - 3} eventos</p>}
+                {dayTasks.slice(0, 2).map((task) => (
+                  <TaskPill
+                    key={task.id}
+                    task={task}
+                    onClick={() => setEditingTask(task)}
+                  />
+                ))}
+                {dayEvents.length + dayTasks.length > 4 && (
+                  <p className="text-xs font-semibold text-slate-400">
+                    +{dayEvents.length + dayTasks.length - 4} itens
+                  </p>
+                )}
               </div>
             </button>
           );
@@ -461,6 +665,7 @@ const AdministrativoAgenda = () => {
       <div className="grid grid-cols-1 md:grid-cols-7">
         {weekDays.map((day) => {
           const dayEvents = filteredEvents.filter((event) => isSameDay(parseLocalDate(event.date), day));
+          const dayTasks = tasksForDate(day);
           return (
             <div key={day.toISOString()} className="min-h-[520px] border-b border-r border-white/10">
               <button type="button" onClick={() => setCurrentDate(day)} className="w-full border-b border-white/10 p-3 text-left hover:bg-white/[0.06]">
@@ -468,7 +673,14 @@ const AdministrativoAgenda = () => {
                 <p className={`mt-1 text-2xl font-semibold ${isSameDay(day, new Date()) ? 'text-blue-300' : 'text-white'}`}>{format(day, 'd')}</p>
               </button>
               <div className="space-y-2 p-3">
-                {dayEvents.map((event) => <EventPill key={getEventKey(event)} event={event} onClick={setSelectedEvent} />)}
+                {dayEvents.map((event) => <EventPill key={getEventKey(event)} event={event} onClick={openEventEditor} />)}
+                {dayTasks.map((task) => (
+                  <TaskPill
+                    key={task.id}
+                    task={task}
+                    onClick={() => setEditingTask(task)}
+                  />
+                ))}
                 <Button type="button" variant="ghost" onClick={() => openNewEvent(day)} className="h-8 w-full justify-start gap-2 text-xs text-slate-400 hover:bg-white/10">
                   <Plus className="h-3 w-3" />
                   Criar
@@ -488,7 +700,7 @@ const AdministrativoAgenda = () => {
         <p className="mt-1 text-3xl font-bold text-white">{format(currentDate, 'd')}</p>
       </div>
       <div className="divide-y divide-white/10">
-        {selectedDateEvents.length === 0 ? (
+        {selectedDateEvents.length === 0 && selectedDateTasks.length === 0 ? (
           <div className="flex min-h-[320px] flex-col items-center justify-center text-slate-400">
             <CalendarDays className="h-10 w-10" />
             <Button type="button" onClick={() => openNewEvent(currentDate)} className="mt-4 gap-2 bg-blue-600 text-white hover:bg-blue-500">
@@ -497,10 +709,11 @@ const AdministrativoAgenda = () => {
             </Button>
           </div>
         ) : (
-          selectedDateEvents.map((event) => {
+          <>
+            {selectedDateEvents.map((event) => {
             const category = getCategory(event.category);
             return (
-              <button key={getEventKey(event)} type="button" onClick={() => setSelectedEvent(event)} className="flex w-full items-start gap-4 p-4 text-left hover:bg-white/[0.06]">
+              <button key={getEventKey(event)} type="button" onClick={() => openEventEditor(event)} className="flex w-full items-start gap-4 p-4 text-left hover:bg-white/[0.06]">
                 <div className="w-20 shrink-0 text-sm text-slate-400">{event.startTime}</div>
                 <span className={`mt-1 h-3 w-3 rounded-full ${category.color}`} />
                 <div className="min-w-0">
@@ -509,7 +722,24 @@ const AdministrativoAgenda = () => {
                 </div>
               </button>
             );
-          })
+            })}
+            {selectedDateTasks.map((task) => (
+              <button
+                key={task.id}
+                type="button"
+                onClick={() => setEditingTask(task)}
+                className="flex w-full items-start gap-4 p-4 text-left hover:bg-white/[0.06]"
+              >
+                <div className="w-20 shrink-0 text-sm font-medium text-violet-300">Tarefa</div>
+                <ClipboardList className="mt-0.5 h-4 w-4 shrink-0 text-violet-300" />
+                <div className="min-w-0">
+                  <p className="font-semibold text-white">{task.tarefa}</p>
+                  {task.detalhes && <p className="text-sm text-slate-400">{task.detalhes}</p>}
+                  <p className="mt-1 text-xs text-slate-500">{formatTaskDate(task.data)}</p>
+                </div>
+              </button>
+            ))}
+          </>
         )}
       </div>
     </div>
@@ -554,8 +784,17 @@ const AdministrativoAgenda = () => {
           <Button type="button" variant="outline" onClick={() => setCurrentDate(new Date())} className="border-white/15 text-slate-200 hover:bg-white/10">
             Hoje
           </Button>
-          <Button type="button" variant="outline" onClick={() => loadEvents({ force: true })} disabled={loadingEvents} className="gap-2 border-white/15 text-slate-200 hover:bg-white/10">
-            <RefreshCw className={`h-4 w-4 ${loadingEvents ? 'animate-spin' : ''}`} />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              loadEvents({ force: true });
+              loadTasks();
+            }}
+            disabled={loadingEvents || loadingTasks}
+            className="gap-2 border-white/15 text-slate-200 hover:bg-white/10"
+          >
+            <RefreshCw className={`h-4 w-4 ${loadingEvents || loadingTasks ? 'animate-spin' : ''}`} />
             Atualizar
           </Button>
           <div className="flex overflow-hidden rounded-md border border-white/15">
@@ -585,7 +824,13 @@ const AdministrativoAgenda = () => {
 
       <section className="rounded-xl border border-white/20 bg-white/10 p-4 shadow-xl shadow-black/10 backdrop-blur-lg">
         <p className="text-xs font-bold uppercase text-slate-400">Insercao de compromisso</p>
-        <div className="mt-3 grid grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_170px_140px_140px_auto]">
+        <div
+          className={`mt-3 grid grid-cols-1 gap-2 md:grid-cols-2 ${
+            quickEvent.isRecurring
+              ? 'xl:grid-cols-[minmax(170px,0.85fr)_145px_110px_110px_116px_125px_145px_auto]'
+              : 'xl:grid-cols-[minmax(220px,1fr)_160px_120px_120px_130px_auto]'
+          }`}
+        >
           <Input
             value={quickEvent.title}
             onChange={(event) => updateQuickEvent('title', event.target.value)}
@@ -620,20 +865,76 @@ const AdministrativoAgenda = () => {
             className="h-11 rounded-xl border-white/20 bg-white/10 text-white [color-scheme:dark] focus-visible:ring-blue-400"
             disabled={savingEvent}
           />
+          <>
+            <label className="flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-2 text-xs font-medium text-slate-200">
+              <input
+                type="checkbox"
+                checked={quickEvent.isRecurring}
+                onChange={(event) => {
+                  const checked = event.target.checked;
+                  setQuickEvent((current) => ({
+                    ...current,
+                    isRecurring: checked,
+                    recurrenceFrequency: checked ? current.recurrenceFrequency : '',
+                    recurrenceEndDate: checked ? current.recurrenceEndDate : '',
+                  }));
+                }}
+                className="h-4 w-4 rounded border-slate-500 bg-slate-900 text-blue-600 focus:ring-blue-500"
+                disabled={savingEvent}
+              />
+              Recorrente
+            </label>
+
+            {quickEvent.isRecurring && (
+              <>
+                <div className="min-w-0">
+                  <Select
+                    value={quickEvent.recurrenceFrequency}
+                    onValueChange={(value) => updateQuickEvent('recurrenceFrequency', value)}
+                    disabled={savingEvent}
+                  >
+                    <SelectTrigger className="h-11 rounded-xl border-white/20 bg-white/10 px-2 text-xs text-white">
+                      <SelectValue placeholder="Periodicidade" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="daily">Diaria</SelectItem>
+                      <SelectItem value="weekly">Semanal</SelectItem>
+                      <SelectItem value="monthly">Mensal</SelectItem>
+                      <SelectItem value="yearly">Anual</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="min-w-0">
+                  <Input
+                    id="quick-recurrence-end"
+                    type="date"
+                    min={quickEvent.date}
+                    value={quickEvent.recurrenceEndDate}
+                    onChange={(event) => updateQuickEvent('recurrenceEndDate', event.target.value)}
+                    aria-label="Termina em"
+                    title="Termina em"
+                    className="h-11 rounded-xl border-white/20 bg-white/10 px-2 text-xs text-white [color-scheme:dark] focus-visible:ring-blue-400"
+                    disabled={savingEvent}
+                  />
+                </div>
+              </>
+            )}
+          </>
           <Button
             type="button"
             onClick={addQuickEvent}
             disabled={savingEvent}
-            className="h-11 gap-2 rounded-xl bg-blue-600 px-5 text-white hover:bg-blue-500"
+            className="h-11 gap-1 rounded-xl bg-blue-600 px-3 text-sm text-white hover:bg-blue-500"
           >
             <Plus className="h-4 w-4" />
-            {savingEvent ? 'Adicionando...' : 'Adicionar'}
+            {savingEvent ? 'Salvando...' : 'Adicionar'}
           </Button>
           <Textarea
             value={quickEvent.notes}
             onChange={(event) => updateQuickEvent('notes', event.target.value)}
             placeholder="Detalhe"
-            className="min-h-[86px] rounded-xl border-white/20 bg-white/10 text-white placeholder:text-slate-400 focus-visible:ring-blue-400 lg:col-span-5"
+            className="min-h-[86px] rounded-xl border-white/20 bg-white/10 text-white placeholder:text-slate-400 focus-visible:ring-blue-400 md:col-span-2 xl:col-span-full"
             disabled={savingEvent}
           />
         </div>
@@ -675,26 +976,6 @@ const AdministrativoAgenda = () => {
             </CardContent>
           </Card>
 
-          <Card className="glass-card">
-            <CardContent className="p-4">
-              <div className="mb-3 flex items-center gap-2 text-white">
-                <Clock className="h-4 w-4 text-blue-300" />
-                <h2 className="text-sm font-semibold">Hoje</h2>
-              </div>
-              <div className="space-y-2">
-                {loadingEvents ? (
-                  <div className="flex items-center gap-2 text-sm text-slate-500">
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                    Carregando...
-                  </div>
-                ) : todayEvents.length === 0 ? (
-                  <p className="text-sm text-slate-500">Nenhum evento para hoje.</p>
-                ) : (
-                  todayEvents.map((event) => <EventPill key={getEventKey(event)} event={event} onClick={setSelectedEvent} />)
-                )}
-              </div>
-            </CardContent>
-          </Card>
         </aside>
 
         <main>
@@ -715,6 +996,14 @@ const AdministrativoAgenda = () => {
 
       {editingEvent && (
         <EventForm event={editingEvent} onCancel={() => setEditingEvent(null)} onSave={saveEvent} saving={savingEvent} />
+      )}
+      {editingTask && (
+        <TaskEditForm
+          task={editingTask}
+          onCancel={() => setEditingTask(null)}
+          onSave={saveTask}
+          saving={savingTask}
+        />
       )}
       {selectedEvent && (
         <EventDetails
