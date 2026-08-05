@@ -13,6 +13,7 @@ import {
   ListChecks,
   Plus,
   RefreshCw,
+  Settings,
   X,
   Trash2,
 } from 'lucide-react';
@@ -88,7 +89,7 @@ const TaskForm = ({ task, onCancel, onSave, saving }) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <form onSubmit={submit} className="w-full max-w-2xl rounded-lg border border-white/10 bg-slate-950 p-5 shadow-2xl">
         <div className="mb-5 flex items-center justify-between gap-4">
-          <h2 className="text-xl font-bold text-white">Nova tarefa</h2>
+          <h2 className="text-xl font-bold text-white">{task?.id ? 'Editar tarefa' : 'Nova tarefa'}</h2>
           <Button type="button" variant="ghost" size="icon" onClick={onCancel} className="text-slate-300 hover:bg-white/10">
             <X className="h-4 w-4" />
             <span className="sr-only">Fechar</span>
@@ -160,6 +161,7 @@ const AdministrativoTarefas = () => {
   const [loadingTarefas, setLoadingTarefas] = useState(false);
   const [savingTarefa, setSavingTarefa] = useState(false);
   const [showTaskForm, setShowTaskForm] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
 
   const hojeKey = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const refAtual = searchParams.get('ref');
@@ -274,10 +276,48 @@ const AdministrativoTarefas = () => {
       setNovaTarefaDetalhes('');
       setNovaTarefaData('');
       setShowTaskForm(false);
+      setEditingTask(null);
       toast({ title: 'Tarefa criada', description: 'A tarefa foi adicionada ao Google Tasks.' });
       return createdTask;
     } catch (error) {
       toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
+      return null;
+    } finally {
+      setSavingTarefa(false);
+    }
+  };
+
+  const openTaskEditor = (tarefa) => {
+    setEditingTask({
+      id: tarefa.id,
+      title: tarefa.tarefa || '',
+      notes: tarefa.detalhes || '',
+      due: getDateKey(tarefa.data) || '',
+    });
+    setShowTaskForm(true);
+  };
+
+  const closeTaskForm = () => {
+    setShowTaskForm(false);
+    setEditingTask(null);
+  };
+
+  const handleUpdateTask = async (task) => {
+    if (!editingTask?.id || !task.title.trim()) return null;
+
+    setSavingTarefa(true);
+    try {
+      const updatedTask = await updateGoogleTask(editingTask.id, {
+        title: task.title.trim(),
+        notes: task.notes.trim(),
+        due: task.due || null,
+      });
+      setTarefas((prev) => prev.map((item) => (item.id === editingTask.id ? updatedTask : item)));
+      closeTaskForm();
+      toast({ title: 'Tarefa atualizada', description: 'As alteracoes foram salvas no Google Tasks.' });
+      return updatedTask;
+    } catch (error) {
+      toast({ title: 'Erro ao editar', description: error.message, variant: 'destructive' });
       return null;
     } finally {
       setSavingTarefa(false);
@@ -467,15 +507,28 @@ const AdministrativoTarefas = () => {
                   {(tarefa.concluida !== 'S' || activeView.ref === '11300') && (
                     <div className="flex items-center gap-2">
                       {tarefa.concluida !== 'S' && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleConcluir(tarefa)}
-                          className="gap-2 text-emerald-300 hover:bg-emerald-400/10 hover:text-emerald-200"
-                        >
-                          <CheckCircle2 className="h-4 w-4" />
-                          Concluir
-                        </Button>
+                        <>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openTaskEditor(tarefa)}
+                            className="h-9 w-9 text-slate-300 hover:bg-white/10 hover:text-white"
+                            aria-label="Editar tarefa"
+                            title="Editar tarefa"
+                          >
+                            <Settings className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleConcluir(tarefa)}
+                            className="gap-2 text-emerald-300 hover:bg-emerald-400/10 hover:text-emerald-200"
+                          >
+                            <CheckCircle2 className="h-4 w-4" />
+                            Concluir
+                          </Button>
+                        </>
                       )}
                       {activeView.ref === '11300' && (
                         <Button
@@ -499,9 +552,9 @@ const AdministrativoTarefas = () => {
         </section>
         {showTaskForm && (
           <TaskForm
-            task={emptyTask}
-            onCancel={() => setShowTaskForm(false)}
-            onSave={handleAdd}
+            task={editingTask || emptyTask}
+            onCancel={closeTaskForm}
+            onSave={editingTask ? handleUpdateTask : handleAdd}
             saving={savingTarefa}
           />
         )}
@@ -659,6 +712,17 @@ const AdministrativoTarefas = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => openTaskEditor(tarefa)}
+                      className="h-9 w-9 text-slate-300 hover:bg-white/10 hover:text-white"
+                      aria-label="Editar tarefa"
+                      title="Editar tarefa"
+                    >
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                    <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => handleConcluir(tarefa)}
@@ -687,9 +751,9 @@ const AdministrativoTarefas = () => {
       </section>
       {showTaskForm && (
         <TaskForm
-          task={emptyTask}
-          onCancel={() => setShowTaskForm(false)}
-          onSave={handleAdd}
+          task={editingTask || emptyTask}
+          onCancel={closeTaskForm}
+          onSave={editingTask ? handleUpdateTask : handleAdd}
           saving={savingTarefa}
         />
       )}

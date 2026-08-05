@@ -49,11 +49,29 @@ const clearEventsCache = () => {
   eventsCacheExpiresAt = 0;
 };
 
-export const createGoogleCalendarEvent = async ({ title, notes, date, startTime, endTime }) => {
+export const createGoogleCalendarEvent = async ({
+  title,
+  notes,
+  date,
+  startTime,
+  endTime,
+  isRecurring = false,
+  recurrenceFrequency = '',
+  recurrenceEndDate = '',
+}) => {
   const response = await fetch(CALENDAR_ENDPOINT, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title, notes, date, startTime, endTime })
+    body: JSON.stringify({
+      title,
+      notes,
+      date,
+      startTime,
+      endTime,
+      isRecurring,
+      recurrenceFrequency,
+      recurrenceEndDate,
+    })
   });
   const payload = await parseResponse(response);
   clearEventsCache();

@@ -54,6 +54,30 @@ test('POST /api/google-calendar/events valida campos obrigatorios', async (t) =>
   assert.equal(payload.message, 'Informe Titulo, Data, Hora Inicio e Hora Fim.');
 });
 
+test('POST /api/google-calendar/events valida dados da recorrencia', async (t) => {
+  const { app } = await createApp({ withFrontend: false });
+  const baseUrl = await listenForTest(app, t);
+
+  const response = await fetch(`${baseUrl}/api/google-calendar/events`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      title: 'Reuniao recorrente',
+      date: '2026-08-10',
+      startTime: '09:00',
+      endTime: '10:00',
+      isRecurring: true,
+      recurrenceFrequency: 'weekly',
+      recurrenceEndDate: '2026-08-09'
+    })
+  });
+
+  assert.equal(response.status, 400);
+  const payload = await response.json();
+  assert.equal(payload.success, false);
+  assert.equal(payload.message, 'Data de Termino deve ser igual ou posterior a Data inicial.');
+});
+
 test('GET /api/google-calendar/events explica token sem escopo de Calendar', async (t) => {
   const previousAccessToken = process.env.GOOGLE_CALENDAR_ACCESS_TOKEN;
   const previousFetch = globalThis.fetch;
@@ -181,7 +205,10 @@ test('POST /api/google-calendar/events resolve agenda por nome antes de inserir'
       notes: 'Detalhe',
       date: '2026-07-20',
       startTime: '09:00',
-      endTime: '10:00'
+      endTime: '10:00',
+      isRecurring: true,
+      recurrenceFrequency: 'weekly',
+      recurrenceEndDate: '2026-09-30'
     })
   });
 
@@ -192,6 +219,13 @@ test('POST /api/google-calendar/events resolve agenda por nome antes de inserir'
   assert.ok(calls.some((call) => call.url.includes('/calendar/v3/users/me/calendarList')));
   assert.ok(calls.some((call) => call.url.endsWith('/calendar/v3/calendars') && call.options.method === 'POST'));
   assert.ok(calls.some((call) => call.url.includes('/calendar/v3/calendars/created-calendar-id/events')));
+  const eventInsertCall = calls.find(
+    (call) => call.url.includes('/calendar/v3/calendars/created-calendar-id/events')
+      && call.options.method === 'POST'
+  );
+  assert.deepEqual(JSON.parse(eventInsertCall.options.body).recurrence, [
+    'RRULE:FREQ=WEEKLY;UNTIL=20260930T235959Z'
+  ]);
 });
 test('POST /api/google-calendar/events prefere GOOGLE_CALENDAR_ID explicito ao nome', async (t) => {
   const previousAccessToken = process.env.GOOGLE_CALENDAR_ACCESS_TOKEN;
