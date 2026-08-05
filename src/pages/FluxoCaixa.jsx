@@ -140,12 +140,12 @@ const FluxoCaixa = () => {
         const emCashAmount = Number(financialAdjustments.cash) || 0;
         const investimentoAmount = Number(financialAdjustments.investimento) || 0;
         const ajusteLiquido = emCashAmount - investimentoAmount;
-        const totalAtrasadoReceber = atrasadosReceber.reduce((acc, i) => acc + getValorReceber(i), 0) + ajusteLiquido;
+        const totalAtrasadoReceber = atrasadosReceber.reduce((acc, i) => acc + getValorReceber(i), 0);
         const totalAtrasadoPagar = atrasadosPagar.reduce((acc, i) => acc + (Number(i?.valor) || 0), 0);
 
-        const receberDetails = [...atrasadosReceber];
+        const emCashDetails = [];
         if (emCashAmount > 0) {
-          receberDetails.push({
+          emCashDetails.push({
             id: 'em-cash',
             cliente_fornecedor: 'Em Cash',
             valor: emCashAmount,
@@ -154,7 +154,7 @@ const FluxoCaixa = () => {
           });
         }
         if (investimentoAmount > 0) {
-          receberDetails.push({
+          emCashDetails.push({
             id: 'investimento',
             cliente_fornecedor: 'Investimento',
             valor: -investimentoAmount,
@@ -194,11 +194,18 @@ const FluxoCaixa = () => {
 
         const fullFluxo = [
           {
+            dia: 'cash',
+            diaLabel: 'Em Cash',
+            receber: ajusteLiquido,
+            pagar: 0,
+            details: { receber: emCashDetails, pagar: [] }
+          },
+          {
             dia: '00',
             diaLabel: 'Atrasados',
             receber: totalAtrasadoReceber,
             pagar: totalAtrasadoPagar,
-            details: { receber: receberDetails, pagar: atrasadosPagar }
+            details: { receber: atrasadosReceber, pagar: atrasadosPagar }
           },
           ...fluxo
         ];

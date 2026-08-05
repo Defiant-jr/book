@@ -148,13 +148,11 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
         const atrasadosPagar = atrasadosLancamentos.filter(i => i.tipoNorm === 'saida');
         const emCashAmount = Number(financialAdjustments.cash) || 0;
         const investimentoAmount = Number(financialAdjustments.investimento) || 0;
-        const totalReceberAtrasado =
-          atrasadosReceber.reduce((acc, i) => acc + getValorReceber(i), 0) +
-          emCashAmount -
-          investimentoAmount;
-        const receberDetails = [...atrasadosReceber];
+        const ajusteLiquido = emCashAmount - investimentoAmount;
+        const totalReceberAtrasado = atrasadosReceber.reduce((acc, i) => acc + getValorReceber(i), 0);
+        const emCashDetails = [];
         if (emCashAmount > 0) {
-          receberDetails.push({
+          emCashDetails.push({
             id: 'em-cash',
             cliente_fornecedor: 'Em Cash',
             valor: emCashAmount,
@@ -163,7 +161,7 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
           });
         }
         if (investimentoAmount > 0) {
-          receberDetails.push({
+          emCashDetails.push({
             id: 'investimento',
             cliente_fornecedor: 'Investimento',
             valor: -investimentoAmount,
@@ -172,13 +170,24 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
           });
         }
 
+        const emCash = {
+          dia: 'cash',
+          diaLabel: 'Em Cash',
+          receber: ajusteLiquido,
+          pagar: 0,
+          details: {
+            receber: emCashDetails,
+            pagar: []
+          }
+        };
+
         const dia00 = {
           dia: '00',
           diaLabel: 'Atrasados',
           receber: totalReceberAtrasado,
           pagar: atrasadosPagar.reduce((acc, i) => acc + getValorPagar(i), 0),
           details: {
-            receber: receberDetails,
+            receber: atrasadosReceber,
             pagar: atrasadosPagar
           }
         };
@@ -200,7 +209,7 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
           }
         });
 
-        const fullFluxo = [dia00, ...fluxo];
+        const fullFluxo = [emCash, dia00, ...fluxo];
 
         let saldoAcumulado = 0;
         return fullFluxo.map(dia => {
