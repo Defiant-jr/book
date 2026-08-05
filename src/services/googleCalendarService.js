@@ -89,8 +89,26 @@ export const updateGoogleCalendarEvent = async (eventId, updates) => {
   return payload.event;
 };
 
-export const deleteGoogleCalendarEvent = async (eventId, { calendarId } = {}) => {
-  const query = calendarId ? `?calendarId=${encodeURIComponent(calendarId)}` : '';
+export const setGoogleCalendarEventCompleted = async (eventId, completed, { calendarId } = {}) => {
+  const searchParams = new URLSearchParams();
+  if (calendarId) searchParams.set('calendarId', calendarId);
+  const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
+  const response = await fetch(`${CALENDAR_ENDPOINT}/${encodeURIComponent(eventId)}${query}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ completed }),
+  });
+  const payload = await parseResponse(response);
+  clearEventsCache();
+  return payload.event;
+};
+
+export const deleteGoogleCalendarEvent = async (eventId, { calendarId, scope, instanceStart } = {}) => {
+  const searchParams = new URLSearchParams();
+  if (calendarId) searchParams.set('calendarId', calendarId);
+  if (scope) searchParams.set('scope', scope);
+  if (instanceStart) searchParams.set('instanceStart', instanceStart);
+  const query = searchParams.size > 0 ? `?${searchParams.toString()}` : '';
   const response = await fetch(`${CALENDAR_ENDPOINT}/${encodeURIComponent(eventId)}${query}`, {
     method: 'DELETE'
   });

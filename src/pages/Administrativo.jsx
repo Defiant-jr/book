@@ -230,7 +230,7 @@ const Administrativo = () => {
                   return (
                     <div
                       key={tarefa.id}
-                      className={`h-48 w-48 rounded-xl bg-gradient-to-br ${color} p-3 shadow-lg shadow-black/20`}
+                      className={`flex h-48 w-48 flex-col rounded-xl bg-gradient-to-br ${color} p-3 shadow-lg shadow-black/20`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <button
@@ -245,7 +245,7 @@ const Administrativo = () => {
                           }`}
                           style={{
                             display: '-webkit-box',
-                            WebkitLineClamp: 8,
+                            WebkitLineClamp: 3,
                             WebkitBoxOrient: 'vertical',
                             overflow: 'hidden',
                           }}
@@ -284,8 +284,29 @@ const Administrativo = () => {
                           </div>
                         </div>
                       </div>
+                      {tarefa.detalhes && (
+                        <button
+                          type="button"
+                          onClick={() => setTarefaDetalhe(tarefa)}
+                          className="mt-2 min-h-0 flex-1 overflow-hidden border-t border-black/15 pt-2 text-left"
+                          aria-label="Ver detalhes completos da tarefa"
+                        >
+                          <span className="block text-[10px] font-semibold uppercase opacity-70">Detalhes</span>
+                          <span
+                            className="mt-0.5 block whitespace-pre-wrap text-[11px] leading-snug"
+                            style={{
+                              display: '-webkit-box',
+                              WebkitLineClamp: 5,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                            }}
+                          >
+                            {tarefa.detalhes}
+                          </span>
+                        </button>
+                      )}
                       {tarefa.data && (
-                        <p className="mt-2 text-[10px] opacity-80">
+                        <p className="mt-2 shrink-0 text-[10px] opacity-80">
                           {new Date(tarefa.data).toLocaleDateString('pt-BR')}
                         </p>
                       )}
@@ -342,7 +363,18 @@ const Administrativo = () => {
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed">{tarefaDetalhe.tarefa}</p>
+            <div className="mt-4 space-y-4 text-sm leading-relaxed">
+              <div>
+                <p className="text-xs font-semibold uppercase text-gray-500">Título</p>
+                <p className="mt-1 whitespace-pre-wrap">{tarefaDetalhe.tarefa}</p>
+              </div>
+              {tarefaDetalhe.detalhes && (
+                <div>
+                  <p className="text-xs font-semibold uppercase text-gray-500">Detalhes</p>
+                  <p className="mt-1 whitespace-pre-wrap">{tarefaDetalhe.detalhes}</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

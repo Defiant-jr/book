@@ -23,6 +23,7 @@ import { ptBR } from 'date-fns/locale';
 import {
   ArrowLeft,
   CalendarDays,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
@@ -44,6 +45,7 @@ import {
   createGoogleCalendarEvent,
   deleteGoogleCalendarEvent,
   listGoogleCalendarEvents,
+  setGoogleCalendarEventCompleted,
   updateGoogleCalendarEvent,
 } from '@/services/googleCalendarService';
 import { listGoogleTasks, updateGoogleTask } from '@/services/googleTasksService';
@@ -92,22 +94,56 @@ const sortEvents = (events) =>
     return String(a.startTime || '').localeCompare(String(b.startTime || ''));
   });
 
-const EventPill = ({ event, compact = false, onClick }) => {
+const EventPill = ({ event, compact = false, onClick, onComplete, onDelete, completing = false, deleting = false }) => {
   const category = getCategory(event.category);
   return (
-    <button
-      type="button"
-      onClick={(clickEvent) => {
-        clickEvent.stopPropagation();
-        onClick(event);
-      }}
-      className={`w-full truncate rounded border px-2 py-1 text-left text-xs ${category.soft} hover:border-white/40`}
+    <div
+      className={`flex w-full items-center overflow-hidden rounded border ${category.soft} hover:border-white/40`}
       style={event.calendarColor ? { borderColor: event.calendarColor } : undefined}
-      title={event.calendarSummary ? `${event.title} - ${event.calendarSummary}` : event.title}
     >
-      {!compact && <span className="mr-1 font-mono">{event.startTime}</span>}
-      <span className="font-semibold">{event.title}</span>
-    </button>
+      <button
+        type="button"
+        onClick={(clickEvent) => {
+          clickEvent.stopPropagation();
+          onClick(event);
+        }}
+        className="min-w-0 flex-1 truncate px-2 py-1 text-left text-xs"
+        title={event.calendarSummary ? `${event.title} - ${event.calendarSummary}` : event.title}
+      >
+        {!compact && <span className="mr-1 font-mono">{event.startTime}</span>}
+        <span className={`font-semibold ${event.completed ? 'line-through opacity-70' : ''}`}>{event.title}</span>
+      </button>
+      {event.canEdit !== false && (
+        <button
+          type="button"
+          onClick={(clickEvent) => {
+            clickEvent.stopPropagation();
+            onComplete(event);
+          }}
+          disabled={completing}
+          className="shrink-0 border-l border-current/20 p-1.5 hover:bg-white/10 disabled:cursor-wait disabled:opacity-50"
+          title={event.completed ? 'Desmarcar conclusão' : 'Marcar como concluído'}
+          aria-label={`${event.completed ? 'Desmarcar conclusão de' : 'Concluir'} compromisso ${event.title}`}
+        >
+          <CheckCircle2 className={`h-3.5 w-3.5 ${event.completed ? 'fill-current text-emerald-300' : ''}`} />
+        </button>
+      )}
+      {event.canEdit !== false && (
+        <button
+          type="button"
+          onClick={(clickEvent) => {
+            clickEvent.stopPropagation();
+            onDelete(event);
+          }}
+          disabled={deleting}
+          className="shrink-0 border-l border-current/20 p-1.5 text-red-300 hover:bg-red-500/15 disabled:cursor-wait disabled:opacity-50"
+          title="Excluir compromisso"
+          aria-label={`Excluir compromisso ${event.title}`}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      )}
+    </div>
   );
 };
 
@@ -407,6 +443,10 @@ const AdministrativoAgenda = () => {
   const [loadingTasks, setLoadingTasks] = useState(false);
   const [savingEvent, setSavingEvent] = useState(false);
   const [savingTask, setSavingTask] = useState(false);
+  const [completingEventKey, setCompletingEventKey] = useState(null);
+  const [deletingEventKey, setDeletingEventKey] = useState(null);
+  const [recurringEventToDelete, setRecurringEventToDelete] = useState(null);
+  const [recurringDeletionScope, setRecurringDeletionScope] = useState('occurrence');
 
   const loadEvents = async ({ force = false } = {}) => {
     setLoadingEvents(true);
@@ -577,15 +617,79 @@ const AdministrativoAgenda = () => {
     }
   };
 
-  const deleteEvent = async (event) => {
+  const deleteEvent = async (event, scope = 'occurrence') => {
+    const eventKey = getEventKey(event);
+    setDeletingEventKey(eventKey);
     try {
-      await deleteGoogleCalendarEvent(event.id, { calendarId: event.calendarId });
-      setEvents((current) => current.filter((item) => getEventKey(item) !== getEventKey(event)));
+      const deletingSeries = scope === 'series' && event.recurringEventId;
+      const deletingFollowing = scope === 'following' && event.recurringEventId;
+      const eventIdToDelete = deletingSeries || deletingFollowing ? event.recurringEventId : event.id;
+      await deleteGoogleCalendarEvent(eventIdToDelete, {
+        calendarId: event.calendarId,
+        scope: deletingFollowing ? 'following' : undefined,
+        instanceStart: deletingFollowing ? event.originalStartTime : undefined,
+      });
+      setEvents((current) => current.filter((item) => {
+        if (!deletingSeries && !deletingFollowing) return getEventKey(item) !== eventKey;
+        const sameCalendar = item.calendarId === event.calendarId;
+        const belongsToSeries = item.id === event.recurringEventId
+          || item.recurringEventId === event.recurringEventId;
+        if (!sameCalendar || !belongsToSeries) return true;
+        if (deletingSeries) return false;
+        const itemStart = new Date(item.originalStartTime || `${item.date}T${item.startTime || '00:00'}:00`).getTime();
+        const selectedStart = new Date(event.originalStartTime || `${event.date}T${event.startTime || '00:00'}:00`).getTime();
+        return itemStart < selectedStart;
+      }));
       setSelectedEvent(null);
       setEditingEvent(null);
-      toast({ title: 'Compromisso excluido', description: 'O compromisso foi removido do Google Calendar.' });
+      setRecurringEventToDelete(null);
+      toast({
+        title: deletingSeries || deletingFollowing ? 'Recorrência excluída' : 'Compromisso excluído',
+        description: deletingSeries
+          ? 'Todos os eventos da série foram excluídos do Google Calendar.'
+          : deletingFollowing
+            ? 'Este evento e os próximos foram excluídos do Google Calendar.'
+            : 'Somente este evento foi excluído do Google Calendar.',
+      });
     } catch (error) {
-      toast({ title: 'Erro ao excluir agenda', description: error.message, variant: 'destructive' });
+      toast({ title: 'Erro ao excluir compromisso', description: error.message, variant: 'destructive' });
+    } finally {
+      setDeletingEventKey(null);
+    }
+  };
+
+  const requestDeleteEvent = (event) => {
+    if (event.recurringEventId) {
+      setRecurringDeletionScope('occurrence');
+      setRecurringEventToDelete(event);
+      return;
+    }
+    deleteEvent(event);
+  };
+
+  const completeEvent = async (event) => {
+    const eventKey = getEventKey(event);
+    setCompletingEventKey(eventKey);
+    try {
+      const completed = !event.completed;
+      const updatedEvent = await setGoogleCalendarEventCompleted(event.id, completed, {
+        calendarId: event.calendarId,
+      });
+      setEvents((current) => current.map((item) => (
+        getEventKey(item) === eventKey
+          ? { ...item, completed: updatedEvent.completed, updated: updatedEvent.updated }
+          : item
+      )));
+      toast({
+        title: completed ? 'Compromisso concluído' : 'Conclusão desmarcada',
+        description: completed
+          ? 'O compromisso foi mantido na agenda e marcado como concluído.'
+          : 'O compromisso voltou ao estado pendente.',
+      });
+    } catch (error) {
+      toast({ title: 'Erro ao atualizar conclusão', description: error.message, variant: 'destructive' });
+    } finally {
+      setCompletingEventKey(null);
     }
   };
 
@@ -638,7 +742,15 @@ const AdministrativoAgenda = () => {
               </span>
               <div className="mt-2 space-y-1">
                 {dayEvents.slice(0, 2).map((event) => (
-                  <EventPill key={getEventKey(event)} event={event} onClick={openEventEditor} />
+                  <EventPill
+                    key={getEventKey(event)}
+                    event={event}
+                    onClick={openEventEditor}
+                    onComplete={completeEvent}
+                    onDelete={requestDeleteEvent}
+                    completing={completingEventKey === getEventKey(event)}
+                    deleting={deletingEventKey === getEventKey(event)}
+                  />
                 ))}
                 {dayTasks.slice(0, 2).map((task) => (
                   <TaskPill
@@ -673,7 +785,17 @@ const AdministrativoAgenda = () => {
                 <p className={`mt-1 text-2xl font-semibold ${isSameDay(day, new Date()) ? 'text-blue-300' : 'text-white'}`}>{format(day, 'd')}</p>
               </button>
               <div className="space-y-2 p-3">
-                {dayEvents.map((event) => <EventPill key={getEventKey(event)} event={event} onClick={openEventEditor} />)}
+                {dayEvents.map((event) => (
+                  <EventPill
+                    key={getEventKey(event)}
+                    event={event}
+                    onClick={openEventEditor}
+                    onComplete={completeEvent}
+                    onDelete={requestDeleteEvent}
+                    completing={completingEventKey === getEventKey(event)}
+                    deleting={deletingEventKey === getEventKey(event)}
+                  />
+                ))}
                 {dayTasks.map((task) => (
                   <TaskPill
                     key={task.id}
@@ -713,14 +835,44 @@ const AdministrativoAgenda = () => {
             {selectedDateEvents.map((event) => {
             const category = getCategory(event.category);
             return (
-              <button key={getEventKey(event)} type="button" onClick={() => openEventEditor(event)} className="flex w-full items-start gap-4 p-4 text-left hover:bg-white/[0.06]">
-                <div className="w-20 shrink-0 text-sm text-slate-400">{event.startTime}</div>
-                <span className={`mt-1 h-3 w-3 rounded-full ${category.color}`} />
-                <div className="min-w-0">
-                  <p className="font-semibold text-white">{event.title}</p>
-                  <p className="text-sm text-slate-400">{`${event.startTime} - ${event.endTime} - ${event.calendarSummary || category.label}`}</p>
-                </div>
-              </button>
+              <div key={getEventKey(event)} className="flex w-full items-start gap-3 p-4 hover:bg-white/[0.06]">
+                <button type="button" onClick={() => openEventEditor(event)} className="flex min-w-0 flex-1 items-start gap-4 text-left">
+                  <div className="w-20 shrink-0 text-sm text-slate-400">{event.startTime}</div>
+                  <span className={`mt-1 h-3 w-3 shrink-0 rounded-full ${category.color}`} />
+                  <div className="min-w-0">
+                    <p className={`font-semibold text-white ${event.completed ? 'line-through opacity-70' : ''}`}>{event.title}</p>
+                    <p className="text-sm text-slate-400">{`${event.startTime} - ${event.endTime} - ${event.calendarSummary || category.label}`}</p>
+                  </div>
+                </button>
+                {event.canEdit !== false && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => completeEvent(event)}
+                    disabled={completingEventKey === getEventKey(event)}
+                    className="h-8 w-8 shrink-0 text-emerald-300 hover:bg-emerald-500/15 hover:text-emerald-200"
+                    title={event.completed ? 'Desmarcar conclusão' : 'Marcar como concluído'}
+                    aria-label={`${event.completed ? 'Desmarcar conclusão de' : 'Concluir'} compromisso ${event.title}`}
+                  >
+                    <CheckCircle2 className={`h-4 w-4 ${event.completed ? 'fill-current' : ''}`} />
+                  </Button>
+                )}
+                {event.canEdit !== false && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => requestDeleteEvent(event)}
+                    disabled={deletingEventKey === getEventKey(event)}
+                    className="h-8 w-8 shrink-0 text-red-300 hover:bg-red-500/15 hover:text-red-200"
+                    title="Excluir compromisso"
+                    aria-label={`Excluir compromisso ${event.title}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             );
             })}
             {selectedDateTasks.map((task) => (
@@ -1009,12 +1161,71 @@ const AdministrativoAgenda = () => {
         <EventDetails
           event={selectedEvent}
           onClose={() => setSelectedEvent(null)}
-          onDelete={deleteEvent}
+          onDelete={requestDeleteEvent}
           onEdit={(event) => {
             setSelectedEvent(null);
             setEditingEvent(event);
           }}
         />
+      )}
+      {recurringEventToDelete && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="recurrence-deletion-title"
+        >
+          <div className="w-full max-w-md rounded-lg border border-white/10 bg-slate-950 p-5 shadow-2xl">
+            <h2 id="recurrence-deletion-title" className="text-xl font-bold text-white">
+              Excluir evento recorrente
+            </h2>
+            <p className="mt-2 text-sm text-slate-300">
+              Escolha quais eventos da recorrência “{recurringEventToDelete.title}” deseja excluir.
+            </p>
+            <div className="mt-5 space-y-2">
+              {[
+                ['occurrence', 'Este evento'],
+                ['following', 'Este e os próximos eventos'],
+                ['series', 'Todos os eventos'],
+              ].map(([value, label]) => (
+                <label
+                  key={value}
+                  className="flex cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-sm text-slate-200 hover:bg-white/5"
+                >
+                  <input
+                    type="radio"
+                    name="recurring-deletion-scope"
+                    value={value}
+                    checked={recurringDeletionScope === value}
+                    onChange={() => setRecurringDeletionScope(value)}
+                    disabled={Boolean(deletingEventKey)}
+                    className="h-4 w-4 border-slate-500 bg-slate-900 text-blue-600 focus:ring-blue-500"
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+            <div className="mt-6 flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setRecurringEventToDelete(null)}
+                disabled={Boolean(deletingEventKey)}
+                className="text-slate-300 hover:bg-white/10"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                onClick={() => deleteEvent(recurringEventToDelete, recurringDeletionScope)}
+                disabled={Boolean(deletingEventKey)}
+                className="bg-blue-600 text-white hover:bg-blue-500"
+              >
+                Excluir
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

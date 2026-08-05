@@ -236,6 +236,8 @@ const mapGoogleCalendarEvent = (event, calendar = {}) => {
 
   return {
     id: event.id,
+    recurringEventId: event.recurringEventId || null,
+    originalStartTime: event.originalStartTime?.dateTime || event.originalStartTime?.date || null,
     key: `${calendar.id || googleCalendarConfig.calendarId}:${event.id}`,
     calendarId: calendar.id || googleCalendarConfig.calendarId,
     calendarSummary: calendar.summary || '',
@@ -248,6 +250,7 @@ const mapGoogleCalendarEvent = (event, calendar = {}) => {
     startTime: startValue.slice(11, 16) || '00:00',
     endTime: endValue.slice(11, 16) || '23:59',
     category: 'administrativo',
+    completed: event.extendedProperties?.private?.bookCompleted === 'true',
     updated: event.updated || null,
     htmlLink: event.htmlLink || null
   };
@@ -406,6 +409,35 @@ export const registerGoogleCalendarRoutes = (app) => {
   });
 
   app.patch('/api/google-calendar/events/:eventId', async (req, res) => {
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, 'completed')) {
+      try {
+        const calendarId = await getCalendarIdFromRequest(req);
+        const calendar = { id: calendarId, summary: calendarId, accessRole: 'owner' };
+        const eventPath = `${calendarEventsPathFor(calendarId)}/${encodeURIComponent(req.params.eventId)}`;
+        const currentEvent = await googleCalendarRequest(eventPath);
+        const event = await googleCalendarRequest(eventPath, {
+          method: 'PATCH',
+          body: {
+            extendedProperties: {
+              ...(currentEvent.extendedProperties || {}),
+              private: {
+                ...(currentEvent.extendedProperties?.private || {}),
+                bookCompleted: req.body.completed === true ? 'true' : 'false'
+              }
+            }
+          }
+        });
+
+        return res.json({ success: true, event: mapGoogleCalendarEvent(event, calendar) });
+      } catch (error) {
+        console.error('[server] Google Calendar completion update failed', error);
+        return res.status(500).json({
+          success: false,
+          message: error.message || 'Erro ao atualizar a conclusão do compromisso.'
+        });
+      }
+    }
+
     const title = String(req.body?.title || '').trim();
     const notes = String(req.body?.notes || '').trim();
     const date = normalizeDate(req.body?.date);
@@ -449,6 +481,54 @@ export const registerGoogleCalendarRoutes = (app) => {
   app.delete('/api/google-calendar/events/:eventId', async (req, res) => {
     try {
       const calendarId = await getCalendarIdFromRequest(req);
+      const scope = String(req.query?.scope || 'event');
+
+      if (scope === 'following') {
+        const instanceStart = String(req.query?.instanceStart || '').trim();
+        const instanceStartDate = new Date(instanceStart);
+        if (!instanceStart || Number.isNaN(instanceStartDate.getTime())) {
+          return res.status(400).json({
+            success: false,
+            message: 'Data da ocorrência recorrente inválida.'
+          });
+        }
+
+        const eventPath = `${calendarEventsPathFor(calendarId)}/${encodeURIComponent(req.params.eventId)}`;
+        const recurringEvent = await googleCalendarRequest(eventPath);
+        const seriesStartValue = recurringEvent?.start?.dateTime || recurringEvent?.start?.date;
+        const seriesStartDate = new Date(seriesStartValue);
+
+        if (!seriesStartValue || Number.isNaN(seriesStartDate.getTime()) || instanceStartDate <= seriesStartDate) {
+          await googleCalendarRequest(eventPath, { method: 'DELETE' });
+        } else {
+          const untilDate = new Date(instanceStartDate.getTime() - 1000);
+          const until = untilDate.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+          let updatedRule = false;
+          const recurrence = (recurringEvent.recurrence || []).map((rule) => {
+            if (!rule.startsWith('RRULE:')) return rule;
+            updatedRule = true;
+            const withoutEnd = rule
+              .replace(/;UNTIL=[^;]+/i, '')
+              .replace(/;COUNT=\d+/i, '');
+            return `${withoutEnd};UNTIL=${until}`;
+          });
+
+          if (!updatedRule) {
+            return res.status(400).json({
+              success: false,
+              message: 'A recorrência não possui uma regra compatível para excluir os próximos eventos.'
+            });
+          }
+
+          await googleCalendarRequest(eventPath, {
+            method: 'PATCH',
+            body: { recurrence }
+          });
+        }
+
+        return res.json({ success: true });
+      }
+
       await googleCalendarRequest(`${calendarEventsPathFor(calendarId)}/${encodeURIComponent(req.params.eventId)}`, {
         method: 'DELETE'
       });

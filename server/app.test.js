@@ -493,3 +493,68 @@ test('POST /api/google-calendar/events usa primary quando GOOGLE_CALENDAR_ID est
   assert.ok(calls.some((call) => call.url.includes('/calendar/v3/calendars/primary/events')));
 });
 
+test('PATCH /api/google-calendar/events atualiza somente a conclusao', async (t) => {
+  const previousAccessToken = process.env.GOOGLE_CALENDAR_ACCESS_TOKEN;
+  const previousCalendarId = process.env.GOOGLE_CALENDAR_ID;
+  const previousFetch = globalThis.fetch;
+  const calls = [];
+
+  process.env.GOOGLE_CALENDAR_ACCESS_TOKEN = 'test-access-token';
+  process.env.GOOGLE_CALENDAR_ID = 'primary';
+  globalThis.fetch = async (url, options = {}) => {
+    calls.push({ url: String(url), options });
+    const baseEvent = {
+      id: 'event-id',
+      summary: 'Compromisso',
+      start: { dateTime: '2026-08-05T09:00:00-03:00' },
+      end: { dateTime: '2026-08-05T10:00:00-03:00' },
+      extendedProperties: { private: { existingValue: 'preserved' } }
+    };
+
+    if (options.method === 'PATCH') {
+      const body = JSON.parse(options.body);
+      return new Response(JSON.stringify({
+        ...baseEvent,
+        extendedProperties: body.extendedProperties
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    return new Response(JSON.stringify(baseEvent), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  };
+
+  t.after(() => {
+    if (previousAccessToken == null) delete process.env.GOOGLE_CALENDAR_ACCESS_TOKEN;
+    else process.env.GOOGLE_CALENDAR_ACCESS_TOKEN = previousAccessToken;
+    if (previousCalendarId == null) delete process.env.GOOGLE_CALENDAR_ID;
+    else process.env.GOOGLE_CALENDAR_ID = previousCalendarId;
+    globalThis.fetch = previousFetch;
+  });
+
+  const { registerGoogleCalendarRoutes } = await import(`./googleCalendarRoutes.js?completion-test=${Date.now()}`);
+  const app = express();
+  app.use(express.json());
+  registerGoogleCalendarRoutes(app);
+  const baseUrl = await listenForTest(app, t);
+
+  const response = await previousFetch(`${baseUrl}/api/google-calendar/events/event-id?calendarId=primary`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ completed: true })
+  });
+
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.success, true);
+  assert.equal(payload.event.completed, true);
+  const patchCall = calls.find((call) => call.options.method === 'PATCH');
+  const patchBody = JSON.parse(patchCall.options.body);
+  assert.equal(patchBody.extendedProperties.private.existingValue, 'preserved');
+  assert.equal(patchBody.extendedProperties.private.bookCompleted, 'true');
+});
+
