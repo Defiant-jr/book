@@ -383,6 +383,14 @@ function App() {
 							}
 						/>
 						<Route
+							path="/relatorios/mapa-compromissos"
+							element={
+								<PrivateRoute>
+									<MapaTarefas tipo="compromissos" />
+								</PrivateRoute>
+							}
+						/>
+						<Route
 							path="/relatorios/mapa-mensal"
 							element={
 								<PrivateRoute>

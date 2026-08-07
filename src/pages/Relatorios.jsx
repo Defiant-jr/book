@@ -3,7 +3,7 @@ import React from 'react';
     import { useNavigate } from 'react-router-dom';
     import { Helmet } from 'react-helmet';
     import { motion } from 'framer-motion';
-import { BarChart3, PieChart, TrendingUp, ArrowLeft, FileClock, Printer, CalendarRange, FileSignature, FolderKanban, FileText, ClipboardList } from 'lucide-react';
+import { BarChart3, PieChart, TrendingUp, ArrowLeft, FileClock, Printer, CalendarRange, FileSignature, FolderKanban, FileText, ClipboardList, CalendarClock } from 'lucide-react';
     
     import { Button } from '@/components/ui/button';
     import { Card, CardContent } from '@/components/ui/card';
@@ -101,6 +101,13 @@ import { BarChart3, PieChart, TrendingUp, ArrowLeft, FileClock, Printer, Calenda
                 icon: ClipboardList,
                 description: "Mapa de acompanhamento das tarefas pendentes e concluidas.",
                 action: () => handleNavigation('/relatorios/mapa-tarefas'),
+                implemented: true,
+            },
+            {
+                title: "Mapa de Compromissos",
+                icon: CalendarClock,
+                description: "Mapa de acompanhamento dos compromissos pendentes e concluidos.",
+                action: () => handleNavigation('/relatorios/mapa-compromissos'),
                 implemented: true,
             },
         ];
