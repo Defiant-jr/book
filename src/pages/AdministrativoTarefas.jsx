@@ -671,7 +671,7 @@ const AdministrativoTarefas = () => {
           <h2 className="text-xl font-bold text-white">Tarefas recentes</h2>
           <button
             type="button"
-            onClick={() => navigate('/administrativo/tarefas')}
+            onClick={() => navigate('/administrativo/tarefas?ref=11100')}
             className="inline-flex items-center gap-1 text-xs font-medium text-blue-300 hover:text-blue-200"
           >
             Ver todas <ArrowRight className="h-3 w-3" />
