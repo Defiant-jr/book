@@ -33,6 +33,7 @@ import OperacoesCadastroAluno from '@/pages/OperacoesCadastroAluno';
 import OperacoesCadastroRateio from '@/pages/OperacoesCadastroRateio';
 import OperacoesCadastroTurma from '@/pages/OperacoesCadastroTurma';
 import Parametros from '@/pages/Parametros';
+import PagLivre from '@/pages/PagLivre';
 import Pedagogico from '@/pages/Pedagogico';
 import RelatorioContas from '@/pages/RelatorioContas';
 import RelatorioPagosRecebidos from '@/pages/RelatorioPagosRecebidos';
@@ -379,6 +380,14 @@ function App() {
 							element={
 								<PrivateRoute>
 									<MapaTarefas />
+								</PrivateRoute>
+							}
+						/>
+						<Route
+							path="/a-reconhecer"
+							element={
+								<PrivateRoute>
+									<PagLivre />
 								</PrivateRoute>
 							}
 						/>

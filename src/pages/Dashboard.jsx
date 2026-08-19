@@ -2,7 +2,7 @@
     import { motion } from 'framer-motion';
     import { useNavigate } from 'react-router-dom';
     import { Helmet } from 'react-helmet';
-import { TrendingUp, TrendingDown, DollarSign, LayoutDashboard, PlusCircle, ArrowRight, ArrowLeft, Wallet } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, LayoutDashboard, PlusCircle, ArrowRight, ArrowLeft, Wallet, CircleDollarSign } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -396,6 +396,7 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
         { label: "Fluxo de Caixa", path: "/fluxo-caixa", icon: Wallet },
         { label: "Recebidos", path: "/contas-receber?status=pago", icon: TrendingUp },
         { label: "Pagos", path: "/contas-pagos", icon: TrendingDown },
+        { label: "A Reconhecer", path: "/a-reconhecer", icon: CircleDollarSign },
         { label: "Financeiro", path: "/financeiro", icon: PlusCircle },
       ];
 
