@@ -50,6 +50,7 @@ import Crm from '@/pages/Crm';
 import { useEffect } from 'react';
 import { Helmet } from 'react-helmet';
 import { BrowserRouter as Router, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import DateTimeDisplay from '@/components/DateTimeDisplay';
 
 const PrivateRoute = ({ children }) => {
 	const { user, loading } = useAuth();
@@ -79,6 +80,18 @@ const PrivateRoute = ({ children }) => {
 	return user ? <div className="screen-size-ref-12000">{children}</div> : <Navigate to="/login" />;
 };
 
+const DateTimeHeader = () => {
+	const { pathname } = useLocation();
+
+	if (pathname === '/') return null;
+
+	return (
+		<header className="mb-6 w-full text-center text-base font-medium text-white/80" aria-live="off">
+			<DateTimeDisplay />
+		</header>
+	);
+};
+
 function App() {
 	return (
 		<Router>
@@ -92,6 +105,7 @@ function App() {
 				</Helmet>
 
 				<main className="app-shell">
+					<DateTimeHeader />
 					<Routes>
 						<Route path="/login" element={<Login />} />
 						<Route path="/signup" element={<SignUp />} />

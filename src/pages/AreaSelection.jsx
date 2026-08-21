@@ -1,19 +1,26 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { BarChart3, Briefcase, Building2, FileText, GraduationCap, LogOut, Settings, Sliders, Users, Wallet } from 'lucide-react';
+import { BarChart3, Briefcase, Building2, CalendarDays, Calculator as CalculatorIcon, FileText, GraduationCap, LogOut, Settings, Sliders, Users, Wallet } from 'lucide-react';
+import { ptBR } from 'date-fns/locale';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
+import DateTimeDisplay from '@/components/DateTimeDisplay';
+import StandardCalculator from '@/components/StandardCalculator';
+import HP12cCalculator from '@/components/HP12cCalculator';
 
 const AreaSelection = () => {
   const AREA_SELECTION_REF = '00000';
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, signOut } = useAuth();
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
 
   const modules = [
     {
@@ -127,9 +134,9 @@ const AreaSelection = () => {
         <meta name="description" content="Escolha o módulo que deseja acessar." />
       </Helmet>
 
-      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <div className="flex flex-col gap-2">
-          <div className="flex justify-center md:justify-start">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_auto_1fr] xl:items-start">
+        <div className="flex flex-col items-center gap-2 xl:items-start">
+          <div className="flex justify-center xl:justify-start">
             <img
               src="/brand/book-plus-logo.png"
               alt="BooK+"
@@ -140,7 +147,59 @@ const AreaSelection = () => {
           <p className="text-gray-300">
           </p>
         </div>
-        <div className="flex flex-col items-end gap-2 self-start">
+        <div className="flex flex-col items-center justify-center gap-3 self-start sm:flex-row xl:pt-3">
+          <DateTimeDisplay className="whitespace-nowrap text-base font-medium text-white/80" />
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="flex items-center gap-2">
+                <CalendarDays className="h-4 w-4" />
+                Calendário
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="center"
+              className="w-auto border-white/20 bg-[#142961] p-0 text-white shadow-2xl"
+            >
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={(date) => date && setSelectedDate(date)}
+                defaultMonth={selectedDate}
+                locale={ptBR}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="flex items-center gap-2">
+                <CalculatorIcon className="h-4 w-4" />
+                Calculadora
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="center"
+              className="w-auto border-white/20 bg-[#142961] p-0 text-white shadow-2xl"
+            >
+              <StandardCalculator />
+            </PopoverContent>
+          </Popover>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="flex items-center gap-2">
+                <CalculatorIcon className="h-4 w-4" />
+                HP 12c
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="center"
+              className="max-h-[85vh] w-auto overflow-y-auto border-white/20 bg-[#171a20] p-0 text-white shadow-2xl"
+            >
+              <HP12cCalculator />
+            </PopoverContent>
+          </Popover>
+        </div>
+        <div className="flex flex-col items-center gap-2 self-start xl:items-end xl:justify-self-end">
           <div className="text-[10px] font-medium text-gray-400 lg:text-xs">
             {AREA_SELECTION_REF}
           </div>
