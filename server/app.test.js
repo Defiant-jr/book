@@ -493,6 +493,22 @@ test('POST /api/google-calendar/events usa primary quando GOOGLE_CALENDAR_ID est
   assert.ok(calls.some((call) => call.url.includes('/calendar/v3/calendars/primary/events')));
 });
 
+test('POST /api/google-translate/translate valida texto obrigatorio', async (t) => {
+  const { app } = await createApp({ withFrontend: false });
+  const baseUrl = await listenForTest(app, t);
+
+  const response = await fetch(`${baseUrl}/api/google-translate/translate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: '', targetLanguage: 'en' })
+  });
+
+  assert.equal(response.status, 400);
+  const payload = await response.json();
+  assert.equal(payload.success, false);
+  assert.equal(payload.message, 'Informe o texto que deseja traduzir.');
+});
+
 test('PATCH /api/google-calendar/events atualiza somente a conclusao', async (t) => {
   const previousAccessToken = process.env.GOOGLE_CALENDAR_ACCESS_TOKEN;
   const previousCalendarId = process.env.GOOGLE_CALENDAR_ID;

@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { registerGoogleCalendarRoutes } from './googleCalendarRoutes.js';
 import { registerGoogleDriveRoutes } from './googleDriveRoutes.js';
 import { registerGoogleTasksRoutes } from './googleTasksRoutes.js';
+import { registerGoogleTranslateRoutes } from './googleTranslateRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -97,6 +98,7 @@ export async function createApp(options = {}) {
   registerGoogleCalendarRoutes(app);
   registerGoogleDriveRoutes(app);
   registerGoogleTasksRoutes(app);
+  registerGoogleTranslateRoutes(app);
 
   if (!withFrontend) {
     return { app };

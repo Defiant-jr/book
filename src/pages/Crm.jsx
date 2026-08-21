@@ -12,6 +12,7 @@ import {
   FolderOpen,
   FolderPlus,
   LayoutDashboard,
+  Languages,
   Loader2,
   Eye,
   MoveRight,
@@ -91,6 +92,7 @@ const Crm = () => {
   const navButtons = [
     { label: 'DASHBOARD', path: '/crm', icon: LayoutDashboard },
     { label: 'Drive Jrnotes', path: '/crm/drive', icon: FolderOpen },
+    { label: 'Tradutor', path: '/crm/tradutor', icon: Languages },
   ];
 
   const loadFiles = useCallback(async (folderId = GOOGLE_DRIVE_ROOT_FOLDER_ID) => {

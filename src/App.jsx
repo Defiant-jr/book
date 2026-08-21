@@ -47,10 +47,11 @@ import FichaCustos from '@/pages/FichaCustos';
 import CustoAluno from '@/pages/CustoAluno';
 import CustoTurma from '@/pages/CustoTurma';
 import Crm from '@/pages/Crm';
+import Translator from '@/pages/Translator';
 import { useEffect } from 'react';
 import { Helmet } from 'react-helmet';
 import { BrowserRouter as Router, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import DateTimeDisplay from '@/components/DateTimeDisplay';
+import PersistentToolsHeader from '@/components/PersistentToolsHeader';
 
 const PrivateRoute = ({ children }) => {
 	const { user, loading } = useAuth();
@@ -80,18 +81,6 @@ const PrivateRoute = ({ children }) => {
 	return user ? <div className="screen-size-ref-12000">{children}</div> : <Navigate to="/login" />;
 };
 
-const DateTimeHeader = () => {
-	const { pathname } = useLocation();
-
-	if (pathname === '/') return null;
-
-	return (
-		<header className="mb-6 w-full text-center text-base font-medium text-white/80" aria-live="off">
-			<DateTimeDisplay />
-		</header>
-	);
-};
-
 function App() {
 	return (
 		<Router>
@@ -105,7 +94,7 @@ function App() {
 				</Helmet>
 
 				<main className="app-shell">
-					<DateTimeHeader />
+					<PersistentToolsHeader />
 					<Routes>
 						<Route path="/login" element={<Login />} />
 						<Route path="/signup" element={<SignUp />} />
@@ -170,6 +159,14 @@ function App() {
 							element={
 								<PrivateRoute>
 									<Crm />
+								</PrivateRoute>
+							}
+						/>
+						<Route
+							path="/crm/tradutor"
+							element={
+								<PrivateRoute>
+									<Translator />
 								</PrivateRoute>
 							}
 						/>
