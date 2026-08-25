@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { CalendarDays, Calculator as CalculatorIcon } from 'lucide-react';
 import { ptBR } from 'date-fns/locale';
+import { useLocation } from 'react-router-dom';
 
 import DateTimeDisplay from '@/components/DateTimeDisplay';
 import HP12cCalculator from '@/components/HP12cCalculator';
@@ -11,6 +12,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 
 const PersistentToolsHeader = () => {
   const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const { pathname } = useLocation();
+  const showQuickTools = pathname !== '/login';
 
   return (
     <header
@@ -19,7 +22,7 @@ const PersistentToolsHeader = () => {
     >
       <DateTimeDisplay className="whitespace-nowrap text-base font-medium text-white/80" />
 
-      <Popover>
+      {showQuickTools && <Popover>
         <PopoverTrigger asChild>
           <Button variant="outline" className="flex items-center gap-2">
             <CalendarDays className="h-4 w-4" />
@@ -39,9 +42,9 @@ const PersistentToolsHeader = () => {
             initialFocus
           />
         </PopoverContent>
-      </Popover>
+      </Popover>}
 
-      <Popover>
+      {showQuickTools && <Popover>
         <PopoverTrigger asChild>
           <Button variant="outline" className="flex items-center gap-2">
             <CalculatorIcon className="h-4 w-4" />
@@ -54,9 +57,9 @@ const PersistentToolsHeader = () => {
         >
           <StandardCalculator />
         </PopoverContent>
-      </Popover>
+      </Popover>}
 
-      <Popover>
+      {showQuickTools && <Popover>
         <PopoverTrigger asChild>
           <Button variant="outline" className="flex items-center gap-2">
             <CalculatorIcon className="h-4 w-4" />
@@ -69,7 +72,7 @@ const PersistentToolsHeader = () => {
         >
           <HP12cCalculator />
         </PopoverContent>
-      </Popover>
+      </Popover>}
     </header>
   );
 };
