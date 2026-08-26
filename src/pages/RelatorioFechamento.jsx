@@ -86,7 +86,14 @@ const RelatorioFechamento = () => {
     const parsed = new Date(`${value}T00:00:00`);
     if (Number.isNaN(parsed.getTime())) return '-';
     const weekday = parsed.toLocaleDateString('pt-BR', { weekday: 'long', timeZone: 'UTC' });
-    return `${formatDate(value)} - ${weekday}`;
+    return `${formatDate(value)} - ${weekday.slice(0, 3)}.`;
+  };
+  const formatUnit = (value) => {
+    if (!value) return '-';
+    const normalized = value.toLocaleLowerCase('pt-BR');
+    if (normalized.includes('angra')) return 'Angra';
+    if (normalized.includes('manga')) return 'Manga';
+    return value;
   };
   const isWeekendDate = (value) => {
     if (!value) return false;
@@ -158,14 +165,14 @@ const RelatorioFechamento = () => {
 
       let entriesQuery = supabase
         .from('lancamentos')
-        .select('id, cliente_fornecedor, contato, aluno, data, unidade, valor, valor_aberto, desc_pontual, tipo, status')
+        .select('id, cliente_fornecedor, contato, aluno, data, unidade, obs, valor, valor_aberto, desc_pontual, tipo, status')
         .eq('tipo', 'Entrada')
         .lte('data', endDateIso)
         .or('status.is.null,status.neq.Pago');
 
       let exitsQuery = supabase
         .from('lancamentos')
-        .select('id, cliente_fornecedor, contato, aluno, data, unidade, valor, valor_aberto, desc_pontual, tipo, status')
+        .select('id, cliente_fornecedor, contato, aluno, data, unidade, obs, valor, valor_aberto, desc_pontual, tipo, status')
         .eq('tipo', 'Saida')
         .lte('data', endDateIso)
         .or('status.is.null,status.neq.Pago');
@@ -278,13 +285,14 @@ const RelatorioFechamento = () => {
       const tableStartY = cursorY + 8;
       doc.autoTable({
         startY: tableStartY,
-        head: [['Nome', 'Contato', 'Aluno', 'Vencimento', 'Unidade', 'Valor Aberto', 'Valor']],
+        head: [['Nome', 'Contato', 'Aluno', 'Vencimento', 'Unidade', 'Contrato', 'Valor Aberto', 'Valor']],
         body: items.map((item) => [
           item.cliente_fornecedor || '-',
           item.contato || '-',
           item.aluno || '-',
           formatDateWithWeekday(item.data),
-          item.unidade || '-',
+          formatUnit(item.unidade),
+          item.obs || '-',
           formatValorAbertoItem(item),
           formatCurrency(getValor(item)),
         ]),
@@ -292,8 +300,8 @@ const RelatorioFechamento = () => {
         styles: { fontSize, cellPadding },
         headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255], fontSize: fontSize + 1 },
         columnStyles: {
-          5: { halign: 'right', textColor: [220, 38, 38] },
-          6: { halign: 'right' },
+          6: { halign: 'right', textColor: [220, 38, 38] },
+          7: { halign: 'right' },
         },
         didParseCell: (data) => {
           if (data.section !== 'body') return;
@@ -538,6 +546,7 @@ const RelatorioFechamento = () => {
                           <th className="px-4 py-3">Aluno</th>
                           <th className="px-4 py-3">Vencimento</th>
                           <th className="px-4 py-3">Unidade</th>
+                          <th className="px-4 py-3">Contrato</th>
                           <th className="px-4 py-3 text-right">Valor Aberto</th>
                           <th className="px-4 py-3 text-right">Valor</th>
                         </tr>
@@ -552,7 +561,8 @@ const RelatorioFechamento = () => {
                             <td className="px-4 py-3">{item.contato || '-'}</td>
                             <td className="px-4 py-3">{item.aluno || '-'}</td>
                             <td className={`px-4 py-3 ${isWeekendDate(item.data) ? 'text-red-400' : ''}`}>{formatDateWithWeekday(item.data)}</td>
-                            <td className="px-4 py-3">{item.unidade || '-'}</td>
+                            <td className="px-4 py-3">{formatUnit(item.unidade)}</td>
+                            <td className="px-4 py-3">{item.obs || '-'}</td>
                             <td className="px-4 py-3 text-right font-medium text-red-400">{formatValorAbertoItem(item)}</td>
                             <td className="px-4 py-3 text-right font-medium text-green-300">{formatCurrency(valorReceber(item))}</td>
                           </tr>
@@ -560,7 +570,7 @@ const RelatorioFechamento = () => {
                       </tbody>
                       <tfoot>
                         <tr>
-                          <td colSpan={5} className="px-4 py-3 text-right font-semibold text-gray-300">Total de entradas</td>
+                          <td colSpan={6} className="px-4 py-3 text-right font-semibold text-gray-300">Total de entradas</td>
                           <td className="px-4 py-3 text-right font-semibold text-red-400">{formatValorAberto(totalEntriesOpen)}</td>
                           <td className="px-4 py-3 text-right font-semibold text-green-300">{formatCurrency(totalEntries)}</td>
                         </tr>
@@ -589,6 +599,7 @@ const RelatorioFechamento = () => {
                           <th className="px-4 py-3">Aluno</th>
                           <th className="px-4 py-3">Vencimento</th>
                           <th className="px-4 py-3">Unidade</th>
+                          <th className="px-4 py-3">Contrato</th>
                           <th className="px-4 py-3 text-right">Valor Aberto</th>
                           <th className="px-4 py-3 text-right">Valor</th>
                         </tr>
@@ -603,7 +614,8 @@ const RelatorioFechamento = () => {
                             <td className="px-4 py-3">{item.contato || '-'}</td>
                             <td className="px-4 py-3">{item.aluno || '-'}</td>
                             <td className={`px-4 py-3 ${isWeekendDate(item.data) ? 'text-red-400' : ''}`}>{formatDateWithWeekday(item.data)}</td>
-                            <td className="px-4 py-3">{item.unidade || '-'}</td>
+                            <td className="px-4 py-3">{formatUnit(item.unidade)}</td>
+                            <td className="px-4 py-3">{item.obs || '-'}</td>
                             <td className="px-4 py-3 text-right font-medium text-red-400">{formatValorAbertoItem(item)}</td>
                             <td className="px-4 py-3 text-right font-medium text-red-300">{formatCurrency(valorPagar(item))}</td>
                           </tr>
@@ -611,7 +623,7 @@ const RelatorioFechamento = () => {
                       </tbody>
                       <tfoot>
                         <tr>
-                          <td colSpan={5} className="px-4 py-3 text-right font-semibold text-gray-300">Total de saidas</td>
+                          <td colSpan={6} className="px-4 py-3 text-right font-semibold text-gray-300">Total de saidas</td>
                           <td className="px-4 py-3 text-right font-semibold text-red-400"></td>
                           <td className="px-4 py-3 text-right font-semibold text-red-300">{formatCurrency(totalExits)}</td>
                         </tr>
