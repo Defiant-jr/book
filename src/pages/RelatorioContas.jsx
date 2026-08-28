@@ -27,6 +27,7 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
             tipo: 'todos',
             status: STATUS_ABERTO,
             unidade: 'todas',
+            categoria: 'todas',
             dataInicio: '',
             dataFim: ''
         });
@@ -79,6 +80,7 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
         const filteredAndSortedContas = useMemo(() => {
             const tipoFiltro = normalizeTipo(filters.tipo);
             const unidadeFiltro = (filters.unidade || '').trim();
+            const categoriaFiltro = (filters.categoria || '').toLocaleLowerCase('pt-BR');
             const filtered = contas.filter((c) => {
                 const statusAtual = getStatus(c);
                 const tipoOk = tipoFiltro === 'todos' || normalizeTipo(c.tipo) === tipoFiltro;
@@ -88,10 +90,12 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
                         ? statusAtual === STATUS.A_VENCER || statusAtual === STATUS.ATRASADO
                         : statusAtual === filters.status);
                 const unidadeOk = filters.unidade === 'todas' || (c.unidade || '').trim() === unidadeFiltro;
+                const categoriaOk = filters.categoria === 'todas' ||
+                    String(c.descricao ?? '').toLocaleLowerCase('pt-BR').includes(categoriaFiltro);
                 const dataInicioOk = !filters.dataInicio || new Date(c.data + 'T00:00:00') >= new Date(filters.dataInicio + 'T00:00:00');
                 const dataFimOk = !filters.dataFim || new Date(c.data + 'T00:00:00') <= new Date(filters.dataFim + 'T00:00:00');
                 if (tipoFiltro === 'entrada' && statusAtual === STATUS.PAGO) return false;
-                return tipoOk && statusOk && unidadeOk && dataInicioOk && dataFimOk;
+                return tipoOk && statusOk && unidadeOk && categoriaOk && dataInicioOk && dataFimOk;
             });
 
             filtered.sort((a, b) => {
@@ -162,7 +166,7 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
             const doc = new jsPDF();
             doc.text("Relatório de Contas", 14, 16);
             doc.autoTable({
-                head: [['Data', 'Tipo', 'Cliente/Fornecedor', 'Descrição', 'Unidade', 'Status', 'Valor Aberto', 'Valor']],
+                head: [['Data', 'Tipo', 'Cliente', 'Categoria', 'Unidade', 'Status', 'Valor Aberto', 'Valor']],
                 body: filteredAndSortedContas.map(c => [
                     formatDateWithWeekday(c.data), c.tipo, c.cliente_fornecedor, c.descricao, c.unidade, formatStatusDisplay(getStatus(c)), formatOptionalCurrency(valorAbertoConta(c)), formatCurrency(valorConta(c))
                 ]),
@@ -200,7 +204,7 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
                 <Card className="glass-card">
                     <CardHeader><CardTitle className="text-white flex items-center gap-2"><Filter className="w-5 h-5" />Configuração do Relatório</CardTitle></CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-4">
                             <div>
                                 <label className="text-sm text-gray-300 mb-2 block">Tipo</label>
                                 <Select value={filters.tipo} onValueChange={(v) => setFilters(f => ({ ...f, tipo: v }))}>
@@ -234,6 +238,18 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
                                         <SelectItem value="CNA Angra dos Reis">CNA Angra dos Reis</SelectItem>
                                         <SelectItem value="CNA Mangaratiba">CNA Mangaratiba</SelectItem>
                                         <SelectItem value="Casa">Casa</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div>
+                                <label className="text-sm text-gray-300 mb-2 block">Categoria</label>
+                                <Select value={filters.categoria} onValueChange={(v) => setFilters(f => ({ ...f, categoria: v }))}>
+                                    <SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="todas">Todas</SelectItem>
+                                        <SelectItem value="Parcela">Parcela</SelectItem>
+                                        <SelectItem value="CtrlPlay">CtrlPlay</SelectItem>
+                                        <SelectItem value="Cruzerio">Cruzerio</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -293,8 +309,8 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
                                             <tr>
                                                 <th scope="col" className="px-6 py-3 cursor-pointer" onClick={() => requestSort('data')}><div className="flex items-center">Data <SortIcon columnKey="data" /></div></th>
                                                 <th scope="col" className="px-6 py-3 cursor-pointer" onClick={() => requestSort('tipo')}><div className="flex items-center">Tipo <SortIcon columnKey="tipo" /></div></th>
-                                                <th scope="col" className="px-6 py-3 cursor-pointer" onClick={() => requestSort('cliente_fornecedor')}><div className="flex items-center">Cliente/Fornecedor <SortIcon columnKey="cliente_fornecedor" /></div></th>
-                                                <th scope="col" className="px-6 py-3">Descrição</th>
+                                                <th scope="col" className="px-6 py-3 cursor-pointer" onClick={() => requestSort('cliente_fornecedor')}><div className="flex items-center">Cliente <SortIcon columnKey="cliente_fornecedor" /></div></th>
+                                                <th scope="col" className="px-6 py-3">Categoria</th>
                                                 <th scope="col" className="px-6 py-3 cursor-pointer" onClick={() => requestSort('unidade')}><div className="flex items-center">Unidade <SortIcon columnKey="unidade" /></div></th>
                                                 <th scope="col" className="px-6 py-3">Status</th>
                                                 <th scope="col" className="px-6 py-3 text-right">Valor Aberto</th>

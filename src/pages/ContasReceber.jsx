@@ -29,6 +29,7 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
         cliente: '',
         status: 'todos',
         unidade: 'todas',
+        categoria: 'todas',
         dataInicio: '',
         dataFim: '',
         valorInicio: '',
@@ -51,7 +52,7 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
       useEffect(() => {
         loadData();
       }, [isRecebidos]);
-    
+
       const mapOperacoesToLancamentos = (items) => (items || []).map((item) => {
         const valorPago = Number.isFinite(Number(item?.valor_pago)) ? Number(item.valor_pago) : null;
         const valorOriginal = Number.isFinite(Number(item?.valor)) ? Number(item.valor) : 0;
@@ -185,6 +186,12 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
         }
         if (filters.unidade !== 'todas') {
           filtered = filtered.filter(conta => conta.unidade === filters.unidade);
+        }
+        if (!isRecebidos && filters.categoria !== 'todas') {
+          const categoria = filters.categoria.toLocaleLowerCase('pt-BR');
+          filtered = filtered.filter((conta) =>
+            String(conta?.descricao ?? '').toLocaleLowerCase('pt-BR').includes(categoria)
+          );
         }
         if (filters.dataInicio) {
           const startDate = new Date(filters.dataInicio + 'T00:00:00');
@@ -374,32 +381,38 @@ const STATUS_ABERTO_LABEL = 'Em Aberto';
             <Card className="glass-card">
               <CardHeader><CardTitle className="text-white flex items-center gap-2"><Filter className="w-5 h-5" />Filtros</CardTitle></CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
+                <div className={`grid grid-cols-1 gap-4 ${isRecebidos ? 'md:grid-cols-3 xl:grid-cols-6' : 'md:grid-cols-4 xl:grid-cols-8'}`}>
                   <div><label className="text-sm text-gray-300 mb-2 block">Cliente</label><Input placeholder="Buscar cliente..." value={filters.cliente} onChange={(e) => setFilters({ ...filters, cliente: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
-                  <div>
-                    <label className="text-sm text-gray-300 mb-2 block">Status</label>
-                    <Select
-                      value={isRecebidos ? STATUS.PAGO : filters.status}
-                      onValueChange={(value) => setFilters({ ...filters, status: value })}
-                      disabled={isRecebidos}
-                    >
-                      <SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {isRecebidos ? (
-                          <SelectItem value={STATUS.PAGO}>Pago</SelectItem>
-                        ) : (
-                          <>
-                            <SelectItem value="todos">Todos</SelectItem>
-                            <SelectItem value={STATUS_ABERTO}>{STATUS_ABERTO_LABEL}</SelectItem>
-                            {STATUS_OPTIONS.map((option) => (
-                              <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                            ))}
-                          </>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {!isRecebidos && (
+                    <div>
+                      <label className="text-sm text-gray-300 mb-2 block">Status</label>
+                      <Select value={filters.status} onValueChange={(value) => setFilters({ ...filters, status: value })}>
+                        <SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="todos">Todos</SelectItem>
+                          <SelectItem value={STATUS_ABERTO}>{STATUS_ABERTO_LABEL}</SelectItem>
+                          {STATUS_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   <div><label className="text-sm text-gray-300 mb-2 block">Unidade</label><Select value={filters.unidade} onValueChange={(value) => setFilters({ ...filters, unidade: value })}><SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="todas">Todas</SelectItem><SelectItem value="CNA Angra dos Reis">CNA Angra dos Reis</SelectItem><SelectItem value="CNA Mangaratiba">CNA Mangaratiba</SelectItem><SelectItem value="Casa">Casa</SelectItem></SelectContent></Select></div>
+                  {!isRecebidos && (
+                    <div>
+                      <label className="text-sm text-gray-300 mb-2 block">Categoria</label>
+                      <Select value={filters.categoria} onValueChange={(value) => setFilters({ ...filters, categoria: value })}>
+                        <SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="todas">Todas</SelectItem>
+                          <SelectItem value="Parcela">Parcela</SelectItem>
+                          <SelectItem value="CtrlPlay">CtrlPlay</SelectItem>
+                          <SelectItem value="Cruzerio">Cruzerio</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   <div><label className="text-sm text-gray-300 mb-2 block">Data Início</label><Input type="date" value={filters.dataInicio} onChange={(e) => setFilters({ ...filters, dataInicio: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
                   <div><label className="text-sm text-gray-300 mb-2 block">Data Fim</label><Input type="date" value={filters.dataFim} onChange={(e) => setFilters({ ...filters, dataFim: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
                   <div><label className="text-sm text-gray-300 mb-2 block">Valor Inicial</label><Input type="number" min="0" step="0.01" placeholder="0,00" value={filters.valorInicio} onChange={(e) => setFilters({ ...filters, valorInicio: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
