@@ -45,7 +45,9 @@ const CalculoCancelamento = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [responsaveis, setResponsaveis] = useState([]);
+  const [alunosPorResponsavel, setAlunosPorResponsavel] = useState({});
   const [responsavel, setResponsavel] = useState('');
+  const [aluno, setAluno] = useState('');
   const [percentualBase, setPercentualBase] = useState('');
   const [taxaAdministrativa, setTaxaAdministrativa] = useState('');
   const [loading, setLoading] = useState(true);
@@ -61,7 +63,7 @@ const CalculoCancelamento = () => {
       const { data, error } = await fetchAllPaginated((from, to) =>
         supabase
           .from('lancamentos')
-          .select('cliente_fornecedor')
+          .select('cliente_fornecedor, aluno')
           .not('cliente_fornecedor', 'is', null)
           .order('cliente_fornecedor', { ascending: true })
           .range(from, to)
@@ -71,6 +73,7 @@ const CalculoCancelamento = () => {
 
       if (error) {
         setResponsaveis([]);
+        setAlunosPorResponsavel({});
         toast({
           title: 'Erro ao carregar responsáveis',
           description: 'Não foi possível consultar os responsáveis dos lançamentos.',
@@ -84,6 +87,20 @@ const CalculoCancelamento = () => {
         )].sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
         setResponsaveis(nomesUnicos);
+        setAlunosPorResponsavel(
+          (data || []).reduce((acc, item) => {
+            const nomeResponsavel = item.cliente_fornecedor?.trim();
+            const nomeAluno = item.aluno?.trim();
+            if (!nomeResponsavel || !nomeAluno) return acc;
+
+            if (!acc[nomeResponsavel]) acc[nomeResponsavel] = [];
+            if (!acc[nomeResponsavel].includes(nomeAluno)) {
+              acc[nomeResponsavel].push(nomeAluno);
+              acc[nomeResponsavel].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+            }
+            return acc;
+          }, {}),
+        );
       }
 
       setLoading(false);
@@ -98,7 +115,14 @@ const CalculoCancelamento = () => {
 
   useEffect(() => {
     setResultado(null);
-  }, [responsavel, percentualBase, taxaAdministrativa]);
+  }, [responsavel, aluno, percentualBase, taxaAdministrativa]);
+
+  const alunosDisponiveis = alunosPorResponsavel[responsavel] || [];
+
+  const handleResponsavelChange = (novoResponsavel) => {
+    setResponsavel(novoResponsavel);
+    setAluno('');
+  };
 
   const formatCurrency = (value) =>
     Number(value || 0).toLocaleString('pt-BR', {
@@ -116,10 +140,10 @@ const CalculoCancelamento = () => {
     const percentual = Number(percentualBase);
     const taxa = Number(taxaAdministrativa);
 
-    if (!responsavel || percentualBase === '' || taxaAdministrativa === '') {
+    if (!responsavel || !aluno || percentualBase === '' || taxaAdministrativa === '') {
       toast({
         title: 'Preencha os dados',
-        description: 'Selecione o responsável e informe % Base e Tx Adm.',
+        description: 'Selecione o responsável e o aluno e informe % Base e Tx Adm.',
         variant: 'destructive',
       });
       return;
@@ -141,6 +165,7 @@ const CalculoCancelamento = () => {
         .from('lancamentos')
         .select('id, data, descricao, aluno, valor, valor_aberto, desc_pontual, status, datapag')
         .eq('cliente_fornecedor', responsavel)
+        .eq('aluno', aluno)
         .eq('tipo', 'Entrada')
         .order('data', { ascending: true })
         .order('id', { ascending: true })
@@ -178,16 +203,10 @@ const CalculoCancelamento = () => {
     );
     const valorPercentualBase = totalAVencer * (percentual / 100);
     const totalCancelamento = totalAtrasado + valorPercentualBase + taxa;
-    const alunos = [...new Set(
-      (data || [])
-        .map((item) => item.aluno?.trim())
-        .filter(Boolean),
-    )].sort((a, b) => a.localeCompare(b, 'pt-BR'));
-
     setResultado({
       atrasados,
       aVencer,
-      aluno: alunos.join(', ') || '-',
+      aluno,
       totalAtrasado,
       totalAVencer,
       percentual,
@@ -388,28 +407,54 @@ const CalculoCancelamento = () => {
           <CardTitle className="text-white">Dados do cálculo</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="max-w-xl">
-            <label htmlFor="responsavel" className="mb-2 block text-sm font-medium text-gray-300">
-              Responsável
-            </label>
-            <Select value={responsavel} onValueChange={setResponsavel} disabled={loading}>
-              <SelectTrigger
-                id="responsavel"
-                className="w-full bg-white/10 border-white/20 text-white"
-              >
-                <SelectValue placeholder={loading ? 'Carregando responsáveis...' : 'Selecione o responsável'} />
-              </SelectTrigger>
-              <SelectContent>
-                {responsaveis.map((nome) => (
-                  <SelectItem key={nome} value={nome}>
-                    {nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {!loading && responsaveis.length === 0 && (
-              <p className="mt-2 text-xs text-gray-400">Nenhum responsável encontrado.</p>
-            )}
+          <div className="grid max-w-xl grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="responsavel" className="mb-2 block text-sm font-medium text-gray-300">
+                Responsável
+              </label>
+              <Select value={responsavel} onValueChange={handleResponsavelChange} disabled={loading}>
+                <SelectTrigger
+                  id="responsavel"
+                  className="w-full bg-white/10 border-white/20 text-white"
+                >
+                  <SelectValue placeholder={loading ? 'Carregando responsáveis...' : 'Selecione o responsável'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {responsaveis.map((nome) => (
+                    <SelectItem key={nome} value={nome}>
+                      {nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {!loading && responsaveis.length === 0 && (
+                <p className="mt-2 text-xs text-gray-400">Nenhum responsável encontrado.</p>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="aluno" className="mb-2 block text-sm font-medium text-gray-300">
+                Aluno
+              </label>
+              <Select value={aluno} onValueChange={setAluno} disabled={loading || !responsavel}>
+                <SelectTrigger
+                  id="aluno"
+                  className="w-full bg-white/10 border-white/20 text-white"
+                >
+                  <SelectValue placeholder={responsavel ? 'Selecione o aluno' : 'Selecione o responsável'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {alunosDisponiveis.map((nome) => (
+                    <SelectItem key={nome} value={nome}>
+                      {nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {!loading && responsavel && alunosDisponiveis.length === 0 && (
+                <p className="mt-2 text-xs text-gray-400">Nenhum aluno encontrado para este responsável.</p>
+              )}
+            </div>
           </div>
 
           <div className="grid max-w-xl grid-cols-1 gap-4 sm:grid-cols-2">
@@ -455,6 +500,7 @@ const CalculoCancelamento = () => {
                 loading ||
                 generating ||
                 !responsavel ||
+                !aluno ||
                 percentualBase === '' ||
                 taxaAdministrativa === ''
               }
