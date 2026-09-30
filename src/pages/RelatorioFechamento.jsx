@@ -277,6 +277,8 @@ const RelatorioFechamento = () => {
 
     const buildTable = (title, items, getValor, options = {}) => {
       const { fontSize = 8, cellPadding = 3 } = options;
+      const contactColumnWidth = 96;
+      const dueDateColumnWidth = 88;
       cursorY += 24;
       doc.setFontSize(13);
       doc.text(title, marginLeft, cursorY);
@@ -300,11 +302,32 @@ const RelatorioFechamento = () => {
         styles: { fontSize, cellPadding },
         headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255], fontSize: fontSize + 1 },
         columnStyles: {
+          1: { cellWidth: contactColumnWidth },
+          3: { cellWidth: dueDateColumnWidth },
           6: { halign: 'right', textColor: [220, 38, 38] },
           7: { halign: 'right' },
         },
         didParseCell: (data) => {
           if (data.section !== 'body') return;
+
+          if (data.column.index === 1) {
+            const contact = String(data.cell.raw || '-');
+            const availableWidth = contactColumnWidth - cellPadding * 2;
+            const textWidth = doc.getStringUnitWidth(contact) * fontSize;
+
+            data.cell.styles.fontSize = Math.max(6, Math.min(fontSize, (fontSize * availableWidth) / textWidth));
+            data.cell.styles.overflow = 'visible';
+          }
+
+          if (data.column.index === 3) {
+            const dueDate = String(data.cell.raw || '-');
+            const availableWidth = dueDateColumnWidth - cellPadding * 2;
+            const textWidth = doc.getStringUnitWidth(dueDate) * fontSize;
+
+            data.cell.styles.fontSize = Math.max(6, Math.min(fontSize, (fontSize * availableWidth) / textWidth));
+            data.cell.styles.overflow = 'visible';
+          }
+
           const rowItem = items[data.row.index];
           if (!rowItem) return;
           if (isAtrasado(rowItem)) {
