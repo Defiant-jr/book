@@ -18,7 +18,7 @@ const PersistentToolsHeader = () => {
 
   return (
     <header
-      className="relative z-40 mb-6 flex w-full flex-col flex-wrap items-center justify-center gap-3 sm:flex-row xl:absolute xl:left-1/2 xl:top-0 xl:mb-0 xl:w-auto xl:-translate-x-1/2 xl:pt-10"
+      className="relative z-40 mb-6 flex w-full flex-row flex-nowrap items-center justify-start gap-3 overflow-x-auto px-1 pb-1 sm:justify-center xl:absolute xl:left-1/2 xl:top-0 xl:mb-0 xl:w-auto xl:-translate-x-1/2 xl:overflow-visible xl:px-0 xl:pb-0 xl:pt-10 [&>*]:shrink-0"
       aria-label="Ferramentas rápidas"
     >
       <DateTimeDisplay className="whitespace-nowrap text-base font-medium text-white/80" />
