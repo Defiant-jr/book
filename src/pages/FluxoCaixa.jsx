@@ -85,6 +85,20 @@ const FluxoCaixa = () => {
       const formatCurrency = (value) => {
         return (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
       };
+
+      const formatDetailDate = (value) => {
+        const dateStr = typeof value === 'string' ? value.slice(0, 10) : '';
+        const [year, month, day] = dateStr.split('-');
+        return year && month && day ? `${day}/${month}/${year}` : '-';
+      };
+
+      const sortAlphabetically = (items) => [...items].sort((a, b) =>
+        String(a?.cliente_fornecedor || '').localeCompare(
+          String(b?.cliente_fornecedor || ''),
+          'pt-BR',
+          { sensitivity: 'base' }
+        )
+      );
       const todayStr = new Date().toISOString().split('T')[0];
 
       const getValorReceber = (item) => {
@@ -346,12 +360,24 @@ const FluxoCaixa = () => {
                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 p-4">
                                     <div>
                                       <h4 className="font-semibold text-green-400 mb-2 border-b border-slate-700 pb-1">Entradas</h4>
-                                      {dia.details.receber.length > 0 ? dia.details.receber.map(item => (
-                                        <div key={item.id} className="flex justify-between text-sm py-1">
-                                          <span>{item.cliente_fornecedor}</span>
-                                          <span className="font-mono">{formatCurrency(item.tipoNorm === 'entrada' ? getValorReceber(item) : (Number(item?.valor) || 0))}</span>
+                                      {dia.details.receber.length > 0 ? (
+                                        <div className="min-w-[560px]">
+                                          <div className="grid grid-cols-[minmax(160px,1fr)_100px_minmax(140px,1fr)_110px] gap-3 border-b border-slate-700 pb-1 text-xs font-semibold text-slate-400">
+                                            <span>Cliente/Fornecedor</span>
+                                            <span>Data</span>
+                                            <span>Unidade</span>
+                                            <span className="text-right">Valor</span>
+                                          </div>
+                                          {sortAlphabetically(dia.details.receber).map(item => (
+                                            <div key={item.id} className="grid grid-cols-[minmax(160px,1fr)_100px_minmax(140px,1fr)_110px] gap-3 border-b border-slate-800 py-1 text-sm last:border-0">
+                                              <span>{item.cliente_fornecedor || '-'}</span>
+                                              <span>{formatDetailDate(item.dataStr || item.data)}</span>
+                                              <span>{item.unidade || '-'}</span>
+                                              <span className="text-right font-mono">{formatCurrency(item.tipoNorm === 'entrada' ? getValorReceber(item) : (Number(item?.valor) || 0))}</span>
+                                            </div>
+                                          ))}
                                         </div>
-                                      )) : <p className="text-xs text-slate-400">Nenhuma entrada.</p>}
+                                      ) : <p className="text-xs text-slate-400">Nenhuma entrada.</p>}
                                     </div>
                                     <div>
                                       <h4 className="font-semibold text-red-400 mb-2 border-b border-slate-700 pb-1">Saídas</h4>
