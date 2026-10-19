@@ -20,6 +20,7 @@ const Login = () => {
   const doLogin = async (loginEmail, loginPassword) => {
     setLoading(true);
     setShowResend(false);
+    try {
     const { error } = await signIn(loginEmail, loginPassword);
     if (error) {
       if (error.message.includes('Email not confirmed')) {
@@ -33,7 +34,11 @@ const Login = () => {
         toast({
           variant: 'destructive',
           title: 'Falha no Login',
-          description: 'Verifique seu e-mail e senha.',
+          description: error.message === 'Invalid login credentials'
+            ? 'E-mail ou senha incorretos.'
+            : error.message === 'Failed to fetch'
+              ? 'Nao foi possivel conectar ao servico de login. Verifique sua conexao.'
+              : error.message || 'Nao foi possivel entrar. Tente novamente.',
         });
       }
     } else {
@@ -43,7 +48,15 @@ const Login = () => {
       });
       navigate('/');
     }
-    setLoading(false);
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Falha no Login',
+        description: error.message || 'Nao foi possivel conectar ao servico de login.',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleLogin = async (e) => {

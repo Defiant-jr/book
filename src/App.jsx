@@ -1,5 +1,6 @@
 import { Toaster } from '@/components/ui/toaster';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { isLoginDisabled } from '@/lib/authConfig';
 import Cadastros from '@/pages/Cadastros';
 import ContasPagar from '@/pages/ContasPagar';
 import ContasPagas from '@/pages/ContasPagas';
@@ -59,7 +60,7 @@ const PrivateRoute = ({ children }) => {
 	const navigate = useNavigate();
 
 	useEffect(() => {
-		if (!user) return undefined;
+		if (!user && !isLoginDisabled) return undefined;
 
 		const handleEscape = (event) => {
 			if (event.key !== 'Escape' || event.repeat || location.pathname === '/') return;
@@ -70,7 +71,7 @@ const PrivateRoute = ({ children }) => {
 		return () => window.removeEventListener('keydown', handleEscape);
 	}, [location.pathname, navigate, user]);
 
-	if (loading) {
+	if (loading && !isLoginDisabled) {
 		return (
 			<div className="flex justify-center items-center h-screen">
 				<div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-blue-500" />
@@ -78,7 +79,7 @@ const PrivateRoute = ({ children }) => {
 		);
 	}
 
-	return user ? <div className="screen-size-ref-12000">{children}</div> : <Navigate to="/login" />;
+	return user || isLoginDisabled ? <div className="screen-size-ref-12000">{children}</div> : <Navigate to="/login" />;
 };
 
 function App() {
@@ -96,7 +97,7 @@ function App() {
 				<main className="app-shell">
 					<PersistentToolsHeader />
 					<Routes>
-						<Route path="/login" element={<Login />} />
+						<Route path="/login" element={isLoginDisabled ? <Navigate to="/" replace /> : <Login />} />
 						<Route path="/signup" element={<SignUp />} />
 						<Route
 							path="/"
