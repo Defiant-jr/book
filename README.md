@@ -98,6 +98,23 @@ DefFinance-v1/
 ```
 
 ## Fluxos principais
+### Login pela tabela usuarios
+
+O login usa `public.usuarios`, com os campos `usuario` e `senha`, consultados
+exclusivamente pelo backend. Cada `usuario` deve identificar uma unica linha.
+O campo `senha` deve ser do tipo `text` (ou comportar pelo menos 168 caracteres):
+senhas existentes em texto sao convertidas para hash scrypt no primeiro login correto.
+Nao disponibilize leitura dessa tabela aos papeis publicos `anon` e `authenticated`;
+mantenha RLS habilitada sem politicas publicas de leitura das credenciais.
+
+Configure `VITE_SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` no `.env.local`.
+A chave de servico e privada e nunca deve usar prefixo `VITE_`.
+Execute `npm.cmd run dev` para disponibilizar frontend e endpoints `/api/auth`.
+A sessao usa cookie HttpOnly, expira em oito horas e termina ao reiniciar o servidor.
+O cadastro pelo Supabase Auth foi retirado deste fluxo; cadastre os usuarios na tabela.
+Este login nao emite JWT do Supabase Auth: consultas diretas do frontend continuam
+sujeitas as politicas RLS do papel anon, independentemente da sessao da aplicacao.
+
 - **Login / Cadastro** (`src/pages/Login.jsx`, `src/pages/SignUp.jsx`): formulários com Radix UI, validação básica e chamadas ao `SupabaseAuthContext` (funções `signIn`, `signUp`).
 - **Dashboard** (`src/pages/Dashboard.jsx`): carrega `lancamentos` do Supabase, consolida indicadores, renderiza gráfico e aciona importação de planilhas.
 - **Contas a Pagar/Receber** (`src/pages/ContasPagar.jsx`, `src/pages/ContasReceber.jsx`): exibem tabelas filtráveis, contadores por status e ações de exportação via `jspdf`/`html2canvas`.

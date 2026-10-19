@@ -41,7 +41,6 @@ import RelatorioPagosRecebidos from '@/pages/RelatorioPagosRecebidos';
 import RelatorioFechamento from '@/pages/RelatorioFechamento';
 import RelatorioSerasa from '@/pages/RelatorioSerasa';
 import Relatorios from '@/pages/Relatorios';
-import SignUp from '@/pages/SignUp';
 import FinanceiroCadastro from '@/pages/FinanceiroCadastro';
 import Estatisticas from '@/pages/Estatisticas';
 import FichaCustos from '@/pages/FichaCustos';
@@ -98,7 +97,7 @@ function App() {
 					<PersistentToolsHeader />
 					<Routes>
 						<Route path="/login" element={isLoginDisabled ? <Navigate to="/" replace /> : <Login />} />
-						<Route path="/signup" element={<SignUp />} />
+						<Route path="/signup" element={<Navigate to="/login" replace />} />
 						<Route
 							path="/"
 							element={

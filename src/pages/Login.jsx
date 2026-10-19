@@ -1,88 +1,35 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { motion } from 'framer-motion';
-import { supabase } from '@/lib/customSupabaseClient';
 
 const Login = () => {
-  const [email, setEmail] = useState('');
+  const [usuario, setUsuario] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showResend, setShowResend] = useState(false);
   const { signIn } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const doLogin = async (loginEmail, loginPassword) => {
+  const handleLogin = async (e) => {
+    e.preventDefault();
     setLoading(true);
-    setShowResend(false);
     try {
-    const { error } = await signIn(loginEmail, loginPassword);
-    if (error) {
-      if (error.message.includes('Email not confirmed')) {
-        toast({
-          variant: 'destructive',
-          title: 'E-mail nao confirmado',
-          description: 'Verifique sua caixa de entrada e confirme seu e-mail para continuar.',
-        });
-        setShowResend(true);
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'Falha no Login',
-          description: error.message === 'Invalid login credentials'
-            ? 'E-mail ou senha incorretos.'
-            : error.message === 'Failed to fetch'
-              ? 'Nao foi possivel conectar ao servico de login. Verifique sua conexao.'
-              : error.message || 'Nao foi possivel entrar. Tente novamente.',
-        });
+      const { error } = await signIn(usuario.trim(), password);
+      if (error) {
+        toast({ variant: 'destructive', title: 'Falha no Login', description: error.message });
+        return;
       }
-    } else {
-      toast({
-        title: 'Login bem-sucedido!',
-        description: 'Bem-vindo de volta!',
-      });
-      navigate('/');
-    }
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Falha no Login',
-        description: error.message || 'Nao foi possivel conectar ao servico de login.',
-      });
+      navigate('/', { replace: true });
+    } catch {
+      toast({ variant: 'destructive', title: 'Falha no Login', description: 'Nao foi possivel conectar ao servidor.' });
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    await doLogin(email, password);
-  };
-
-  const handleResendConfirmation = async () => {
-    setLoading(true);
-    const { error } = await supabase.auth.resend({
-      type: 'signup',
-      email,
-    });
-    if (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Falha ao reenviar',
-        description: error.message || 'Nao foi possivel reenviar o e-mail de confirmacao.',
-      });
-    } else {
-      toast({
-        title: 'E-mail reenviado!',
-        description: 'Verifique sua caixa de entrada para o novo link de confirmacao.',
-      });
-    }
-    setLoading(false);
   };
 
   return (
@@ -106,13 +53,14 @@ const Login = () => {
         </div>
         <form onSubmit={handleLogin} className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="email">E-mail</Label>
+            <Label htmlFor="usuario">Usuario</Label>
             <Input
-              id="email"
-              type="email"
-              placeholder="seu@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              id="usuario"
+              type="text"
+              placeholder="Seu usuario"
+              autoComplete="username"
+              value={usuario}
+              onChange={(e) => setUsuario(e.target.value)}
               required
               className="bg-slate-800/50 border-slate-700"
             />
@@ -122,6 +70,7 @@ const Login = () => {
             <Input
               id="password"
               type="password"
+              autoComplete="current-password"
               placeholder="********"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -133,20 +82,6 @@ const Login = () => {
             {loading ? 'Entrando...' : 'Entrar'}
           </Button>
         </form>
-        {showResend && (
-          <div className="text-center">
-            <p className="text-sm text-muted-foreground">Nao recebeu o e-mail?</p>
-            <Button variant="link" onClick={handleResendConfirmation} disabled={loading}>
-              {loading ? 'Reenviando...' : 'Reenviar e-mail de confirmacao'}
-            </Button>
-          </div>
-        )}
-        <p className="text-center text-sm text-muted-foreground">
-          Nao tem uma conta?{' '}
-          <Link to="/signup" className="font-medium text-primary hover:underline">
-            Cadastre-se
-          </Link>
-        </p>
       </motion.div>
     </div>
   );

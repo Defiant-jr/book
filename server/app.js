@@ -1,5 +1,6 @@
 import './loadEnv.js';
 import express from 'express';
+import { registerAuthRoutes } from './authRoutes.js';
 import compression from 'compression';
 import serveStatic from 'serve-static';
 import path from 'node:path';
@@ -57,6 +58,7 @@ export async function createApp(options = {}) {
 
   app.disable('x-powered-by');
   app.use(express.json());
+  registerAuthRoutes(app);
 
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok' });
