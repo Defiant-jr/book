@@ -193,13 +193,14 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
       }, [data.lancamentos, monthsSpan, financialAdjustments.cash, financialAdjustments.investimento, adjustmentsLoading]);
     
       const formatCurrency = (value) => {
-        return (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        return (value ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
       };
     
-      const parseCurrencyInput = (value) => {
+      const parseCurrencyInput = (value, allowNegative = false) => {
         const digits = (value || '').replace(/\D/g, '');
         if (!digits) return 0;
-        return Number.parseInt(digits, 10) / 100;
+        const amount = Number.parseInt(digits, 10) / 100;
+        return allowNegative && value.includes('-') ? -amount : amount;
       };
     
       const handleEmCashInputChange = (event) => {
@@ -207,7 +208,7 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
       };
 
       const handleInvestimentoInputChange = (event) => {
-        setInvestimentoDraft(parseCurrencyInput(event.target.value));
+        setInvestimentoDraft(parseCurrencyInput(event.target.value, true));
       };
     
       const handleEmCashInputKeyDown = (event) => {
@@ -243,7 +244,7 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
 
         toast({
           title: 'Ajustes financeiros atualizados',
-          description: `Cash: ${formatCurrency(emCashDraft)} | Investimento: ${formatCurrency(investimentoDraft)}`
+          description: `Cash: ${formatCurrency(emCashDraft)} | Crédito (-): ${formatCurrency(investimentoDraft)}`
         });
       };
      
@@ -356,7 +357,7 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
             { label: 'Em Aberto', value: formatCurrency(receberAberto) },
             { label: 'Em Atraso', value: formatCurrency(receberAtrasado), color: 'text-red-400' },
             { label: 'Em Cash', value: formatCurrency(emCashAmount), color: 'text-green-300' },
-            { label: 'Investimento', value: formatCurrency(investimentoAmount), color: 'text-amber-300' },
+            { label: 'Crédito (-)', value: formatCurrency(investimentoAmount), color: 'text-amber-300' },
             { label: 'Total a Receber', value: formatCurrency(totalReceberPendente) },
             { label: 'Juros', value: formatCurrency(jurosReceber), color: 'text-orange-300' },
             { label: 'Total com Juros', value: formatCurrency(totalReceberComJuros), color: 'text-green-300' },
@@ -384,7 +385,7 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
           details: (emCashAmount || investimentoAmount) ? [
             { label: 'Previsto com Ajustes', value: formatCurrency(resultadoOperacionalComAjustes), color: 'text-gray-300' },
             { label: 'Saldo em Cash', value: formatCurrency(emCashAmount), color: 'text-green-300' },
-            { label: 'Investimento', value: formatCurrency(investimentoAmount), color: 'text-amber-300' },
+            { label: 'Crédito (-)', value: formatCurrency(investimentoAmount), color: 'text-amber-300' },
           ] : undefined
         }
       ];
@@ -462,7 +463,7 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
             <Card className="glass-card">
               <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                  <CardTitle className="text-white">Valores em Cash e Investimentos</CardTitle>
+                  <CardTitle className="text-white">Valores em Cash e Créditos (-)</CardTitle>
                   <p className="text-sm text-gray-400">
                     Cash soma os valores previstos. Investimento reduz os calculos financeiros em todo o sistema.
                   </p>
@@ -475,7 +476,7 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
                     </p>
                   </div>
                   <div>
-                    <span className="text-xs uppercase tracking-wide text-gray-400">Investimento atual</span>
+                    <span className="text-xs uppercase tracking-wide text-gray-400">Credito (-) atual</span>
                     <p className="text-2xl font-semibold text-white">
                       {adjustmentsLoading ? 'Carregando...' : formatCurrency(financialAdjustments.investimento)}
                     </p>
@@ -499,7 +500,7 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
                     />
                   </div>
                   <div className="space-y-3">
-                    <label htmlFor="investimentoInput" className="text-sm text-gray-300">Atualizar investimento</label>
+                    <label htmlFor="investimentoInput" className="text-sm text-gray-300">Atualizar Credito (-)</label>
                     <Input
                       id="investimentoInput"
                       type="text"

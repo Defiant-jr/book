@@ -160,7 +160,7 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
             dataStr: startStr,
           });
         }
-        if (investimentoAmount > 0) {
+        if (investimentoAmount !== 0) {
           emCashDetails.push({
             id: 'investimento',
             cliente_fornecedor: 'Investimento',
