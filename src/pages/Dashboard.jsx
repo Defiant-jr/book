@@ -343,8 +343,8 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
         .reduce((sum, c) => sum + getValorPagar(c), 0) + pagarAtrasadoAnterior;
       const totalPagarPendente = pagarAberto + pagarAtrasado;
 
-      const resultadoOperacional = totalReceberPendente - totalPagarPendente;
-      const resultadoOperacionalComAjustes = resultadoOperacional;
+      const resultadoOperacional = receberAberto + receberAtrasado + emCashAmount - totalPagarPendente;
+      const resultadoOperacionalComAjustes = resultadoOperacional - investimentoAmount;
     
       const summaryCards = [
         {
@@ -383,9 +383,10 @@ import { useFinanceAdjustments } from '@/hooks/useEmCashValue';
           bgColor: resultadoOperacional >= 0 ? 'bg-blue-500/10' : 'bg-orange-500/10',
           showSpanSelector: true,
           details: (emCashAmount || investimentoAmount) ? [
-            { label: 'Previsto com Ajustes', value: formatCurrency(resultadoOperacionalComAjustes), color: 'text-gray-300' },
+            { label: 'Previsto', value: formatCurrency(resultadoOperacional), color: 'text-gray-300' },
             { label: 'Saldo em Cash', value: formatCurrency(emCashAmount), color: 'text-green-300' },
             { label: 'Crédito (-)', value: formatCurrency(investimentoAmount), color: 'text-amber-300' },
+            { label: 'Previsto com Ajustes', value: formatCurrency(resultadoOperacionalComAjustes), color: 'text-gray-300' },
           ] : undefined
         }
       ];
